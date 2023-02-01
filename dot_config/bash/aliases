@@ -156,6 +156,7 @@ alias shfmt='shfmt --indent 2 --case-indent'
 alias wget='wget --hsts-file=$XDG_DATA_HOME/wget-hsts'
 
 ## misc - other
+alias cm='chezmoi'
 alias du1='du --max-depth=1'
 alias bs='br --sizes'
 alias brc='source ${HOME}/.bashrc'
