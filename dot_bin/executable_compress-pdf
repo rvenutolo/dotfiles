@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 2 ]]; then
+  echo "${0##*/}: Expected exactly 2 arguments" >&2
+  exit 2
+fi
+
+# https://www.digitalocean.com/community/tutorials/reduce-pdf-file-size-in-linux
+gs \
+  -sDEVICE=pdfwrite \
+  -dCompatibilityLevel=1.4 \
+  -dPDFSETTINGS=/printer \
+  -dNOPAUSE \
+  -dQUIET \
+  -dBATCH \
+  -sOutputFile="$2" \
+  "$1"

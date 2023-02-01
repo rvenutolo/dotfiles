@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily deletion of Systemd journal logs
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=3600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 0 ]]; then
+  echo "${0##*/}: Expected no arguments" >&2
+  exit 2
+fi
+
+echo -e "\nYou are logged on $(hostname)"
+echo -e "\nAdditional information: "
+uname --all
+echo -e "\nUsers logged on: "
+w --no-header
+echo -e "\nCurrent date: "
+date
+echo -e "\nMachine stats: "
+uptime
+echo -e "\nMemory stats: "
+free

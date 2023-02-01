@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -eq 0 ]]; then
+  echo "${0##*/}: Expected at least 1 argument" >&2
+  exit 2
+fi
+
+for file; do
+  if [[ -e "${file}" && ! -f "${file}" ]]; then
+    echo "${0##*/}: ${file} is NOT a file"
+  else
+    touch "${file}"
+    chmod +x "${file}"
+  fi
+done

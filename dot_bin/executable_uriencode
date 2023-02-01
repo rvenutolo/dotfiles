@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 1 ]]; then
+  echo "${0##*/}: Expected exactly 1 argument" >&2
+  exit 2
+fi
+
+jq --null-input --raw-output --arg v "$1" '$v|@uri'

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -gt 1 ]]; then
+  echo "${0##*/}: Expected at most 1 argument" >&2
+  exit 2
+fi
+
+if [[ "$#" -eq 0 && -t 0 ]]; then
+  echo "${0##*/}: Expected STDIN" >&2
+  exit 2
+fi
+
+if [[ "$#" -eq 0 ]]; then
+  highlight --out-format=ansi --force | less --raw-control-chars
+else
+  case "$1" in
+    *.md) glow "$1" | less --raw-control-chars ;;
+    *) highlight --out-format=ansi --force "$1" | less --raw-control-chars ;;
+  esac
+fi

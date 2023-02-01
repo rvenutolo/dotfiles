@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 0 ]]; then
+  echo "${0##*/}: Expected no arguments" >&2
+  exit 2
+fi
+
+mvn dependency:sources
+mvn dependency:resolve -Dclassifier='javadoc'

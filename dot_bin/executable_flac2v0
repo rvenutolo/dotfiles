@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 0 ]]; then
+  echo "${0##*/}: Expected no arguments" >&2
+  exit 2
+fi
+
+flac2mp3.pl --quiet --lameargs='-V0 --noreplaygain --nohist --quiet' --processes="$(nproc)" . .

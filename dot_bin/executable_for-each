@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -eq 0 ]]; then
+  echo "${0##*/}: Expected at least 1 argument" >&2
+  exit 2
+fi
+
+if [[ -t 0 ]]; then
+  echo "${0##*/}: Expected STDIN" >&2
+  exit 2
+fi
+
+# ex:
+# echo -e 'foo bar\nbaz' | for-each echo
+# runs (in sequence):
+# echo foo
+# echo bar
+# echo baz
+xargs --max-args=1 "$@"

@@ -1,0 +1,5 @@
+encryption = 'age'
+format = 'yaml'
+progress = true
+sourceDir = '~/Code/chezmoi-dotfiles'
+verbose = true

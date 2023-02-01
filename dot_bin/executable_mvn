@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+function executable_exists() {
+  # executables / no builtins, aliases, or functions
+  type -aPf "$1" >/dev/null 2>&1
+}
+
+# remove this dir from the path so executing `mvn` doesn't execute this script
+readonly this_script_dir="$(dirname -- "$(readlink --canonicalize -- "$0")")"
+PATH=$(echo -n "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"${this_script_dir}"'"' | sed 's/:$//')
+
+dir="$PWD"
+project_root="$PWD"
+while [[ "$dir" != / ]]; do
+  if [[ -f "$dir/pom.xml" || -f "$dir/mvnw" ]]; then
+    readonly project_root="$dir"
+    break
+  fi
+  dir="$(dirname -- "${dir}")"
+done
+
+if [[ -x "$project_root/mvnw" ]]; then
+  echo 'Executing mvnw instead of mvn' >&2
+  "${project_root}/mvnw" "$@"
+elif executable_exists 'mvnd'; then
+  echo 'Executing mvnd instead of mvn' >&2
+  mvnd "$@"
+else
+  mvn "$@"
+fi

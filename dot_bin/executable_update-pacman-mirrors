@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 0 ]]; then
+  echo "${0##*/}: Expected no arguments" >&2
+  exit 2
+fi
+
+sudo pacman-mirrors --country 'United_States,Canada'
+sudo pacman-mirrors --fasttrack
+sudo pacman -Syyu

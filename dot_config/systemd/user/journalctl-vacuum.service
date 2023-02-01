@@ -1,0 +1,6 @@
+[Unit]
+Description=Deletes Systemd journal data older than one year
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/journalctl --vacuum-time=1y

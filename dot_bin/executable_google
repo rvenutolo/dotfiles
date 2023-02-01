@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -eq 0 ]]; then
+  echo "${0##*/}: Expected at least 1 argument" >&2
+  exit 2
+fi
+
+echo "${0##*/}: Googling: $*" >&2
+search=""
+for term; do
+  search="${search}%20${term}"
+done
+readonly search
+xdg-open "https://www.google.com/search?q=${search}" >/dev/null 2>&1 &
+disown

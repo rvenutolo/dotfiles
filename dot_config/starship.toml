@@ -1,0 +1,225 @@
+# Get editor completions based on the config schema
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# ░▒▓  
+## TODO docker & terraform & container
+format = """\
+[](fg:#2E3440 bg:#8FBCBB)\
+[](fg:#8FBCBB bg:#3B4252)\
+$username\
+$hostname\
+[](fg:#3B4252 bg:#434C5E)\
+$directory\
+[](fg:#434C5E bg:#4C566A)\
+$git_branch\
+$git_commit\
+$git_state\
+$git_status\
+$git_metrics\
+[](fg:#4C566A bg:#5E81AC)\
+$package\
+[](fg:#5E81AC bg:#81A1C1)\
+$c\
+$golang\
+$haskell\
+$java\
+$kotlin\
+$lua\
+$nodejs\
+$perl\
+$python\
+$ruby\
+$rust\
+$scala\
+[](fg:#81A1C1 bg:#8FBCBB)\
+[](fg:#8FBCBB bg:#2E3440)\
+$fill\
+$status\
+$cmd_duration\
+$jobs\
+$shlvl\
+$time\
+$line_break\
+$character\
+"""
+scan_timeout = 30
+command_timeout = 500
+add_newline = false
+continuation_prompt = '▶▶'
+
+[c]
+format = '[${symbol} ($version(-$name))]($style)'
+style = 'bg:#81A1C1 bold'
+# C 
+symbol = ''
+
+[character]
+format = '$symbol '
+# ▶ ❱ ➔ ➲ ⮊ ⮞ ⮩ 》 🠶 🡆
+success_symbol = '[⮞](fg:#A3BE8C)'
+error_symbol = '[⮞](fg:#BF616A)'
+
+[cmd_duration]
+format = '[$duration]($style) '
+style = 'fg:#d8dee9 bold'
+min_time = 0
+
+[directory]
+format = '[$path]($style)[ $read_only]($read_only_style)'
+#    
+repo_root_format = '[ $repo_root]($repo_root_style)[$path]($style)[ $read_only]($read_only_style)'
+style = 'bg:#434C5E bold'
+repo_root_style = 'bg:#434C5E bold'
+read_only_style = 'fg:#EBCB8B bg:#434C5E bold'
+#    
+read_only = ''
+truncation_length = 0
+
+[fill]
+symbol = ' '
+
+[git_branch]
+format = '[$symbol $branch(:$remote_branch)]($style)'
+style = 'bg:#4C566A bold'
+#    שׂ
+symbol = ''
+
+[git_commit]
+#   
+format = '[ $hash$tag]($style)'
+style = 'fg:#EBCB8B bg:#4C566A bold'
+# 🏷  笠 
+tag_symbol = '  '
+tag_disabled = false
+
+[git_state]
+format = '[ $state ($progress_current/$progress_total)]($style)'
+style = 'fg:#EBCB8B bg:#4C566A bold'
+
+[git_metrics]
+format = '([+$added]($added_style))([-$deleted]($deleted_style))'
+added_style = 'fg:#A3BE8C bg:#4C566A bold'
+deleted_style = 'fg:#BF616A bg:#4C566A bold'
+disabled = false
+
+[git_status]
+format = '([ \[$all_status$ahead_behind\]]($style))'
+style = 'fg:#D08770 bg:#4C566A bold'
+
+[golang]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+symbol = ''
+
+[haskell]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+# λ 
+symbol = ''
+
+[hostname]
+format = '[@$hostname]($style)'
+style = 'bg:#3B4252 bold'
+
+[java]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+# ☕  
+symbol = ''
+
+[jobs]
+format = '[$symbol]($style) '
+style = 'fg:#81A1C1 bold'
+#  ✦ ¤ ᠅ ⁘ ◈ ◆ ♦ ⟡ ⬢ ⬣ ⬟ ⬤ ⯁ ⯃ ⯌ ⯍ ⯎ ⯏ ⛬
+symbol = '✦'
+symbol_threshold = 1
+
+[kotlin]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+# Ⓚ ⓚ 𝐊 🄚 🄺 🅚 🅺 🇰
+symbol = '𝐊'
+
+[lua]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+#🌙 
+symbol = ''
+
+[nodejs]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+# 
+symbol = ''
+
+[package]
+format = '[$symbol $version]($style)'
+style = 'bg:#5E81AC bold'
+# 📦    
+symbol = ''
+
+[perl]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+# 🐪
+symbol = 'pl'
+
+[python]
+format = '[${symbol}${pyenv_prefix} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+# 🐍 
+symbol = ''
+
+[ruby]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+# 💎 
+symbol = ''
+
+[rust]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+# 🦀 
+symbol = ''
+
+[scala]
+format = '[${symbol} (${version})]($style)'
+style = 'bg:#81A1C1 bold'
+# 🆂 
+symbol = ''
+
+[shlvl]
+threshold = 1
+format = '[$symbol$shlvl]($style) '
+symbol = '↕'
+style = 'fg:#EBCB8B bold'
+disabled = false
+
+[status]
+format = '[$symbol]($style) '
+style = 'fg:#BF616A bold'
+#       﫟 﫠    ⬤ 🟢 ✓ ✔
+success_symbol = '[](fg:#A3BE8C bold)'
+# ╳ ❌ ☠ ⚡ ⚑ ⚠ ⚪ ⚫ ⛝ ⛞ ✕ ✖ ✗ ✘ ❎ ❓ ❔ ❕ ❗ ⨯ ⮽ ⮾ ⮿ ⯄ 🏱 🏲 🏳 🏴 🗙 🗲 🗴 🗶 🗷 
+symbol = '✖'
+# ⊘ ⍉ ⊘ ⍉ ⛔ ⭙ ⮽ ⮾ ⮿
+not_executable_symbol = '⛔'
+#      🔍
+not_found_symbol = ''
+#  
+sigint_symbol = ''
+#  ⚡
+signal_symbol = ''
+map_symbol = true
+disabled = false
+
+[time]
+format = '[$time]($style)'
+style = 'fg:#d8dee9 bold'
+time_format = '%I:%M%P'
+disabled = false
+
+[username]
+format = '[$user]($style)'
+style_user = 'bg:#3B4252 bold'
+style_root = 'bg:#3B4252 fg:D08770 bold'

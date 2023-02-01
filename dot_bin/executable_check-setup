@@ -1,0 +1,273 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 0 ]]; then
+  echo "${0##*/}: Expected no arguments" >&2
+  exit 2
+fi
+
+function executable_exists() {
+  # executables / no builtins, aliases, or functions
+  type -aPf "$1" > /dev/null 2>&1
+}
+
+function file_exists() {
+  [[ -r "$1" && -f "$1" ]]
+}
+
+function path_remove() {
+  PATH=$(echo -n "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
+}
+
+function contains_word() {
+  grep --quiet --fixed-strings --ignore-case --word-regex "$1"
+}
+
+function is_distro() {
+  hostnamectl | grep --fixed-strings 'Operating System:' | cut --delimiter=':' --fields=2 | contains_word "$1"
+}
+
+function is_desktop_env() {
+  echo "${XDG_CURRENT_DESKTOP}" | contains_word "$1"
+}
+
+## expecting __RV_COMPUTER to be values like 'home desktop', 'work laptop'
+function is_computer() {
+  set +u
+  if [[ ${__RV_COMPUTER,,} == "$1" ]]; then
+    local is_comp='true'
+  else
+    local is_comp='false'
+  fi
+  set -u
+  [[ ${is_comp} == 'true' ]]
+}
+
+expected_vars=(
+  'BROWSER'
+  'CODE_DIR'
+  'DE'
+  'EDITOR'
+  'FILE_MANAGER'
+  'GOPATH'
+  'JAVA_HOME'
+  'LANGUAGE'
+  'LANG'
+  'MANPAGER'
+  'PAGER'
+  'SDKMAN_DIR'
+  'VISUAL'
+  'WTTR_CITY'
+  '__RV_COMPUTER'
+)
+set +u
+for var in "${expected_vars[@]}"; do
+  [[ -z "${!var}" ]] && echo "Environment variable not set: ${var}"
+done
+set -u
+
+expected_executables=(
+  '7z'
+  'ag' 'age' 'alacritty' 'apropos' 'authy' 'autotrash' 'await' 'aws' 'aws_completer'
+  'bat' 'bc' 'bmon' 'broot' 'btm' 'btop' 'bzip2'
+  'cabextract' 'cargo' 'checkbashisms' 'cheat' 'chezmoi' 'choose' 'clamscan' 'cmake' 'colordiff' 'column' 'cpufetch' 'crontab' 'ctop' 'curl' 'curlie'
+  'dash' 'delta' 'diff' 'diff-so-fancy' 'dig' 'distrobox' 'doggo' 'dos2unix' 'duf' 'dust'
+  'edex-ui' 'exa'
+  'fail2ban-client' 'fcp' 'fd' 'fff' 'find' 'fish' 'flatpak' 'flatpak-spawn' 'flatseal' 'free' 'fx' 'fzf'
+  'gawk' 'gdu' 'git' 'gitkraken' 'gitui' 'glances' 'glow' 'go' 'gparted' 'gpg' 'gping' 'gradle' 'grep' 'groups' 'groovy' 'gs' 'gtop' 'gufw' 'gunzip' 'gzip'
+  'highlight' 'hostname' 'hstr' 'http' 'hyperfine'
+  'iconv' 'inotifywait' 'ip'
+  'java' 'javac' 'jq' 'just'
+  'kotlin'
+  'lazydocker' 'lazygit' 'less' 'lf' 'lfs' 'locate' 'lpass' 'lsof'
+  'magnus' 'maldet' 'man' 'mcs' 'micro' 'mn' 'moar' 'mtr' 'mvn' 'mvnd'
+  'nano' 'navi' 'ncdu' 'neofetch' 'nmap' 'nnn' 'nvim'
+  'onefetch' 'oneshot' 'openconnect' 'openssl' 'openvpn'
+  'pandoc' 'parallel' 'pcmanfm' 'pdu' 'pigz' 'ping' 'pingg' 'pip' 'pip3' 'podman' 'pomchecker' 'postman' 'procs' 'ps' 'psgrep' 'ptop' 'pv' 'px'
+  'quickemu' 'quickgui'
+  'ranger' 'rg' 'riff' 'rsync' 'ruby' 'rustup'
+  'sbt' 'scala' 'screen' 'sd' 'sed' 'shellcheck' 'shfmt' 'skeletal' 'slocate' 'snap' 'sntp' 'sops' 'spark-submit' 'spring' 'ssh' 'stacer' 'starship' 'sudo'
+  'tabs2spaces' 'tar' 'tcpdump' 'tldr' 'tmux' 'tokei' 'top' 'tracepath' 'traceroute' 'trash' 'tree'
+  'ufw' 'unlzma' 'unrar' 'unxz' 'unzip' 'usermod'
+  'visualvm' 'vlc'
+  'wget' 'whatis' 'which'
+  'xargs' 'xh' 'xsel' 'xz'
+  'zellij' 'zip' 'zoxide'
+)
+if is_computer 'home'; then
+  expected_executables+=(
+    'backintime'
+    'clapper'
+    'dnuos'
+    'eyeD3'
+    'flac' 'flac2all' 'flac2mp3.pl'
+    'lame'
+    'magick' 'mediainfo' 'mogrify' 'mp3splt'
+    'puddletag'
+    'soundkonverter' 'sox' 'speedtest'
+    'tageditor' 'timeshift'
+    'ventoy' 'virt-manager' 'virsh'
+    'zoom'
+  )
+fi
+if is_distro 'fedora'; then
+  expected_executables+=('alien' 'fedy' 'sestatus')
+fi
+if is_distro 'arch' || is_distro 'manjaro'; then
+  expected_executables+=('aa-enabled' 'pacseek' 'paru' 'yay')
+fi
+### TODO move these checks to package checks
+#if is_desktop_env 'gnome'; then
+#  expected_executables+=('gnome-tweaks' 'gnome-extensions-app')
+#fi
+
+## remove my bin dirs from path so scripts that mask commands are no longer on PATH, ex: mvn
+path_remove "${HOME}/.bin"
+path_remove "${HOME}/.bin/other"
+
+for executable in "${expected_executables[@]}"; do
+  executable_exists "${executable}" > /dev/null 2>&1 || echo "Executable not available: ${executable}"
+done
+
+## check that the `trash` command is from trash-d and not trash-cli
+if executable_exists 'trash'; then
+  trash --version | contains_word 'trash-d' || echo "trash command is not from trash-d"
+fi
+
+## check that the `tldr` command is from tealdeer
+if executable_exists 'tldr'; then
+  tldr --version | contains_word 'tealdeer' || echo "tldr command is not from tealdeer"
+fi
+
+expected_files=(
+  "${XDG_CONFIG_HOME}/bash/local"
+  "${XDG_CONFIG_HOME}/broot/launcher/bash/br"
+  "${XDG_CONFIG_HOME}/git/config.private"
+  "${HOME}/.ssh/config.private"
+  "${SDKMAN_DIR}/bin/sdkman-init.sh"
+  '/usr/share/git/completion/git-prompt.sh'
+  '/etc/fail2ban/jail.local'
+)
+for file in "${expected_files[@]}"; do
+  file_exists "${file}" || echo "Missing file: ${file}"
+done
+
+expected_fonts=(
+  'Code New Roman'
+  'Fantasque Sans Mono'
+  'Fira Code'
+  'FreeMono'
+  'Hack'
+  'Hasklig'
+  'Inconsolata'
+  'Input'
+  'Iosevka'
+  'JetBrains Mono'
+  'JoyPixels'
+  'Menlo'
+  'Monoid'
+  'Mononoki'
+  'Noto Color Emoji'
+  'Roboto Mono'
+  'Source Code Pro'
+  'Terminess'
+  'Ubuntu Mono'
+)
+installed_fonts="$(fc-list : family)"
+for font in "${expected_fonts[@]}"; do
+  contains_word "${font}" <<< "${installed_fonts}" ||
+    contains_word "${font}TTF" <<< "${installed_fonts}" ||
+    contains_word "$(echo -e "${font}" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
+    contains_word "$(echo -e "${font}TTF" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
+    echo "Font not available: ${font}"
+done
+
+if executable_exists 'loginctl'; then
+  loginctl show-user "${USER}" --property=Linger | contains_word 'yes' || echo "${USER} is not set to linger"
+fi
+
+expected_active_system_services=('cups' 'fail2ban' 'sshd' 'ufw')
+if is_computer 'home desktop'; then
+  expected_active_system_services+=('nfs-server')
+fi
+if is_computer 'home'; then
+  expected_active_system_services+=('crashplan-pro')
+fi
+for service in "${expected_active_system_services[@]}"; do
+  systemctl is-active --quiet "${service}" || echo "System service not active: ${service}"
+done
+
+expected_enabled_system_services=()
+if is_computer 'home desktop'; then
+  expected_enabled_system_services+=('libvirtd')
+fi
+for service in "${expected_enabled_system_services[@]}"; do
+  systemctl is-enabled --quiet "${service}" || echo "System service not enabled: ${service}"
+done
+
+expected_active_user_services=('autotrash.timer journalctl-vacuum.timer ssh-agent')
+for service in "${expected_active_user_services[@]}"; do
+  systemctl is-active --user --quiet "${service}" || echo "User service not active: ${service}"
+done
+
+expected_enabled_user_services=()
+for service in "${expected_enabled_user_services[@]}"; do
+  systemctl is-enabled --user --quiet "${service}" || echo "User service not enabled: ${service}"
+done
+
+expected_groups=('sys' 'wheel')
+if is_computer 'home desktop'; then
+  expected_services+=('kvm' 'input' 'libvirt')
+fi
+actual_groups="$(groups "${USER}")"
+for group in "${expected_groups[@]}"; do
+  contains_word "${group}" <<< "${actual_groups}" || echo "User is not in group: ${group}"
+done
+
+expected_kvals=(
+  'vm.dirty_background_ratio 5'
+  'vm.dirty_ratio 5'
+  'vm.swappiness 10'
+)
+for kvals in "${expected_kvals[@]}"; do
+  IFS=' ' read -r k v <<< "${kvals}"
+  [[ $(sysctl -n "${k}") -le "${v}" ]] || echo "Kernel variable ${k} is >${v}: $(sysctl -n "${k}")"
+done
+
+[[ "$(rustup toolchain list)" != stable* ]] && echo "rust toolchain is not 'stable'"
+
+[[ $(timedatectl show) != *'NTP=yes'* ]] && echo 'timedatectl set-ntp is not set'
+
+if executable_exists 'flatpak'; then
+  flatpak remotes | contains_word 'flathub' || echo 'Flathub flatpak repo is not installed'
+fi
+
+if is_distro 'fedora'; then
+  expected_dnf_conf_vals=('max_parallel_downloads' 'defaultyes' 'keepcache')
+  dnf_conf_text="$(cat '/etc/dnf/dnf.conf')"
+  for dnf_conf_val in "${expected_dnf_conf_vals[@]}"; do
+    [[ -z $(grep --fixed-strings "${dnf_conf_val}" <<< "${dnf_conf_text}" | cut -d'=' -f2 | xargs) ]] && echo "dnf conf ${dnf_conf_val} is not set"
+  done
+  installed_packages="$(dnf list --installed | cut -d' ' -f1)"
+  expected_rpm_fusions_packages=(
+    'rpmfusion-free-appstream-data'
+    'rpmfusion-free-release'
+    'rpmfusion-nonfree-appstream-data'
+    'rpmfusion-nonfree-release'
+  )
+  for rpm_fusion_pacakge in "${expected_rpm_fusions_packages[@]}"; do
+    contains_word "${rpm_fusion_pacakge}" <<< "${installed_packages}" || echo "${rpm_fusion_pacakge} is not installed"
+  done
+fi
+
+if executable_exists 'ufw'; then
+  readonly ufw_status="$(sudo ufw status verbose)"
+  contains_word 'Status: active' <<< "${ufw_status}" || echo "UFW is not active"
+  contains_word 'deny (incoming)' <<< "${ufw_status}" || echo "UFW is not denying incoming by default"
+  contains_word 'allow (outgoing)' <<< "${ufw_status}" || echo "UFW is not allowing outgoing by default"
+fi
+
+if executable_exists 'aa-enabled'; then
+  aa-enabled | contains_word 'yes' || echo "AppArmor is not enabled"
+fi

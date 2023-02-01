@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 0 ]]; then
+  echo "${0##*/}: Expected no arguments" >&2
+  exit 2
+fi
+
+function executable_exists() {
+  # executables / no builtins, aliases, or functions
+  type -aPf "$1" >/dev/null 2>&1
+}
+
+function file_exists() {
+  [[ -r "$1" && -f "$1" ]]
+}
+
+function log() {
+  echo '----------------------------------------' >&2
+  echo "Updating $1" >&2
+  echo '----------------------------------------' >&2
+}
+
+if executable_exists 'yay'; then
+  log 'packages with yay'
+  yay -Syyu
+  yay -Yc
+elif executable_exists 'pacman'; then
+  log 'packages with pacman'
+  sudo pacman -Syu
+elif executable_exists 'apt'; then
+  log 'packages with apt'
+  sudo apt update
+  sudo apt upgrade
+  sudo apt autoremove
+elif executable_exists 'dnf'; then
+  log 'packages with dnf'
+  sudo dnf upgrade
+  sudo dnf autoremove
+fi
+
+if executable_exists 'flatpak'; then
+  log 'Flatpaks'
+  sudo flatpak update
+  sudo flatpak remove --unused
+fi
+
+if executable_exists 'snap'; then
+  log 'Snaps'
+  sudo snap refresh
+fi
+
+sdkman_init_script="${SDKMAN_DIR}/bin/sdkman-init.sh"
+if file_exists "${sdkman_init_script}"; then
+  log 'SDKMAN'
+  set +ue
+  source "${sdkman_init_script}"
+  sdk selfupdate
+  sdk update
+  sdk upgrade
+  set -ue
+fi
+
+if executable_exists 'rustup'; then
+  log 'Rust toolchains'
+  rustup update
+fi
+
+if executable_exists 'cargo' && cargo install --list | grep -qF 'cargo-install-update'; then
+  log 'Rust crates'
+  cargo install-update --all
+fi
+
+if executable_exists 'gem'; then
+  log 'Ruby gems'
+  sudo gem update
+fi
+
+if executable_exists 'brew'; then
+  log 'Homebrew packages'
+  brew update
+  brew upgrade
+fi
+
+if executable_exists 'tldr'; then
+  log 'tldr cache'
+  tldr -u
+fi
+
+if executable_exists 'aws'; then
+  log 'AWS CLI v2'
+  readonly ts="$(date -u +%Y%m%d_%H%M%S)"
+  readonly zip_file="/tmp/awscliv2_${ts}.zip"
+  readonly extracted_dir="/tmp/awscliv2_${ts}"
+  curl --silent 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' --output "${zip_file}"
+  unzip -q "${zip_file}" -d "${extracted_dir}"
+  sudo "${extracted_dir}/aws/install" --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+fi
+
+if executable_exists 'pkgfile'; then
+  log 'pkgfile database'
+  sudo pkgfile --update
+fi
+
+if executable_exists 'fwupdmgr'; then
+  log 'firmwares with fwupdmgr'
+  fwupdmgr refresh --force
+  fwupdmgr update || true # update returns non-zero when there are no updates to apply
+fi
+
+if executable_exists 'freshclam'; then
+  log 'ClamAV virus definitions'
+  sudo freshclam
+fi
+
+if executable_exists 'protonup'; then
+  log 'Proton-GE version'
+  protonup
+fi

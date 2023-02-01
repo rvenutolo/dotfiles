@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -eq 0 && -t 0 ]]; then
+  echo "${0##*/}: Expected STDIN" >&2
+  exit 2
+fi
+
+if [[ "$#" -eq 0 ]]; then
+  tr '[:upper:]' '[:lower:]'
+else
+  for file; do
+    dirname="$(dirname -- "${file}")"
+    filename="$(basename -- "${file}")"
+    lower_filename="$(echo "${filename}" | tr '[:upper:]' '[:lower:]')"
+    target_file="${dirname}/${lower_filename}"
+    if [[ "${lower_filename}" != "${filename}" ]]; then
+      mv -- "${file}" "${target_file}"
+      echo "${0##*/}: ${file} -> ${target_file}" >&2
+    else
+      echo "${0##*/}: ${file} not renamed" >&2
+    fi
+  done
+fi

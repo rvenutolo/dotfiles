@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -gt 1 ]]; then
+  echo "${0##*/}: Expected at most 1 argument" >&2
+  exit 2
+fi
+
+if [[ "$#" -eq 0 ]]; then
+  readonly dir="."
+else
+  readonly dir="$1"
+fi
+
+find "${dir}" -type f | awk -F '/' '{
+  if (NF == 2) print $1;
+  else if (NF > 2) print $2;
+}' | sort | uniq --count | sort --numeric-sort --reverse

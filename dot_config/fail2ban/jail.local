@@ -1,0 +1,13 @@
+## sudo ln -s ${XDG_CONFIG_HOME}/fail2ban/jail.local /etc/fail2ban/jail.local
+## OR
+## sudo cp ${XDG_CONFIG_HOME}/fail2ban/jail.local /etc/fail2ban/jail.local
+## and then modify
+
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1 172.16.0.0/12
+bantime = 365d
+findtime = 600
+maxretry = 5
+
+[sshd]
+enabled = true

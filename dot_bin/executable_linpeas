@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+readonly linpeas_target_file="${XDG_DATA_HOME}/linpeas"
+readonly linpeas_url='https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas_linux_amd64'
+readonly linpeas_output_file="~/linpeas_$(date +%Y%m%d-%H%M%S).txt"
+
+curl --silent --location "${linpeas_url}" --time-cond "${linpeas_target_file}" --output "${linpeas_target_file}"
+chmod +x "${linpeas_target_file}"
+
+echo "${0##*/}: This can take a long time" >&2
+echo "${0##*/}: Writing output to: ${linpeas_output_file}" >&2
+"${linpeas_target_file}" "$@" > "${linpeas_output_file}"
+echo "${0##*/}: Wrote output to: ${linpeas_output_file}, read it with 'less -r ${linpeas_output_file}'" >&2

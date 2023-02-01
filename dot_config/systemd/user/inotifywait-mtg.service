@@ -1,0 +1,12 @@
+[Unit]
+Description=MTG text file unix2dos service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c '\
+  inotifywait --monitor --recursive --format %%w%%f --event moved_to /home/rvenutolo/MTG | \
+  while read -r file; do [[ "$file" == *.txt ]] && unix2dos --quiet --follow-symlink "$file"; done'
+Restart=always
+
+[Install]
+WantedBy=default.target

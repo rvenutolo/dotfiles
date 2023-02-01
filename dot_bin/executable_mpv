@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# remove this dir from the path so executing `mpv` doesn't execute this script
+readonly this_script_dir="$(dirname -- "$(readlink --canonicalize -- "$0")")"
+PATH=$(echo -n "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"${this_script_dir}"'"' | sed 's/:$//')
+
+mpv "$@" >/dev/null 2>&1 &
+disown

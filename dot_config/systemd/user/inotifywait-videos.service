@@ -1,0 +1,12 @@
+[Unit]
+Description=Video file read permission applier
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c '\
+  inotifywait --monitor --recursive --format %%w%%f --event create /storage/Videos | \
+  while read -r file; do chmod a+r "$file"; done'
+Restart=always
+
+[Install]
+WantedBy=default.target
