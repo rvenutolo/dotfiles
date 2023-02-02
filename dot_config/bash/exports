@@ -26,7 +26,7 @@ export MANPAGER="${PAGER}"
 
 ## history
 export HISTCONTROL='ignorespace:ignoredups'
-export HISTIGNORE='ls:ll:lla:pwd:bg:fg:history:h:exit:q:pwd:clear:cls:update:sdf:brc:dl:home:c'
+export HISTIGNORE='ls:ll:lla:pwd:bg:fg:history:h:exit:q:pwd:clear:cls:update:brc:dl:home:c'
 export HISTSIZE='100000'
 export HISTFILESIZE="${HISTSIZE}"
 export HISTTIMEFORMAT='%F %T%t'
