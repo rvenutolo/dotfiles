@@ -89,13 +89,20 @@ if executable_exists 'tldr'; then
 fi
 
 if executable_exists 'aws'; then
-  log 'AWS CLI v2'
-  readonly ts="$(date -u +%Y%m%d_%H%M%S)"
-  readonly zip_file="/tmp/awscliv2_${ts}.zip"
-  readonly extracted_dir="/tmp/awscliv2_${ts}"
-  curl --silent 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' --output "${zip_file}"
-  unzip -q "${zip_file}" -d "${extracted_dir}"
-  sudo "${extracted_dir}/aws/install" --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+  log 'AWS CLI'
+  readonly aws_cli_url='https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip'
+  readonly aws_cli_cache_dir="${XDG_CACHE_HOME}/aws/cli"
+  readonly aws_cli_etag_file="${aws_cli_cache_dir}/etag"
+  readonly aws_cli_zip_file="${aws_cli_cache_dir}/aws-cli-v2.zip"
+  readonly aws_cli_extract_dir="${aws_cli_cache_dir}/extracted"
+  rm -rf "${aws_cli_zip_file}" "${aws_cli_extract_dir}"
+  mkdir -p "${aws_cli_cache_dir}"
+  touch "${aws_cli_etag_file}"
+  curl --silent --location --etag-compare "${aws_cli_etag_file}" --etag-save "${aws_cli_etag_file}" --output "${aws_cli_zip_file}" "${aws_cli_url}"
+  if [[ -f "${aws_cli_zip_file}" ]]; then
+    unzip -q "${aws_cli_zip_file}" -d "${aws_cli_extract_dir}"
+    sudo "${aws_cli_extract_dir}/aws/install" --bin-dir '/usr/local/bin' --install-dir '/usr/local/aws-cli' --update
+  fi
 fi
 
 if executable_exists 'pkgfile'; then
