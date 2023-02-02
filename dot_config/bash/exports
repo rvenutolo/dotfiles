@@ -83,5 +83,6 @@ export WGETRC="${XDG_CONFIG_HOME}/wgetrc"
 ## misc
 export HSTR_CONFIG='hicolor'
 export PROMPT_COMMAND="history -a; history -n; ${PROMPT_COMMAND}"
+export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
 export SYSTEMD_PAGER=''
 export TIMEFORMAT=$'\nreal %3R\tuser %3U\tsys %3S\tpcpu %P\n'
