@@ -2,14 +2,18 @@
 
 set -euo pipefail
 
-readonly linpeas_target_file="${XDG_DATA_HOME}/linpeas"
-readonly linpeas_url='https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas_linux_amd64'
-readonly linpeas_output_file="~/linpeas_$(date +%Y%m%d-%H%M%S).txt"
+readonly url='https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas_linux_amd64'
+readonly etag_file="${XDG_CACHE_HOME}/linpeas/etag"
+readonly linpeas_file="${XDG_DATA_HOME}/linpeas"
+readonly linpeas_output="~/linpeas_$(date +%Y%m%d-%H%M%S).txt"
 
-curl --silent --location "${linpeas_url}" --time-cond "${linpeas_target_file}" --output "${linpeas_target_file}"
-chmod +x "${linpeas_target_file}"
+mkdir -p "$(dirname "${etag_file}")"
+mkdir -p "$(dirname "${linpeas_file}")"
+touch "${etag_file}"
+curl --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" --output "${linpeas_file}" "${url}"
+chmod +x "${linpeas_file}"
 
 echo "${0##*/}: This can take a long time" >&2
-echo "${0##*/}: Writing output to: ${linpeas_output_file}" >&2
-"${linpeas_target_file}" "$@" > "${linpeas_output_file}"
-echo "${0##*/}: Wrote output to: ${linpeas_output_file}, read it with 'less -r ${linpeas_output_file}'" >&2
+echo "${0##*/}: Writing output to: ${linpeas_output}" >&2
+"${linpeas_file}" "$@" > "${linpeas_output}"
+echo "${0##*/}: Wrote output to: ${linpeas_output}, read it with 'less -r ${linpeas_output}'" >&2
