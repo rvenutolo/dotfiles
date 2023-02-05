@@ -1,5 +1,5 @@
 {{ $rv_computer_tags := promptString "__RV_COMPUTER tags" -}}
-{{ $github_email := promptString "GitHub email address" -}}
+{{ $git_email := promptString "Git email address" -}}
 
 
 encryption = 'age'
@@ -10,4 +10,4 @@ verbose = true
 
 [data]
 rv_computer_tags = {{ $rv_computer_tags | quote }}
-github_email = {{ $github_email | quote }}
+git_email = {{ $git_email | quote }}
