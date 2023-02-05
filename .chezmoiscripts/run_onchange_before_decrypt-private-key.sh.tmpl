@@ -5,6 +5,6 @@ set -euo pipefail
 readonly key_file="${XDG_CONFIG_HOME}/chezmoi/age_key.txt"
 
 if [[ ! -f "${key_file}" ]]; then
-  age --decrypt --output "${key_file}" "{{ .chezmoi.workingTree }}/key.txt.age"
+  age --decrypt --output "${key_file}" "{{ .chezmoi.sourceDir }}/key.txt.age"
 fi
 chmod 600 "${key_file}"
