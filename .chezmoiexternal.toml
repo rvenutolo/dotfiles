@@ -43,7 +43,7 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/arcticicestudio/nord-xfce-terminal/develop/src/nord.theme'
 refreshPeriod = '168h'
 
-['.Xresources']
+['.config/Xresources']
 type = 'file'
 url = 'https://raw.githubusercontent.com/arcticicestudio/nord-xresources/develop/src/nord'
 refreshPeriod = '168h'
