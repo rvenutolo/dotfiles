@@ -1,0 +1,10 @@
+{{ $github_email := promptString "GitHub email address" -}}
+
+encryption = 'age'
+format = 'yaml'
+progress = true
+sourceDir = '~/Code/chezmoi-dotfiles'
+verbose = true
+
+[data]
+github_email = {{ $github_email | quote }}
