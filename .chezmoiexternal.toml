@@ -2,6 +2,8 @@
 type = 'file'
 url = 'https://raw.githubusercontent.com/arcticicestudio/nord-alacritty/main/src/nord.yml'
 refreshPeriod = '168h'
+filter.command = 'sed'
+filter.args = ['s/^    bar:$/  footer_bar:/']
 
 ['.config/nano/synatax_hightlighting']
 type = 'archive'
