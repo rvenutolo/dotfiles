@@ -8,6 +8,10 @@ progress = true
 sourceDir = '~/Code/chezmoi-dotfiles'
 verbose = true
 
+[age]
+    identity = '~/.config/chezmoi/age_key.txt'
+    recipient = 'age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs'
+
 [data]
 rv_computer_tags = {{ $rv_computer_tags | quote }}
 git_email = {{ $git_email | quote }}

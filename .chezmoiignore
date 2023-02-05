@@ -2,3 +2,4 @@ README.md
 .editorconfig
 dot_config/bash/local
 *.private
+key.txt.age
