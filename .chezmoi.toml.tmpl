@@ -1,4 +1,6 @@
+{{ $rv_computer_tags := promptString "__RV_COMPUTER tags" -}}
 {{ $github_email := promptString "GitHub email address" -}}
+
 
 encryption = 'age'
 format = 'yaml'
@@ -7,4 +9,5 @@ sourceDir = '~/Code/chezmoi-dotfiles'
 verbose = true
 
 [data]
+rv_computer_tags = {{ $rv_computer_tags | quote }}
 github_email = {{ $github_email | quote }}
