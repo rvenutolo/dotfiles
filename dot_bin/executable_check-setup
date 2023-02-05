@@ -143,7 +143,6 @@ fi
 expected_files=(
   "${XDG_CONFIG_HOME}/bash/local"
   "${XDG_CONFIG_HOME}/broot/launcher/bash/br"
-  "${XDG_CONFIG_HOME}/git/config.private"
   "${HOME}/.ssh/config.private"
   "${SDKMAN_DIR}/bin/sdkman-init.sh"
   '/usr/share/git/completion/git-prompt.sh'
