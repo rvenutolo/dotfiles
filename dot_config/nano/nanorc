@@ -76,53 +76,5 @@ set wordbounds
 # Constantly display the cursor position in the status bar.
 set constantshow
 
-#apacheconf
-#include "~/.config/nano/syntax-highlighting/apacheconf.nanorc"
-#asm
-#include "~/.config/nano/syntax-highlighting/asm.nanorc"
-#c
-include "~/.config/nano/syntax-highlighting/c.nanorc"
-#conf
-include "~/.config/nano/syntax-highlighting/conf.nanorc"
-#css
-include "~/.config/nano/syntax-highlighting/css.nanorc"
-#cython
-#include "~/.config/nano/syntax-highlighting/cython.nanorc"
-#fortran
-#include "~/.config/nano/syntax-highlighting/fortran.nanorc"
-#gentoo
-#include "~/.config/nano/syntax-highlighting/gentoo.nanorc"
-#groff
-#include "~/.config/nano/syntax-highlighting/groff.nanorc"
-#html
-include "~/.config/nano/syntax-highlighting/html.nanorc"
-#java
-include "~/.config/nano/syntax-highlighting/java.nanorc"
-#lua
-#include "~/.config/nano/syntax-highlighting/lua.nanorc"
-#man
-include "~/.config/nano/syntax-highlighting/man.nanorc"
-#mutt
-#include "~/.config/nano/syntax-highlighting/mutt.nanorc"
-#nanorc
-include "~/.config/nano/syntax-highlighting/nanorc.nanorc"
-#patch
-include "~/.config/nano/syntax-highlighting/patch.nanorc"
-#perl
-include "~/.config/nano/syntax-highlighting/perl.nanorc"
-#php
-include "~/.config/nano/syntax-highlighting/php.nanorc"
-#pov
-#include "~/.config/nano/syntax-highlighting/pov.nanorc"
-#python
-include "~/.config/nano/syntax-highlighting/python.nanorc"
-#reST
-#include "~/.config/nano/syntax-highlighting/reST.nanorc"
-#ruby
-include "~/.config/nano/syntax-highlighting/ruby.nanorc"
-#sh
-include "~/.config/nano/syntax-highlighting/sh.nanorc"
-#tex
-include "~/.config/nano/syntax-highlighting/tex.nanorc"
-#xml
-include "~/.config/nano/syntax-highlighting/xml.nanorc"
+# Add syntax highlighting
+include "~/.config/nano/syntax-highlighting/*.nanorc"
