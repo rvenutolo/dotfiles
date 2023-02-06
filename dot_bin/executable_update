@@ -125,3 +125,8 @@ if executable_exists 'protonup'; then
   log 'Proton-GE version'
   protonup
 fi
+
+if executable_exists 'chezmoi'; then
+  log 'Chezmoi changes'
+  chezmoi update
+fi
