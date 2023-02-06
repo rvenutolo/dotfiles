@@ -8,8 +8,8 @@ fi
 set -euo pipefail
 
 if [[ "$#" -eq 0 ]]; then
-  "${FILE_MANAGER}" . >/dev/null 2>&1 &
+  "${FILE_MANAGER}" . > /dev/null 2>&1 &
 else
-  "${FILE_MANAGER}" "$@" >/dev/null 2>&1 &
+  "${FILE_MANAGER}" "$@" > /dev/null 2>&1 &
 fi
 disown

@@ -9,7 +9,7 @@ fi
 
 function executable_exists() {
   # executables / no builtins, aliases, or functions
-  type -aPf "$1" >/dev/null 2>&1
+  type -aPf "$1" > /dev/null 2>&1
 }
 
 function file_exists() {

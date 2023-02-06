@@ -13,5 +13,5 @@ for term; do
   search="${search}%20${term}"
 done
 readonly search
-xdg-open "https://www.google.com/search?q=${search}" >/dev/null 2>&1 &
+xdg-open "https://www.google.com/search?q=${search}" > /dev/null 2>&1 &
 disown

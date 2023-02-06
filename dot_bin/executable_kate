@@ -6,5 +6,5 @@ set -euo pipefail
 readonly this_script_dir="$(dirname -- "$(readlink --canonicalize -- "$0")")"
 PATH=$(echo -n "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"${this_script_dir}"'"' | sed 's/:$//')
 
-kate "$@" >/dev/null 2>&1 &
+kate "$@" > /dev/null 2>&1 &
 disown
