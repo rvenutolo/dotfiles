@@ -70,6 +70,12 @@ set +u
 for var in "${expected_vars[@]}"; do
   [[ -z "${!var}" ]] && echo "Environment variable not set: ${var}"
 done
+if [[ -n "${DESKTOP_OR_LAPTOP}" && "${DESKTOP_OR_LAPTOP}" != 'desktop' && "${DESKTOP_OR_LAPTOP}" != 'laptop' ]]; then
+  echo "DESKTOP_OR_LAPTOP is not set to 'desktop' or 'laptop'"
+fi
+if [[ -n "${PERSONAL_OR_WORK}" && "${PERSONAL_OR_WORK}" != 'personal' && "${PERSONAL_OR_WORK}" != 'work' ]]; then
+  echo "PERSONAL_OR_WORK is not set to 'personal' or 'work'"
+fi
 set -u
 
 expected_executables=(
