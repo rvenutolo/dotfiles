@@ -1,7 +1,3 @@
-{{ $personal_or_work := promptString "'personal' or 'work'?" -}}
-{{ $desktop_or_laptop := promptString "'desktop' or 'laptop'?" -}}
-{{ $git_email := promptString "Git email address" -}}
-
 encryption = 'age'
 format = 'yaml'
 progress = true
@@ -13,6 +9,6 @@ verbose = true
     recipient = 'age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs'
 
 [data]
-personal_or_work = {{ $personal_or_work | squote }}
-desktop_or_laptop = {{ $desktop_or_laptop | squote }}
-git_email = {{ $git_email | squote }}
+personal_or_work = {{ promptString "'personal' or 'work'?" | squote }}
+desktop_or_laptop = {{ (output "hostnamectl" "--json=short" | mustFromJson).Chassis | squote }}
+git_email = {{ promptString "Git email address" | squote }}
