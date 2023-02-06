@@ -77,4 +77,4 @@ set wordbounds
 set constantshow
 
 # Add syntax highlighting
-include "~/.config/nano/syntax-highlighting/*.nanorc"
+include "~/.config/nano/syntax_highlighting/*.nanorc"
