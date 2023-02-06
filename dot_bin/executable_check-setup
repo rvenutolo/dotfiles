@@ -210,7 +210,7 @@ for service in "${expected_enabled_system_services[@]}"; do
   systemctl is-enabled --quiet "${service}" || echo "System service not enabled: ${service}"
 done
 
-expected_active_user_services=('autotrash.timer journalctl-vacuum.timer ssh-agent')
+expected_active_user_services=('autotrash.timer' 'journalctl-vacuum.timer' 'ssh-agent')
 for service in "${expected_active_user_services[@]}"; do
   systemctl is-active --user --quiet "${service}" || echo "User service not active: ${service}"
 done
