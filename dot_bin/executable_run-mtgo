@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euox pipefail
+
+readonly url='https://raw.githubusercontent.com/pauleve/docker-mtgo/master/run-mtgo'
+readonly etag_file="${XDG_CACHE_HOME}/docker-mtgo/etag"
+readonly run_mtgo_file="${XDG_DATA_HOME}/docker-mtgo/run-mtgo"
+
+mkdir -p "$(dirname "${etag_file}")"
+mkdir -p "$(dirname "${run_mtgo_file}")"
+touch "${etag_file}"
+curl --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" --output "${run_mtgo_file}" "${url}"
+chmod +x "${run_mtgo_file}"
+
+"${run_mtgo_file}" "$@" > /dev/null 2>&1 &
+disown
