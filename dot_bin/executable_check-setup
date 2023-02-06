@@ -52,6 +52,7 @@ expected_vars=(
   'BROWSER'
   'CODE_DIR'
   'DE'
+  'DESKTOP_OR_LAPTOP'
   'EDITOR'
   'FILE_MANAGER'
   'GOPATH'
@@ -60,10 +61,10 @@ expected_vars=(
   'LANG'
   'MANPAGER'
   'PAGER'
+  'PERSONAL_OR_WORK'
   'SDKMAN_DIR'
   'VISUAL'
   'WTTR_CITY'
-  '__RV_COMPUTER'
 )
 set +u
 for var in "${expected_vars[@]}"; do
