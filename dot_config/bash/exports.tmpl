@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 ## personal
+export PERSONAL_OR_WORK={{ .personal_or_work }}
+export DESKTOP_OR_LAPTOP={{ .desktop_or_laptop }}
 export CODE_DIR="${HOME}/Code"
 export WTTR_CITY='Atlanta'
-export __RV_COMPUTER='{{ .rv_computer_tags }}'
 
 ## editor/visual
 if executable_exists 'micro'; then

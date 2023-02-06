@@ -1,6 +1,6 @@
-{{ $rv_computer_tags := promptString "__RV_COMPUTER tags" -}}
+{{ $personal_or_work := promptString "'personal' or 'work'?" -}}
+{{ $desktop_or_laptop := promptString "'desktop' or 'laptop'?" -}}
 {{ $git_email := promptString "Git email address" -}}
-
 
 encryption = 'age'
 format = 'yaml'
@@ -13,5 +13,6 @@ verbose = true
     recipient = 'age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs'
 
 [data]
-rv_computer_tags = {{ $rv_computer_tags | quote }}
-git_email = {{ $git_email | quote }}
+personal_or_work = {{ $personal_or_work | squote }}
+desktop_or_laptop = {{ $desktop_or_laptop | squote }}
+git_email = {{ $git_email | squote }}

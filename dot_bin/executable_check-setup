@@ -32,16 +32,20 @@ function is_desktop_env() {
   echo "${XDG_CURRENT_DESKTOP}" | contains_word "$1"
 }
 
-## expecting __RV_COMPUTER to be values like 'home desktop', 'work laptop'
-function is_computer() {
-  set +u
-  if [[ ${__RV_COMPUTER,,} == "$1" ]]; then
-    local is_comp='true'
-  else
-    local is_comp='false'
-  fi
-  set -u
-  [[ ${is_comp} == 'true' ]]
+function is_personal() {
+  [[ "${PERSONAL_OR_WORK}" == 'personal' ]]
+}
+
+function is_work() {
+  [[ "${PERSONAL_OR_WORK}" == 'work' ]]
+}
+
+function is_desktop() {
+  [[ "${DESKTOP_OR_LAPTOP}" == 'desktop' ]]
+}
+
+function is_laptop() {
+  [[ "${DESKTOP_OR_LAPTOP}" == 'laptop' ]]
 }
 
 expected_vars=(
@@ -95,7 +99,7 @@ expected_executables=(
   'xargs' 'xh' 'xsel' 'xz'
   'zellij' 'zip' 'zoxide'
 )
-if is_computer 'home'; then
+if is_personal; then
   expected_executables+=(
     'backintime'
     'clapper'
@@ -187,10 +191,10 @@ if executable_exists 'loginctl'; then
 fi
 
 expected_active_system_services=('cups' 'fail2ban' 'sshd' 'ufw')
-if is_computer 'home desktop'; then
+if is_personal && is_desktop; then
   expected_active_system_services+=('nfs-server')
 fi
-if is_computer 'home'; then
+if is_personal; then
   expected_active_system_services+=('crashplan-pro')
 fi
 for service in "${expected_active_system_services[@]}"; do
@@ -198,7 +202,7 @@ for service in "${expected_active_system_services[@]}"; do
 done
 
 expected_enabled_system_services=()
-if is_computer 'home desktop'; then
+if is_personal && is_desktop; then
   expected_enabled_system_services+=('libvirtd')
 fi
 for service in "${expected_enabled_system_services[@]}"; do
@@ -216,7 +220,7 @@ for service in "${expected_enabled_user_services[@]}"; do
 done
 
 expected_groups=('sys' 'wheel')
-if is_computer 'home desktop'; then
+if is_personal && is_desktop; then
   expected_services+=('kvm' 'input' 'libvirt')
 fi
 actual_groups="$(groups "${USER}")"
