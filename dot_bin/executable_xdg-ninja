@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+readonly url='https://github.com/b3nj5m1n/xdg-ninja/archive/refs/heads/main.zip'
+readonly etag_file="${XDG_CACHE_HOME}/xdg-ninja/etag"
+readonly zip_file="${XDG_CACHE_HOME}/xdg-ninja/xdg-ninja.zip"
+readonly install_dir="${XDG_DATA_HOME}/xdg-ninja"
+
+
+mkdir -p "$(dirname "${etag_file}")"
+mkdir -p "$(dirname "${zip_file}")"
+touch "${etag_file}"
+curl --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" --output "${zip_file}" "${url}"
+if [[ -f "${zip_file}" ]]; then
+  rm -rf "${install_dir}"
+  unzip -q "${zip_file}" -d "${install_dir}"
+  rm "${zip_file}"
+fi
+
+"${XDG_DATA_HOME}/xdg-ninja/xdg-ninja-main/xdg-ninja.sh" "$@"
