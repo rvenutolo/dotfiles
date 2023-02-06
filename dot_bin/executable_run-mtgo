@@ -12,5 +12,9 @@ touch "${etag_file}"
 curl --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" --output "${run_mtgo_file}" "${url}"
 chmod +x "${run_mtgo_file}"
 
-"${run_mtgo_file}" "$@" > /dev/null 2>&1 &
+# TODO winecfg (--winecfg)
+# TODO try sound (--sound)
+# TODO Wayland/podman stuff https://github.com/pauleve/docker-mtgo/issues/44
+
+"${run_mtgo_file}" --update --bind "${HOME}/MTG" "$@" > /dev/null 2>&1 &
 disown
