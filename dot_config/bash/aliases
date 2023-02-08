@@ -164,3 +164,6 @@ alias brc='source ${HOME}/.bashrc'
 alias da="date '+%Y-%m-%d %A %T %Z'"
 alias edit='${EDITOR}'
 alias hg='history | grep'
+if [[ -n "${SDKMAN_DIR}" && -f "${SDKMAN_DIR}/candidates/maven/current/bin/mvn" ]]; then
+  alias sdkmvn="${SDKMAN_DIR}/candidates/maven/current/bin/mvn"
+fi
