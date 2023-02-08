@@ -184,14 +184,19 @@ expected_fonts=(
   'Terminess'
   'Ubuntu Mono'
 )
-installed_fonts="$(fc-list : family)"
-for font in "${expected_fonts[@]}"; do
-  contains_word "${font}" <<< "${installed_fonts}" ||
-    contains_word "${font}TTF" <<< "${installed_fonts}" ||
-    contains_word "$(echo -e "${font}" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
-    contains_word "$(echo -e "${font}TTF" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
-    echo "Font not available: ${font}"
-done
+
+if executable_exists 'fc-list'; then
+  installed_fonts="$(fc-list : family)"
+  for font in "${expected_fonts[@]}"; do
+    contains_word "${font}" <<< "${installed_fonts}" ||
+      contains_word "${font}TTF" <<< "${installed_fonts}" ||
+      contains_word "$(echo -e "${font}" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
+      contains_word "$(echo -e "${font}TTF" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
+      echo "Font not available: ${font}"
+  done
+else
+  echo "No fc-list, skipping font checks"
+fi
 
 if executable_exists 'loginctl'; then
   loginctl show-user "${USER}" --property=Linger | contains_word 'yes' || echo "${USER} is not set to linger"
