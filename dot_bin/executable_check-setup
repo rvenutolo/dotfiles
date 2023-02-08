@@ -250,7 +250,9 @@ for kvals in "${expected_kvals[@]}"; do
   [[ $(sysctl -n "${k}") -le "${v}" ]] || echo "Kernel variable ${k} is >${v}: $(sysctl -n "${k}")"
 done
 
-[[ "$(rustup toolchain list)" != stable* ]] && echo "rust toolchain is not 'stable'"
+if executable_exists 'rustup'; then
+  [[ "$(rustup toolchain list)" != stable* ]] && echo "rust toolchain is not 'stable'"
+fi
 
 [[ $(timedatectl show) != *'NTP=yes'* ]] && echo 'timedatectl set-ntp is not set'
 
