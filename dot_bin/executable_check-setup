@@ -29,23 +29,38 @@ function is_distro() {
 }
 
 function is_desktop_env() {
-  echo "${XDG_CURRENT_DESKTOP}" | contains_word "$1"
+  set +u
+  local xcd="${XDG_CURRENT_DESKTOP}"
+  set -u
+  echo "${xcd}" | contains_word "$1"
 }
 
 function is_personal() {
-  [[ "${PERSONAL_OR_WORK}" == 'personal' ]]
+  set +u
+  local pow="${PERSONAL_OR_WORK}"
+  set -u
+  [[ "${pow}" == 'personal' ]]
 }
 
 function is_work() {
-  [[ "${PERSONAL_OR_WORK}" == 'work' ]]
+  set +u
+  local pow="${PERSONAL_OR_WORK}"
+  set -u
+  [[ "${pow}" == 'work' ]]
 }
 
 function is_desktop() {
-  [[ "${DESKTOP_OR_LAPTOP}" == 'desktop' ]]
+  set +u
+  local dol="${DESKTOP_OR_LAPTOP}"
+  set -u
+  [[ "${dol}" == 'desktop' ]]
 }
 
 function is_laptop() {
-  [[ "${DESKTOP_OR_LAPTOP}" == 'laptop' ]]
+  set +u
+  local dol="${DESKTOP_OR_LAPTOP}"
+  set -u
+  [[ "${dol}" == 'laptop' ]]
 }
 
 expected_vars=(
@@ -151,6 +166,10 @@ if executable_exists 'tldr'; then
   tldr --version | contains_word 'tealdeer' || echo "tldr command is not from tealdeer"
 fi
 
+set +u
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-'~/.config'}"
+SDKMAN_DIR="${SDKMAN_DIR:-'~/.sdk'}"
+set -u
 expected_files=(
   "${XDG_CONFIG_HOME}/bash/local"
   "${XDG_CONFIG_HOME}/broot/launcher/bash/br"
