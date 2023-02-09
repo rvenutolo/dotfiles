@@ -167,8 +167,8 @@ if executable_exists 'tldr'; then
 fi
 
 set +u
-XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-'~/.config'}"
-SDKMAN_DIR="${SDKMAN_DIR:-'~/.sdk'}"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-"${HOME}/.config"}"
+SDKMAN_DIR="${SDKMAN_DIR:-"${HOME}/.local/share/sdkman"}"
 set -u
 expected_files=(
   "${XDG_CONFIG_HOME}/bash/local"
