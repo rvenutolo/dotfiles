@@ -63,6 +63,13 @@ function is_laptop() {
   [[ "${dol}" == 'laptop' ]]
 }
 
+function is_headless() {
+  set +u
+  local hl="${HEADLESS}"
+  set -u
+  [[ -n "${hl}" ]]
+}
+
 expected_vars=(
   'BROWSER'
   'CODE_DIR'
@@ -71,6 +78,7 @@ expected_vars=(
   'EDITOR'
   'FILE_MANAGER'
   'GOPATH'
+  'HEADLESS'
   'JAVA_HOME'
   'LANGUAGE'
   'LANG'
