@@ -115,7 +115,7 @@ expected_executables=(
   'ranger' 'rg' 'riff' 'rsync' 'ruby' 'rustup'
   'sbt' 'scala' 'screen' 'sd' 'sed' 'shellcheck' 'shfmt' 'skeletal' 'slocate' 'snap' 'sntp' 'sops' 'spark-submit' 'spring' 'ssh' 'stacer' 'starship' 'su' 'sudo'
   'tabs2spaces' 'tar' 'tcpdump' 'tldr' 'tmux' 'tokei' 'top' 'tracepath' 'traceroute' 'trash' 'tree'
-  'ufw' 'unlzma' 'unrar' 'unxz' 'unzip' 'usermod' 'uudecode'
+  'ufw' 'unlzma' 'unrar' 'unxz' 'unzip' 'usermod'
   'visualvm' 'vlc'
   'wget' 'whatis' 'which'
   'xargs' 'xh' 'xsel' 'xz'
