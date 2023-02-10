@@ -16,7 +16,11 @@ elif executable_exists 'nvim'; then
 else
   export EDITOR='vim'
 fi
-export VISUAL="${EDITOR}"
+if executable_exists 'kate'; then
+  export VISUAL='kate'
+else
+  export VISUAL="${EDITOR}"
+fi
 
 ## pager/manpager
 if executable_exists 'moar'; then
