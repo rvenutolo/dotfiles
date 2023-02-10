@@ -11,5 +11,5 @@ verbose = true
 [data]
 personal_or_work = {{ promptString "'personal' or 'work'?" | squote }}
 desktop_or_laptop = {{ (output "hostnamectl" "--json=short" | mustFromJson).Chassis | squote }}
-headless = {{ promptString "headless? (empty for no, non-empty for yes)" | squote }}
+is_headless = {{ promptString "headless? ('yes' or 'no')" | squote }}
 git_email = {{ promptString "Git email address" | squote }}

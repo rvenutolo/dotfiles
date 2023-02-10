@@ -67,7 +67,7 @@ function is_headless() {
   set +u
   local hl="${HEADLESS}"
   set -u
-  [[ -n "${hl}" ]]
+  [[ "${hl}" == 'yes' ]]
 }
 
 expected_vars=(
@@ -99,62 +99,84 @@ fi
 if [[ -n "${PERSONAL_OR_WORK}" && "${PERSONAL_OR_WORK}" != 'personal' && "${PERSONAL_OR_WORK}" != 'work' ]]; then
   echo "PERSONAL_OR_WORK is not set to 'personal' or 'work'"
 fi
+if [[ -n "${HEADLESS}" && "${HEADLESS}" != 'yes' && "${HEADLESS}" != 'no' ]]; then
+  echo "HEADLESS is not set to 'yes' or 'no'"
+fi
 set -u
 
 expected_executables=(
   '7z'
-  'ag' 'age' 'alacritty' 'apropos' 'authy' 'autotrash' 'await' 'awk' 'aws' 'aws_completer'
+  'ag' 'age' 'apropos' 'autotrash' 'await' 'awk' 'aws' 'aws_completer'
   'bat' 'bc' 'bmon' 'broot' 'btm' 'btop' 'bzip2'
   'cabextract' 'cargo' 'checkbashisms' 'cheat' 'chezmoi' 'choose' 'clamscan' 'cmake' 'colordiff' 'column' 'cpufetch' 'crontab' 'ctop' 'curl' 'curlie'
   'dash' 'delta' 'diff' 'diff-so-fancy' 'dig' 'distrobox' 'dmesg' 'doggo' 'dos2unix' 'duf' 'dust'
-  'edex-ui' 'exa'
-  'fail2ban-client' 'fcp' 'fd' 'fff' 'file' 'find' 'fish' 'flatpak' 'flatpak-spawn' 'flatseal' 'free' 'fx' 'fzf'
-  'gawk' 'gdu' 'git' 'gitkraken' 'gitui' 'glances' 'glow' 'go' 'gparted' 'gpg' 'gping' 'gradle' 'grep' 'groups' 'groovy' 'gs' 'gtop' 'gufw' 'gunzip' 'gzip'
+  'exa'
+  'fail2ban-client' 'fcp' 'fd' 'fff' 'file' 'find' 'fish' 'free' 'fx' 'fzf'
+  'gawk' 'gdu' 'git' 'gitui' 'glances' 'glow' 'go' 'gpg' 'gping' 'gradle' 'grep' 'groups' 'groovy' 'gs' 'gtop' 'gunzip' 'gzip'
   'highlight' 'hostname' 'hstr' 'http' 'hyperfine'
   'iconv' 'inotifywait' 'ip'
   'java' 'javac' 'jq' 'just'
   'kill' 'kotlin'
   'lazydocker' 'lazygit' 'less' 'lf' 'lfs' 'locate' 'lpass' 'lsblk' 'lsof'
-  'magnus' 'maldet' 'man' 'mcs' 'micro' 'mn' 'moar' 'mount' 'mtr' 'mvn' 'mvnd'
+  'maldet' 'man' 'mcs' 'micro' 'mn' 'moar' 'mount' 'mtr' 'mvn' 'mvnd'
   'nano' 'navi' 'ncdu' 'neofetch' 'nmap' 'nnn' 'nvim'
   'onefetch' 'oneshot' 'openconnect' 'openssl' 'openvpn'
-  'pandoc' 'parallel' 'pcmanfm' 'pdu' 'pgrep' 'pigz' 'ping' 'pingg' 'pip' 'pip3' 'podman' 'pomchecker' 'postman' 'procs' 'ps' 'psgrep' 'ptop' 'pv' 'px'
-  'quickemu' 'quickgui'
+  'pandoc' 'parallel' 'pcmanfm' 'pdu' 'pgrep' 'pigz' 'ping' 'pingg' 'pip' 'pip3' 'podman' 'pomchecker' 'procs' 'ps' 'psgrep' 'ptop' 'pv' 'px'
+  'quickemu'
   'ranger' 'rg' 'riff' 'rsync' 'ruby' 'rustup'
-  'sbt' 'scala' 'screen' 'sd' 'sed' 'shellcheck' 'shfmt' 'skeletal' 'slocate' 'snap' 'sntp' 'sops' 'spark-submit' 'spring' 'ssh' 'stacer' 'starship' 'su' 'sudo'
+  'sbt' 'scala' 'screen' 'sd' 'sed' 'shellcheck' 'shfmt' 'skeletal' 'slocate' 'snap' 'sntp' 'sops' 'spark-submit' 'spring' 'ssh' 'starship' 'su' 'sudo'
   'tabs2spaces' 'tar' 'tcpdump' 'tldr' 'tmux' 'tokei' 'top' 'tracepath' 'traceroute' 'trash' 'tree'
   'ufw' 'unlzma' 'unrar' 'unxz' 'unzip' 'usermod'
-  'visualvm' 'vlc'
   'wget' 'whatis' 'which'
   'xargs' 'xh' 'xsel' 'xz'
   'zellij' 'zip' 'zoxide'
 )
+if ! is_headless; then
+  expected_executables+=(
+    'alacritty' 'authy'
+    'flatpak' 'flatpak-spawn' 'flatseal'
+    'gitkraken' 'gufw' 'gparted'
+    'edex-ui'
+    'intellij-idea-ultimate'
+    'kate'
+    'magnus' 'mpv'
+    'postman'
+    'quickgui'
+    'stacer'
+    'visualvm' 'vlc'
+  )
+fi
 if is_personal; then
   expected_executables+=(
-    'backintime'
-    'clapper'
     'dnuos'
     'eyeD3'
     'flac' 'flac2all' 'flac2mp3.pl'
     'lame'
     'magick' 'mediainfo' 'mogrify' 'mp3splt'
+    'sox' 'speedtest'
+    'virt-manager' 'virsh'
+  )
+fi
+if is_personal && ! is_headless; then
+  expected_executables+=(
+    'backintime'
+    'clapper'
     'puddletag'
-    'soundkonverter' 'sox' 'speedtest'
+    'soundkonverter'
     'tageditor' 'timeshift'
-    'ventoy' 'virt-manager' 'virsh'
+    'ventoy'
     'zoom'
   )
 fi
 if is_distro 'fedora'; then
-  expected_executables+=('alien' 'fedy' 'sestatus')
+  expected_executables+=('alien' 'sestatus')
+fi
+if is_distro 'fedora' && ! is_headless; then
+  expected_executables+=('fedy')
 fi
 if is_distro 'arch' || is_distro 'manjaro'; then
   expected_executables+=('aa-enabled' 'pacseek' 'paru' 'yay')
 fi
-### TODO move these checks to package checks
-#if is_desktop_env 'gnome'; then
-#  expected_executables+=('gnome-tweaks' 'gnome-extensions-app')
-#fi
 
 ## remove my bin dirs from path so scripts that mask commands are no longer on PATH, ex: mvn
 path_remove "${HOME}/.bin"
@@ -190,39 +212,41 @@ for file in "${expected_files[@]}"; do
   file_exists "${file}" || echo "Missing file: ${file}"
 done
 
-expected_fonts=(
-  'Code New Roman'
-  'Fantasque Sans Mono'
-  'Fira Code'
-  'FreeMono'
-  'Hack'
-  'Hasklig'
-  'Inconsolata'
-  'Input'
-  'Iosevka'
-  'JetBrains Mono'
-  'JoyPixels'
-  'Menlo'
-  'Monoid'
-  'Mononoki'
-  'Noto Color Emoji'
-  'Roboto Mono'
-  'Source Code Pro'
-  'Terminess'
-  'Ubuntu Mono'
-)
+if ! is_headless; then
+  expected_fonts=(
+    'Code New Roman'
+    'Fantasque Sans Mono'
+    'Fira Code'
+    'FreeMono'
+    'Hack'
+    'Hasklig'
+    'Inconsolata'
+    'Input'
+    'Iosevka'
+    'JetBrains Mono'
+    'JoyPixels'
+    'Menlo'
+    'Monoid'
+    'Mononoki'
+    'Noto Color Emoji'
+    'Roboto Mono'
+    'Source Code Pro'
+    'Terminess'
+    'Ubuntu Mono'
+  )
 
-if executable_exists 'fc-list'; then
-  installed_fonts="$(fc-list : family)"
-  for font in "${expected_fonts[@]}"; do
-    contains_word "${font}" <<< "${installed_fonts}" ||
-      contains_word "${font}TTF" <<< "${installed_fonts}" ||
-      contains_word "$(echo -e "${font}" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
-      contains_word "$(echo -e "${font}TTF" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
-      echo "Font not available: ${font}"
-  done
-else
-  echo "No fc-list, skipping font checks"
+  if executable_exists 'fc-list'; then
+    installed_fonts="$(fc-list : family)"
+    for font in "${expected_fonts[@]}"; do
+      contains_word "${font}" <<< "${installed_fonts}" ||
+        contains_word "${font}TTF" <<< "${installed_fonts}" ||
+        contains_word "$(echo -e "${font}" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
+        contains_word "$(echo -e "${font}TTF" | tr --delete '[:space:]')" <<< "${installed_fonts}" ||
+        echo "Font not available: ${font}"
+    done
+  else
+    echo "No fc-list, skipping font checks"
+  fi
 fi
 
 if executable_exists 'loginctl'; then
@@ -230,11 +254,11 @@ if executable_exists 'loginctl'; then
 fi
 
 expected_active_system_services=('cups' 'fail2ban' 'sshd' 'ufw')
-if is_personal && is_desktop; then
-  expected_active_system_services+=('nfs-server')
-fi
 if is_personal; then
   expected_active_system_services+=('crashplan-pro')
+fi
+if is_personal && is_desktop; then
+  expected_active_system_services+=('nfs-server')
 fi
 for service in "${expected_active_system_services[@]}"; do
   systemctl is-active --quiet "${service}" || echo "System service not active: ${service}"
@@ -267,15 +291,17 @@ for group in "${expected_groups[@]}"; do
   contains_word "${group}" <<< "${actual_groups}" || echo "User is not in group: ${group}"
 done
 
-expected_kvals=(
-  'vm.dirty_background_ratio 5'
-  'vm.dirty_ratio 5'
-  'vm.swappiness 10'
-)
-for kvals in "${expected_kvals[@]}"; do
-  IFS=' ' read -r k v <<< "${kvals}"
-  [[ $(sysctl -n "${k}") -le "${v}" ]] || echo "Kernel variable ${k} is >${v}: $(sysctl -n "${k}")"
-done
+if ! is_headless; then
+  expected_kvals=(
+    'vm.dirty_background_ratio 5'
+    'vm.dirty_ratio 5'
+    'vm.swappiness 10'
+  )
+  for kvals in "${expected_kvals[@]}"; do
+    IFS=' ' read -r k v <<< "${kvals}"
+    [[ $(sysctl -n "${k}") -le "${v}" ]] || echo "Kernel variable ${k} is >${v}: $(sysctl -n "${k}")"
+  done
+fi
 
 if executable_exists 'rustup'; then
   [[ "$(rustup toolchain list)" != stable* ]] && echo "rust toolchain is not 'stable'"
