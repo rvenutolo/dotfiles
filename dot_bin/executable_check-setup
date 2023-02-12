@@ -124,7 +124,7 @@ expected_executables=(
   'maldet' 'man' 'mcs' 'micro' 'mn' 'moar' 'mount' 'mtr' 'mvn' 'mvnd'
   'nano' 'navi' 'ncdu' 'neofetch' 'nmap' 'nnn' 'nvim'
   'onefetch' 'oneshot' 'openconnect' 'openssl' 'openvpn'
-  'pandoc' 'parallel' 'pcmanfm' 'pdu' 'pgrep' 'pigz' 'ping' 'pingg' 'pip' 'pip3' 'podman' 'pomchecker' 'procs' 'ps' 'psgrep' 'ptop' 'pv' 'px'
+  'pandoc' 'parallel' 'parquet-tools' 'pcmanfm' 'pdu' 'pgrep' 'pigz' 'ping' 'pingg' 'pip' 'pip3' 'podman' 'pomchecker' 'procs' 'ps' 'psgrep' 'ptop' 'pv' 'px'
   'quickemu'
   'ranger' 'rg' 'riff' 'rsync' 'ruby' 'rustup'
   'sbt' 'scala' 'screen' 'sd' 'sed' 'shellcheck' 'shfmt' 'skeletal' 'slocate' 'snap' 'sntp' 'sops' 'spark-submit' 'spring' 'ssh' 'starship' 'su' 'sudo'
