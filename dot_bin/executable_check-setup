@@ -132,7 +132,7 @@ expected_executables=(
   'ufw' 'unlzma' 'unrar' 'unxz' 'unzip' 'usermod'
   'wget' 'whatis' 'which'
   'xargs' 'xh' 'xsel' 'xz'
-  'zellij' 'zip' 'zoxide'
+  'zellij' 'zip' 'zoxide' 'zstd'
 )
 # gui apps for all gui boxes
 if ! is_headless; then
