@@ -142,7 +142,6 @@ if ! is_headless; then
     'cheese' 'clamtk'
     'filelight' 'filezilla' 'firefox' 'flatpak' 'flatpak-spawn' 'flatseal'
     'gimp' 'github-desktop' 'gitkraken' 'google-chrome-stable' 'gparted' 'gufw'
-    'edex-ui'
     'intellij-idea-ultimate'
     'kate' 'kcalc'
     'libreoffice'
