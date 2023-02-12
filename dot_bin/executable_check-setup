@@ -104,6 +104,7 @@ if [[ -n "${HEADLESS}" && "${HEADLESS}" != 'yes' && "${HEADLESS}" != 'no' ]]; th
 fi
 set -u
 
+# cli apps for all boxes
 expected_executables=(
   '7z'
   'ag' 'age' 'apropos' 'autotrash' 'await' 'awk' 'aws' 'aws_completer'
@@ -131,21 +132,29 @@ expected_executables=(
   'xargs' 'xh' 'xsel' 'xz'
   'zellij' 'zip' 'zoxide'
 )
+# gui apps for all gui boxes
 if ! is_headless; then
   expected_executables+=(
     'alacritty' 'authy'
-    'flatpak' 'flatpak-spawn' 'flatseal'
-    'gitkraken' 'gufw' 'gparted'
+    'backintime'
+    'cheese' 'clamtk'
+    'filelight' 'filezilla' 'firefox' 'flatpak' 'flatpak-spawn' 'flatseal'
+    'gimp' 'github-desktop' 'gitkraken' 'google-chrome-stable' 'gparted' 'gufw'
     'edex-ui'
     'intellij-idea-ultimate'
-    'kate'
-    'magnus' 'mpv'
-    'postman'
-    'quickgui'
-    'stacer'
-    'visualvm' 'vlc'
+    'kate' 'kcalc'
+    'libreoffice'
+    'magnus' 'meld' 'mpv'
+    'okular'
+    'podman-desktop' 'postman'
+    'qdirstat' 'quickgui' 'qutebrowser'
+    'simplescreenrecorder' 'slack' 'spectacle' 'stacer' 'subl'
+    'timeshift' 'torbrowser-launcher'
+    'visualvm' 'vlc' 'vncviewer'
+    'wireshark'
   )
 fi
+# cli apps for personal boxes
 if is_personal; then
   expected_executables+=(
     'dnuos'
@@ -154,17 +163,24 @@ if is_personal; then
     'lame'
     'magick' 'mediainfo' 'mogrify' 'mp3splt'
     'sox' 'speedtest'
-    'virt-manager' 'virsh'
   )
 fi
+# gui apps for personal gui boxes
 if is_personal && ! is_headless; then
   expected_executables+=(
-    'backintime'
+    'bottles'
     'clapper'
-    'puddletag'
-    'soundkonverter'
-    'tageditor' 'timeshift'
-    'ventoy'
+    'discord' 'dosbox'
+    'easytag' 'emby-server'
+    'kid3'
+    'lutris'
+    'mediainfo-gui'
+    'picard' 'protontricks' 'protonup' 'puddletag'
+    'qbittorrent'
+    'skypeforlinux' 'soundkonverter' 'steam' 'strawberry'
+    'tageditor'
+    'ventoy' 'virt-manager' 'virsh'
+    'winetricks'
     'zoom'
   )
 fi
