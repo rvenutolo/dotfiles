@@ -13,6 +13,7 @@ for archive in "$@"; do
       *.tar.bz2) tar --extract --verbose --bzip2 --file "${archive}" ;;
       *.tar.gz) tar --extract --verbose --gzip --file "${archive}" ;;
       *.tar.xz) tar --extract --verbose --xz --file "${archive}" ;;
+      *.tar.zst) tar --extract --verbose --use-compress-program=unzstd --file "${archive}" ;;
       *.bz2) bzip2 --decompress --verbose "${archive}" ;;
       *.exe) cabextract "${archive}" ;;
       *.gz) gzip --decompress --verbose "${archive}" ;;
