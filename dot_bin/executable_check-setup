@@ -217,7 +217,7 @@ fi
 
 set +u
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-"${HOME}/.config"}"
-SDKMAN_DIR="${SDKMAN_DIR:-"${HOME}/.local/share/sdkman"}"
+SDKMAN_DIR="${SDKMAN_DIR:-"${HOME}/.sdkman"}"
 set -u
 expected_files=(
   "${XDG_CONFIG_HOME}/bash/local"
