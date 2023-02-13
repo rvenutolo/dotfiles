@@ -121,6 +121,11 @@ if executable_exists 'freshclam'; then
   sudo freshclam
 fi
 
+if executable_exists 'maldet'; then
+  log 'Linux Malware Detect signatures'
+  maldet --update-sigs --force
+fi
+
 if executable_exists 'protonup'; then
   log 'Proton-GE version'
   protonup
