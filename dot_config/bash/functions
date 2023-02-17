@@ -31,11 +31,11 @@ function mkcd() {
   [[ "$#" -ne 1 ]] && echo "${0##*/}: Expected exactly 1 argument" >&2 && return 2
   case "$1" in
     */.. | */../) cd -- "$1" || return 2 ;; # that doesn't make any sense unless the directory already exists
-    /*/../*) (cd "${1%/../*}/.." && mkdir -p "./${1##*/../}") && cd -- "$1" || return 2 ;;
-    /*) mkdir -p "$1" && cd "$1" || return 2 ;;
-    */../*) (cd "./${1%/../*}/.." && mkdir -p "./${1##*/../}") && cd "./$1" || return 2 ;;
-    ../*) (cd .. && mkdir -p "${1#.}") && cd "$1" || return 2 ;;
-    *) mkdir -p "./$1" && cd "./$1" || return 2 ;;
+    /*/../*) (cd "${1%/../*}/.." && mkdir --parents "./${1##*/../}") && cd -- "$1" || return 2 ;;
+    /*) mkdir --parents "$1" && cd "$1" || return 2 ;;
+    */../*) (cd "./${1%/../*}/.." && mkdir --parents "./${1##*/../}") && cd "./$1" || return 2 ;;
+    ../*) (cd .. && mkdir --parents "${1#.}") && cd "$1" || return 2 ;;
+    *) mkdir --parents "./$1" && cd "./$1" || return 2 ;;
   esac
 }
 

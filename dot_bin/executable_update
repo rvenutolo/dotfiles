@@ -96,7 +96,7 @@ if executable_exists 'aws'; then
   readonly aws_cli_zip_file="${aws_cli_cache_dir}/aws-cli-v2.zip"
   readonly aws_cli_extract_dir="${aws_cli_cache_dir}/extracted"
   rm -rf "${aws_cli_zip_file}" "${aws_cli_extract_dir}"
-  mkdir -p "${aws_cli_cache_dir}"
+  mkdir --parents "${aws_cli_cache_dir}"
   touch "${aws_cli_etag_file}"
   curl --silent --location --etag-compare "${aws_cli_etag_file}" --etag-save "${aws_cli_etag_file}" --output "${aws_cli_zip_file}" "${aws_cli_url}"
   if [[ -f "${aws_cli_zip_file}" ]]; then

@@ -13,7 +13,7 @@ readonly new_history_file="${XDG_STATE_HOME}/bash/history"
 
 if [[ "${current_history_file}" != "${new_history_file}" ]]; then
   log "Moving bash history file from: ${current_history_file} to: ${new_history_file}"
-  mkdir -p "$(dirname "${new_history_file}")"
+  mkdir --parents "$(dirname "${new_history_file}")"
   if [[ -f "${current_history_file}" ]]; then
     mv "${current_history_file}" "${new_history_file}"
   else
