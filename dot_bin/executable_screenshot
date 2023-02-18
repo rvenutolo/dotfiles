@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -gt 1 ]]; then
+  echo "${0##*/}: Expected at most 1 argument" >&2
+  exit 2
+fi
+
+if [[ "$#" -eq 0 ]]; then
+  readonly screenshot_file="${HOME}/screenshot_$(date +%Y%m%d_%H%M%S).png"
+else
+  readonly screenshot_file="$1"
+fi
+
+shotgun --geometry "$(hacksaw)" --format 'png' "${screenshot_file}"
+echo "${0##*/}: Saved to: ${screenshot_file}" >&2
