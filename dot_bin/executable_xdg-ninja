@@ -7,7 +7,6 @@ readonly etag_file="${XDG_CACHE_HOME}/xdg-ninja/etag"
 readonly zip_file="${XDG_CACHE_HOME}/xdg-ninja/xdg-ninja.zip"
 readonly install_dir="${XDG_DATA_HOME}/xdg-ninja"
 
-
 mkdir --parents "$(dirname "${etag_file}")"
 mkdir --parents "$(dirname "${zip_file}")"
 touch "${etag_file}"
