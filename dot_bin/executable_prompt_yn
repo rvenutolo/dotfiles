@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "$#" -ne 1 ]]; then
+  echo "${0##*/}: Expected exactly 1 argument" >&2
+  exit 2
+fi
+
+prompt_reply=''
+while [[ "${prompt_reply}" != 'y' && "${prompt_reply}" != 'n' ]]; do
+  read -rp "$1 [Y/n]" prompt_reply
+  if [[ "${prompt_reply}" == '' || ${prompt_reply} == [yY] ]]; then
+    prompt_reply='y'
+  elif [[ "${prompt_reply}" == [nN] ]]; then
+    prompt_reply='n'
+  fi
+done
+echo "${prompt_reply}"
