@@ -10,7 +10,7 @@ readonly install_dir="${XDG_DATA_HOME}/xdg-ninja"
 mkdir --parents "$(dirname "${etag_file}")"
 mkdir --parents "$(dirname "${zip_file}")"
 touch "${etag_file}"
-curl --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" --output "${zip_file}" "${url}"
+curl --silent  --show-error --location --etag-compare "${etag_file}" --etag-save "${etag_file}" --output "${zip_file}" "${url}"
 if [[ -f "${zip_file}" ]]; then
   rm -rf "${install_dir}"
   unzip -q "${zip_file}" -d "${install_dir}"

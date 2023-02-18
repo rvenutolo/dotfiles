@@ -98,7 +98,7 @@ if executable_exists 'aws'; then
   rm -rf "${aws_cli_zip_file}" "${aws_cli_extract_dir}"
   mkdir --parents "${aws_cli_cache_dir}"
   touch "${aws_cli_etag_file}"
-  curl --silent --location --etag-compare "${aws_cli_etag_file}" --etag-save "${aws_cli_etag_file}" --output "${aws_cli_zip_file}" "${aws_cli_url}"
+  curl --silent  --show-error --location --etag-compare "${aws_cli_etag_file}" --etag-save "${aws_cli_etag_file}" --output "${aws_cli_zip_file}" "${aws_cli_url}"
   if [[ -f "${aws_cli_zip_file}" ]]; then
     unzip -q "${aws_cli_zip_file}" -d "${aws_cli_extract_dir}"
     sudo "${aws_cli_extract_dir}/aws/install" --bin-dir '/usr/local/bin' --install-dir '/usr/local/aws-cli' --update
