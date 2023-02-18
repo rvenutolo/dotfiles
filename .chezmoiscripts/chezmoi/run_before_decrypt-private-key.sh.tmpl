@@ -2,9 +2,14 @@
 
 set -euo pipefail
 
-readonly key_file="${XDG_CONFIG_HOME}/chezmoi/age_key.txt"
+function log() {
+  echo "${0##*/}: $1" >&2
+}
 
+readonly key_file="${XDG_CONFIG_HOME}/chezmoi/age_key.txt"
 if [[ ! -f "${key_file}" ]]; then
+  log 'Decrypting age key'
   age --decrypt --output "${key_file}" "{{ .chezmoi.sourceDir }}/key.txt.age"
+  log 'Decrypted age key'
 fi
 chmod 600 "${key_file}"
