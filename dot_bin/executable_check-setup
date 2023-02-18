@@ -111,7 +111,7 @@ expected_executables=(
   '7z'
   'ag' 'age' 'apropos' 'autotrash' 'await' 'awk' 'aws' 'aws_completer'
   'bat' 'bc' 'bmon' 'broot' 'btm' 'btop' 'bzip2'
-  'cabextract' 'cargo' 'checkbashisms' 'cheat' 'chezmoi' 'choose' 'clamscan' 'cmake' 'colordiff' 'column' 'cpufetch' 'crontab' 'ctop' 'curl' 'curlie'
+  'cabextract' 'cargo' 'checkbashisms' 'cheat' 'chezmoi' 'choose' 'clamscan' 'clipboard' 'cmake' 'colordiff' 'column' 'cpufetch' 'crontab' 'ctop' 'curl' 'curlie'
   'dash' 'delta' 'diff' 'diff-so-fancy' 'dig' 'distrobox' 'dmesg' 'doggo' 'dos2unix' 'duf' 'dust'
   'exa'
   'fail2ban-client' 'fcp' 'fd' 'fff' 'file' 'find' 'fish' 'free' 'fx' 'fzf'
