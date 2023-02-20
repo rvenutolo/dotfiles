@@ -11,3 +11,9 @@ personal_or_work = {{ promptString "'personal' or 'work'?" | squote }}
 desktop_or_laptop = {{ (output "hostnamectl" "--json=short" | mustFromJson).Chassis | squote }}
 is_headless = {{ promptString "headless? ('yes' or 'no')" | squote }}
 git_email = {{ promptString "Git email address" | squote }}
+
+[scriptEnv]
+XDG_CACHE_HOME = '{{ .chezmoi.homeDir }}/.cache'
+XDG_CONFIG_HOME = '{{ .chezmoi.homeDir }}/.config'
+XDG_DATA_HOME = '{{ .chezmoi.homeDir }}/.local/share'
+XDG_STATE_HOME = '{{ .chezmoi.homeDir }}/.local/state'
