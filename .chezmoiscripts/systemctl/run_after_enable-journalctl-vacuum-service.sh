@@ -2,22 +2,10 @@
 
 set -euo pipefail
 
-function log() {
-  echo "${0##*/}: $1" >&2
-}
-
-function prompt_yn() {
-  local prompt_reply=''
-  while [[ "${prompt_reply}" != 'y' && "${prompt_reply}" != 'n' ]]; do
-    read -rp "$1 [Y/n]" prompt_reply
-    if [[ "${prompt_reply}" == '' || ${prompt_reply} == [yY] ]]; then
-      prompt_reply='y'
-    elif [[ "${prompt_reply}" == [nN] ]]; then
-      prompt_reply='n'
-    fi
-  done
-  echo "${prompt_reply}"
-}
+set +u
+source "${XDG_CONFIG_HOME}/bash/functions"
+source "${XDG_CONFIG_HOME}/bash/exports"
+set -u
 
 if ! systemctl is-enabled --user --quiet 'journalctl-vacuum.timer'; then
   if [[ "$(prompt_yn 'Enable and start journalctl-vacuum services?')" == 'y' ]]; then

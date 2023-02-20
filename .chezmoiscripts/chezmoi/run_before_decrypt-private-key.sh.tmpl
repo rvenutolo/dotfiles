@@ -6,10 +6,20 @@ function log() {
   echo "${0##*/}: $1" >&2
 }
 
-readonly key_file="${XDG_CONFIG_HOME}/chezmoi/age_key.txt"
-if [[ ! -f "${key_file}" ]]; then
+readonly chezmoi_config_dir="$(dirname '{{ .chezmoi.configFile }}')"
+readonly age_key_file="${chezmoi_config_dir}/age_key.txt"
+
+if [[ ! -f "${age_key_file}" ]]; then
+  if ! type -aPf age > /dev/null 2>&1; then
+    log 'Downloading age'
+    curl --silent --show-error --location --output '/tmp/age.tar.gz' 'https://dl.filippo.io/age/latest?for=linux/amd64'
+    tar --extract --gzip --file '/tmp/age.tar.gz' --directory '/tmp' 'age/age'
+    chmod +x '/tmp/age/age'
+    PATH="$PATH:/tmp/age"
+    log 'Downloaded age'
+  fi
   log 'Decrypting age key'
-  age --decrypt --output "${key_file}" "{{ .chezmoi.sourceDir }}/key.txt.age"
+  age --decrypt --output "${age_key_file}" "{{ .chezmoi.sourceDir }}/key.txt.age"
   log 'Decrypted age key'
 fi
-chmod 600 "${key_file}"
+chmod 600 "${age_key_file}"

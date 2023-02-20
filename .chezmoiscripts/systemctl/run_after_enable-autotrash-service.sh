@@ -2,26 +2,10 @@
 
 set -euo pipefail
 
-function log() {
-  echo "${0##*/}: $1" >&2
-}
-
-function executable_exists() {
-  type -aPf "$1" > /dev/null 2>&1
-}
-
-function prompt_yn() {
-  local prompt_reply=''
-  while [[ "${prompt_reply}" != 'y' && "${prompt_reply}" != 'n' ]]; do
-    read -rp "$1 [Y/n]" prompt_reply
-    if [[ "${prompt_reply}" == '' || ${prompt_reply} == [yY] ]]; then
-      prompt_reply='y'
-    elif [[ "${prompt_reply}" == [nN] ]]; then
-      prompt_reply='n'
-    fi
-  done
-  echo "${prompt_reply}"
-}
+set +u
+source "${XDG_CONFIG_HOME}/bash/functions"
+source "${XDG_CONFIG_HOME}/bash/exports"
+set -u
 
 if executable_exists 'autotrash'; then
   if ! systemctl is-enabled --user --quiet 'autotrash.timer'; then
@@ -37,4 +21,6 @@ if executable_exists 'autotrash'; then
       log 'Started autotrash service'
     fi
   fi
+else
+  log 'autotrash not found - Skipping enabling and starting autotrash service'
 fi
