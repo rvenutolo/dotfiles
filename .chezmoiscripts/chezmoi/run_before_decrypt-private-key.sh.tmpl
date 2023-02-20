@@ -15,7 +15,7 @@ if [[ ! -f "${age_key_file}" ]]; then
     curl --silent --show-error --location --output '/tmp/age.tar.gz' 'https://dl.filippo.io/age/latest?for=linux/amd64'
     tar --extract --gzip --file '/tmp/age.tar.gz' --directory '/tmp' 'age/age'
     chmod +x '/tmp/age/age'
-    PATH="$PATH:/tmp/age"
+    PATH="/tmp/age:${PATH}"
     log 'Downloaded age'
   fi
   log 'Decrypting age key'
