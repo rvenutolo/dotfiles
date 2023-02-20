@@ -65,13 +65,17 @@ shopt -u shift_verbose
 shopt -s sourcepath
 shopt -u xpg_echo
 
-# source function and exports first so they can be used immediately
-if [[ -f "${XDG_CONFIG_HOME}/bash/functions" && -r "${XDG_CONFIG_HOME}/bash/functions" ]]; then
-  source "${XDG_CONFIG_HOME}/bash/functions"
+# source env vars and functions first so they can be used immediately
+if [[ -f "${HOME}/.profile" && -r "${HOME}/.profile" ]]; then
+  # this sets the XDG_* env vars
+  source "${HOME}/.profile"
 fi
-if [[ -f "${XDG_CONFIG_HOME}/bash/exports" && -r "${XDG_CONFIG_HOME}/bash/exports" ]]; then
-  source "${XDG_CONFIG_HOME}/bash/exports"
-fi
+for file in "${XDG_CONFIG_HOME}/bash/functions" "${XDG_CONFIG_HOME}/bash/exports"; do
+  if [[ -f "${file}" && -r "${file}" ]]; then
+    source "${file}"
+  fi
+done
+unset -v file
 
 # Arch Box Sourcing
 # /etc/profile
