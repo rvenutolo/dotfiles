@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+## XDG
+export XDG_CACHE_HOME="${HOME}/.cache"
+export XDG_CONFIG_HOME="${HOME}/.config"
+export XDG_DATA_HOME="${HOME}/.local/share"
+export XDG_STATE_HOME="${HOME}/.local/state"
+
 ## personal
 export PERSONAL_OR_WORK={{ .personal_or_work }}
 export DESKTOP_OR_LAPTOP={{ .desktop_or_laptop }}
