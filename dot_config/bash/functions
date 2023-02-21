@@ -34,6 +34,56 @@ function path_prepend() {
   path_remove "$1" && PATH="$1:$PATH"
 }
 
+function contains_word() {
+  grep --quiet --fixed-strings --ignore-case --word-regex "$1"
+}
+
+function is_distro() {
+  hostnamectl | grep --fixed-strings 'Operating System:' | cut --delimiter=':' --fields=2 | contains_word "$1"
+}
+
+function is_desktop_env() {
+  set +u
+  local xcd="${XDG_CURRENT_DESKTOP}"
+  set -u
+  echo "${xcd}" | contains_word "$1"
+}
+
+function is_personal() {
+  set +u
+  local pow="${PERSONAL_OR_WORK}"
+  set -u
+  [[ "${pow}" == 'personal' ]]
+}
+
+function is_work() {
+  set +u
+  local pow="${PERSONAL_OR_WORK}"
+  set -u
+  [[ "${pow}" == 'work' ]]
+}
+
+function is_desktop() {
+  set +u
+  local dol="${DESKTOP_OR_LAPTOP}"
+  set -u
+  [[ "${dol}" == 'desktop' ]]
+}
+
+function is_laptop() {
+  set +u
+  local dol="${DESKTOP_OR_LAPTOP}"
+  set -u
+  [[ "${dol}" == 'laptop' ]]
+}
+
+function is_headless() {
+  set +u
+  local hl="${HEADLESS}"
+  set -u
+  [[ "${hl}" == 'yes' ]]
+}
+
 function prompt_ny() {
   local prompt_reply=''
   while [[ "${prompt_reply}" != 'y' && "${prompt_reply}" != 'n' ]]; do
@@ -44,7 +94,7 @@ function prompt_ny() {
       prompt_reply='n'
     fi
   done
-  echo "${prompt_reply}"
+  [[ "${prompt_reply}" == 'y' ]]
 }
 
 function prompt_yn() {
@@ -57,7 +107,16 @@ function prompt_yn() {
       prompt_reply='n'
     fi
   done
-  echo "${prompt_reply}"
+  [[ "${prompt_reply}" == 'y' ]]
+}
+
+function prompt_for_value() {
+  read -rp "$1 [$2]: " prompt_reply
+  if [[ -z "${prompt_reply}" ]]; then
+    echo "$2"
+  else
+    echo "${prompt_reply}"
+  fi
 }
 
 # https://unix.stackexchange.com/questions/9123/is-there-a-one-liner-that-allows-me-to-create-a-directory-and-move-into-it-at-th/9124#9124
