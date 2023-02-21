@@ -11,10 +11,16 @@ set -u
 readonly new_history_file="${HISTFILE}"
 mkdir --parents "$(dirname "${new_history_file}")"
 
-if [[ -f "${current_history_file}" && "${current_history_file}" != "${new_history_file}" ]]; then
-  if [[ "$(prompt_yn "Move ${current_history_file} -> ${new_history_file}?")" == 'y' ]]; then
-    log "Moving: ${current_history_file} -> ${new_history_file}"
-    mv "${current_history_file}" "${new_history_file}"
-    log "Moved: ${current_history_file} -> ${new_history_file}"
-  fi
+if [[ ! -f "${current_history_file}" ]]; then
+  exit 0
 fi
+if [[ "${current_history_file}" == "${new_history_file}" ]]; then
+  exit 0
+fi
+if ! prompt_yn "Move ${current_history_file} -> ${new_history_file}?"; then
+  exit 0
+fi
+
+log "Moving: ${current_history_file} -> ${new_history_file}"
+mv "${current_history_file}" "${new_history_file}"
+log "Moved: ${current_history_file} -> ${new_history_file}"
