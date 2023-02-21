@@ -354,7 +354,7 @@ if is_distro 'fedora'; then
   expected_dnf_conf_vals=('max_parallel_downloads' 'defaultyes' 'keepcache')
   dnf_conf_text="$(cat '/etc/dnf/dnf.conf')"
   for dnf_conf_val in "${expected_dnf_conf_vals[@]}"; do
-    if [[ -z $(grep --fixed-strings "${dnf_conf_val}" <<< "${dnf_conf_text}" | cut -d'=' -f2 | xargs) ]]; then
+    if [[ -z "$(grep --fixed-strings "${dnf_conf_val}" <<< "${dnf_conf_text}" | cut -d'=' -f2 | xargs)" ]]; then
       echo "dnf conf ${dnf_conf_val} is not set"
     fi
   done
