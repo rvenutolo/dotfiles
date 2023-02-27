@@ -110,7 +110,7 @@ set -u
 expected_executables=(
   '7z'
   'ag' 'age' 'apropos' 'autotrash' 'await' 'awk' 'aws' 'aws_completer'
-  'bat' 'bc' 'bmon' 'broot' 'btm' 'btop' 'bzip2'
+  'backintime' 'bat' 'bc' 'bmon' 'broot' 'btm' 'btop' 'bzip2'
   'cabextract' 'cargo' 'checkbashisms' 'cheat' 'chezmoi' 'choose' 'clamscan' 'clipboard' 'cmake' 'colordiff' 'column' 'cpufetch' 'crontab' 'ctop' 'curl' 'curlie'
   'dash' 'delta' 'diff' 'diff-so-fancy' 'dig' 'distrobox' 'dmesg' 'doggo' 'dos2unix' 'duf' 'dust'
   'exa'
@@ -138,7 +138,7 @@ expected_executables=(
 if ! is_headless; then
   expected_executables+=(
     'alacritty' 'authy'
-    'backintime'
+    'backintime-qt'
     'cheese' 'clamtk'
     'filelight' 'filezilla' 'firefox' 'flatpak' 'flatpak-spawn' 'flatseal'
     'gimp' 'github-desktop' 'gitkraken' 'google-chrome-stable' 'gparted' 'gufw' 'gummi'
