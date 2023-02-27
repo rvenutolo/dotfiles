@@ -144,7 +144,7 @@ if ! is_headless; then
     'gimp' 'github-desktop' 'gitkraken' 'google-chrome-stable' 'gparted' 'gufw' 'gummi'
     'hacksaw'
     'intellij-idea-ultimate'
-    'kate' 'kcalc'
+    'kate' 'kcalc' 'kitty'
     'libreoffice'
     'magnus' 'meld' 'mpv'
     'okular'
