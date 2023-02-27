@@ -7,7 +7,7 @@ source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
 set -u
 
-if ! exexcutable_exists 'rustup'; then
+if ! executable_exists 'rustup'; then
   exit 0
 fi
 if [[ "$(rustup toolchain list)" == 'stable'* ]]; then
