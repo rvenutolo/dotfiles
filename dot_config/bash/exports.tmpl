@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+## this addresses when ssh-ing to a box that doesn't have terminfo for whatever TERM currently is
+for TERM in "${TERM}" 'xterm-256color' 'xterm-16color' 'xterm-color' 'xterm'; do
+  if infocmp -0 > /dev/null 2>&1; then
+    break
+  fi
+done
+
 ## personal
 export PERSONAL_OR_WORK='{{ .personal_or_work }}'
 export DESKTOP_OR_LAPTOP='{{ .desktop_or_laptop }}'
