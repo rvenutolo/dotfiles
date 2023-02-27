@@ -10,6 +10,9 @@ set -u
 readonly link_file='/etc/dnf/dnf.conf'
 readonly target_file="${XDG_CONFIG_HOME}/dnf/dnf.conf"
 
+if ! executable_exists 'dnf'; then
+  exit 0
+fi
 if [[ -L "${link_file}" ]]; then
   exit 0
 fi
