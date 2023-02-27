@@ -7,9 +7,12 @@ source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
 set -u
 
-readonly link_file='/etc/fail2ban/jail.local'
-readonly target_file="${XDG_CONFIG_HOME}/fail2ban/jail.local"
+readonly link_file='/etc/sysctl.d/90-kvals.conf'
+readonly target_file="${XDG_CONFIG_HOME}/sysctl/kvals.conf"
 
+if is_headless; then
+  exit 0
+fi
 if [[ -f "${link_file}" ]]; then
   exit 0
 fi
