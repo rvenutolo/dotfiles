@@ -10,6 +10,9 @@ set -u
 readonly link_file='/etc/exports.d/storage.exports'
 readonly target_file="${XDG_CONFIG_HOME}/nfs/storage.exports"
 
+if ! is_desktop || ! is_personal; then
+  exit 0
+fi
 if [[ -L "${link_file}" ]]; then
   exit 0
 fi
