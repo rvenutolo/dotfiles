@@ -32,3 +32,13 @@ fi
 sudo mkdir --parents "$(dirname "${link_file}")"
 sudo ln --symbolic "${target_file}" "${link_file}"
 log "Linked: ${target_file} -> ${link_file}"
+
+log 'Adding Chaotic AUR keyring and mirror list'
+sudo pacman-key --recv-key 'FBA220DFC880C036' --keyserver 'keyserver.ubuntu.com'
+sudo pacman-key --lsign-key 'FBA220DFC880C036'
+sudo pacman --upgrade --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+log 'Added Chaotic AUR keyring and mirror list'
+
+log 'Refreshing pacman package database'
+sudo pacman --sync --refresh
+log 'Refreshed pacman package database'
