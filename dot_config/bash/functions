@@ -43,45 +43,27 @@ function is_distro() {
 }
 
 function is_desktop_env() {
-  set +u
-  local xcd="${XDG_CURRENT_DESKTOP}"
-  set -u
-  echo "${xcd}" | contains_word "$1"
+  echo "${XDG_CURRENT_DESKTOP-}" | contains_word "$1"
 }
 
 function is_personal() {
-  set +u
-  local pow="${PERSONAL_OR_WORK}"
-  set -u
-  [[ "${pow}" == 'personal' ]]
+  [[ "${PERSONAL_OR_WORK-}" == 'personal' ]]
 }
 
 function is_work() {
-  set +u
-  local pow="${PERSONAL_OR_WORK}"
-  set -u
-  [[ "${pow}" == 'work' ]]
+  [[ "${PERSONAL_OR_WORK-}" == 'work' ]]
 }
 
 function is_desktop() {
-  set +u
-  local dol="${DESKTOP_OR_LAPTOP}"
-  set -u
-  [[ "${dol}" == 'desktop' ]]
+  [[ "${DESKTOP_OR_LAPTOP-}" == 'desktop' ]]
 }
 
 function is_laptop() {
-  set +u
-  local dol="${DESKTOP_OR_LAPTOP}"
-  set -u
-  [[ "${dol}" == 'laptop' ]]
+  [[ "${DESKTOP_OR_LAPTOP-}" == 'laptop' ]]
 }
 
 function is_headless() {
-  set +u
-  local hl="${HEADLESS}"
-  set -u
-  [[ "${hl}" == 'yes' ]]
+  [[ "${HEADLESS-}" == 'yes' ]]
 }
 
 function prompt_ny() {
