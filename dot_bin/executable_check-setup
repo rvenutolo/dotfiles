@@ -93,7 +93,7 @@ fi
 # cli apps for all boxes
 expected_executables=(
   '7z'
-  'ag' 'age' 'apropos' 'autotrash' 'await' 'awk' 'aws' 'aws_completer'
+  'ag' 'age' 'apropos' 'autotrash' 'awk' 'aws' 'aws_completer'
   'backintime' 'bat' 'bc' 'bmon' 'broot' 'btm' 'btop' 'bzip2'
   'cabextract' 'cargo' 'checkbashisms' 'cheat' 'chezmoi' 'choose' 'clamscan' 'clipboard' 'cmake' 'colordiff' 'column' 'cpufetch' 'crontab' 'ctop' 'curl' 'curlie'
   'dash' 'delta' 'diff' 'diff-so-fancy' 'dig' 'distrobox' 'dmesg' 'doggo' 'dos2unix' 'duf' 'dust'
