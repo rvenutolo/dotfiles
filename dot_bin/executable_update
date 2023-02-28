@@ -54,6 +54,7 @@ fi
 sdkman_init_script="${SDKMAN_DIR}/bin/sdkman-init.sh"
 if file_exists "${sdkman_init_script}"; then
   log 'SDKMAN'
+  ## TODO check on this
   set +ue
   source "${sdkman_init_script}"
   sdk selfupdate
