@@ -13,10 +13,14 @@ readonly target_file="${XDG_CONFIG_HOME}/nfs/storage.exports"
 if ! is_desktop || ! is_personal; then
   exit 0
 fi
-if [[ -L "${link_file}" ]]; then
+if ! executable_exists 'nfsstat'; then
+  exit 0
+fi
+if [[ -L "${link_file}" && "$(readlink --canonicalize "${link_file}")" == "$(readlink --canonicalize "${target_file}")" ]]; then
   exit 0
 fi
 if [[ -f "${link_file}" ]]; then
+  diff --color --unified "${link_file}" "${target_file}" || true
   if ! prompt_yn "${link_file} exists - Link: ${target_file} -> ${link_file}?"; then
     exit 0
   fi

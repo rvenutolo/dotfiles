@@ -8,15 +8,16 @@ source "${XDG_CONFIG_HOME}/bash/exports"
 set -u
 
 readonly link_file='/etc/dnf/dnf.conf'
-readonly target_file="${XDG_CONFIG_HOME}/dnf/dnf.conf"
+readonly target_file="${HOME}/.etc/dnf.conf"
 
 if ! executable_exists 'dnf'; then
   exit 0
 fi
-if [[ -L "${link_file}" ]]; then
+if [[ -L "${link_file}" && "$(readlink --canonicalize "${link_file}")" == "$(readlink --canonicalize "${target_file}")" ]]; then
   exit 0
 fi
 if [[ -f "${link_file}" ]]; then
+  diff --color --unified "${link_file}" "${target_file}" || true
   if ! prompt_yn "${link_file} exists - Link: ${target_file} -> ${link_file}?"; then
     exit 0
   fi
