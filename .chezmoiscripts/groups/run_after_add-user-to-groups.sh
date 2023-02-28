@@ -2,10 +2,8 @@
 
 set -euo pipefail
 
-set +u
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 readonly actual_groups="$(groups "${USER}")"
 groups=('sys' 'wheel')

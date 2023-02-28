@@ -2,10 +2,8 @@
 
 set -euo pipefail
 
-set +u
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 if ! executable_exists 'rustup'; then
   exit 0

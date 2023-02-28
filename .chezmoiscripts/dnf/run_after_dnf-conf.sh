@@ -5,10 +5,8 @@ set -euo pipefail
 ## TODO remove this script once it is no longer a useful reference
 exit 0
 
-set +u
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 readonly dnf_conf_file='/etc/dnf/dnf.conf'
 

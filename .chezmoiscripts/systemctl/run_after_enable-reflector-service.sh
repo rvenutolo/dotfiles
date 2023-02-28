@@ -2,15 +2,12 @@
 
 set -euo pipefail
 
-set +u
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 if ! is_arch; then
   exit 0
 fi
-
 if ! executable_exists 'reflector'; then
   exit 0
 fi

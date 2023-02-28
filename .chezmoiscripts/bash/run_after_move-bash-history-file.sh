@@ -4,9 +4,10 @@ set -euo pipefail
 
 set +u
 readonly current_history_file="${HISTFILE:-"${HOME}/.bash_history"}"
+set -u
+
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 readonly new_history_file="${HISTFILE}"
 mkdir --parents "$(dirname "${new_history_file}")"

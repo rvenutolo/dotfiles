@@ -2,10 +2,8 @@
 
 set -euo pipefail
 
-set +u
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 if localectl | grep --quiet --fixed-strings 'LANG=en_US.UTF-8'; then
   exit 0

@@ -4,9 +4,10 @@ set -euo pipefail
 
 set +u
 readonly current_history_file="${LESSHISTFILE:-"${HOME}/.lesshst"}"
+set -u
+
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 readonly new_history_file="${LESSHISTFILE}"
 mkdir --parents "$(dirname "${new_history_file}")"

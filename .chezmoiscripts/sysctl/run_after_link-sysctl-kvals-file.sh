@@ -2,10 +2,8 @@
 
 set -euo pipefail
 
-set +u
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 readonly link_file='/etc/sysctl.d/90-kvals.conf'
 readonly target_file="${HOME}/.etc/sysctl-kvals.conf"

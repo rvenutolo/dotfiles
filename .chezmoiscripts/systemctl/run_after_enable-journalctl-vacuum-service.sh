@@ -2,10 +2,8 @@
 
 set -euo pipefail
 
-set +u
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 if ! systemctl is-enabled --user --quiet 'journalctl-vacuum.timer' && prompt_yn 'Enable and start journalctl-vacuum services?'; then
   log 'Enabling and starting journalctl-vacuum service'

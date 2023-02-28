@@ -2,10 +2,8 @@
 
 set -euo pipefail
 
-set +u
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 readonly link_file='/etc/sysctl.d/50-max_user_watches.conf'
 readonly target_file="${HOME}/.etc/sysctl-max_user_watches.conf"

@@ -2,10 +2,8 @@
 
 set -euo pipefail
 
-set +u
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
-set -u
 
 readonly link_file='/etc/exports.d/storage.exports'
 readonly target_file="${XDG_CONFIG_HOME}/nfs/storage.exports"
