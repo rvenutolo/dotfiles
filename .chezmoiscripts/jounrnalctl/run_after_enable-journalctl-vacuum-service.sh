@@ -5,14 +5,18 @@ set -euo pipefail
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
 
-if ! systemctl is-enabled --user --quiet 'journalctl-vacuum.timer' && prompt_yn 'Enable and start journalctl-vacuum services?'; then
-  log 'Enabling and starting journalctl-vacuum service'
-  systemctl enable --now --user --quiet 'journalctl-vacuum.timer'
-  log 'Enabled and started journalctl-vacuum service'
+readonly service='journalctl-vacuum.timer'
+readonly desc='journnalctl-vacuum'
+readonly system_or_user='user'
+
+if ! systemctl is-enabled --"${system_or_user}" --quiet "${service}" && prompt_yn "Enable and start ${desc} service?"; then
+  log "Enabling and starting ${desc} service"
+  systemctl enable --now --"${system_or_user}" --quiet "${service}"
+  log "Enabled and started ${desc} service"
 fi
 
-if ! systemctl is-active --user --quiet 'journalctl-vacuum.timer' && prompt_yn 'Start journalctl-vacuum services?'; then
-  log 'Starting journalctl-vacuum service'
-  systemctl start --user --quiet 'journalctl-vacuum.timer'
-  log 'Started journalctl-vacuum service'
+if ! systemctl is-active --"${system_or_user}" --quiet "${service}" && prompt_yn "Start ${desc} service?"; then
+  log "Starting ${desc} service"
+  systemctl start --"${system_or_user}" --quiet "${service}"
+  log "Started ${desc} service"
 fi

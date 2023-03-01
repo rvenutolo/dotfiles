@@ -5,18 +5,23 @@ set -euo pipefail
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
 
-if ! executable_exists 'CrashPlanDesktop'; then
+readonly service='crashplan-pro.service'
+readonly desc='CrashPlan'
+readonly system_or_user='system'
+readonly executable='CrashPlanDesktop'
+
+if ! executable_exists "${executable}"; then
   exit 0
 fi
 
-if ! systemctl is-enabled --system --quiet 'crashplan-pro.service' && prompt_yn 'Enable and start crashplan-pro services?'; then
-  log 'Enabling and starting crashplan-pro service'
-  systemctl enable --now --system --quiet 'crashplan-pro.service'
-  log 'Enabled and started crashplan-pro service'
+if ! systemctl is-enabled --"${system_or_user}" --quiet "${service}" && prompt_yn "Enable and start ${desc} service?"; then
+  log "Enabling and starting ${desc} service"
+  systemctl enable --now --"${system_or_user}" --quiet "${service}"
+  log "Enabled and started ${desc} service"
 fi
 
-if ! systemctl is-active --system --quiet 'crashplan-pro.service' && prompt_yn 'Start crashplan-pro services?'; then
-  log 'Starting crashplan-pro service'
-  systemctl start --system --quiet 'crashplan-pro.service'
-  log 'Started crashplan-pro service'
+if ! systemctl is-active --"${system_or_user}" --quiet "${service}" && prompt_yn "Start ${desc} service?"; then
+  log "Starting ${desc} service"
+  systemctl start --"${system_or_user}" --quiet "${service}"
+  log "Started ${desc} service"
 fi

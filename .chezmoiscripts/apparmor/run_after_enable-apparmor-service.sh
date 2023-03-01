@@ -5,18 +5,23 @@ set -euo pipefail
 source "${XDG_CONFIG_HOME}/bash/functions"
 source "${XDG_CONFIG_HOME}/bash/exports"
 
-if ! executable_exists 'aa-enabled'; then
+readonly service='apparmor.service'
+readonly desc='App Armor'
+readonly system_or_user='system'
+readonly executable='aa-enabled'
+
+if ! executable_exists "${executable}"; then
   exit 0
 fi
 
-if ! systemctl is-enabled --system --quiet 'apparmor.service' && prompt_yn 'Enable and start apparmor services?'; then
-  log 'Enabling and starting apparmor service'
-  systemctl enable --now --system --quiet 'apparmor.service'
-  log 'Enabled and started apparmor service'
+if ! systemctl is-enabled --"${system_or_user}" --quiet "${service}" && prompt_yn "Enable and start ${desc} service?"; then
+  log "Enabling and starting ${desc} service"
+  systemctl enable --now --"${system_or_user}" --quiet "${service}"
+  log "Enabled and started ${desc} service"
 fi
 
-if ! systemctl is-active --system --quiet 'apparmor.service' && prompt_yn 'Start apparmor services?'; then
-  log 'Starting apparmor service'
-  systemctl start --system --quiet 'apparmor.service'
-  log 'Started apparmor service'
+if ! systemctl is-active --"${system_or_user}" --quiet "${service}" && prompt_yn "Start ${desc} service?"; then
+  log "Starting ${desc} service"
+  systemctl start --"${system_or_user}" --quiet "${service}"
+  log "Started ${desc} service"
 fi
