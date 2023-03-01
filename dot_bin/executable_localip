@@ -7,4 +7,4 @@ if [[ "$#" -ne 0 ]]; then
   exit 2
 fi
 
-ip -oneline route get to 8.8.8.8 | sed --quiet "s/.*src \([0-9.]\+\).*/\1/p"
+ip -oneline route get to '8.8.8.8' | sed --quiet 's/.*src \([0-9.]\+\).*/\1/p'
