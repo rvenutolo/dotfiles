@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# If not running interactively, don't do anything
+# if not running interactively, don't do anything
 [[ "$-" != *i* ]] && return
 
 umask 022
@@ -65,17 +65,15 @@ shopt -u shift_verbose
 shopt -s sourcepath
 shopt -u xpg_echo
 
-# source env vars and functions first so they can be used immediately
+# capture existing shell options so I can reset to them later
+initial_shell_options="$-"
+initial_pipefail_option="$(grep --quiet --only-matching --fixed-strings 'pipefail' <<< "${SHELLOPTS}")"
+set -euo pipefail
+
+# this sets the XDG_* env vars
 if [[ -f "${HOME}/.profile" && -r "${HOME}/.profile" ]]; then
-  # this sets the XDG_* env vars
   source "${HOME}/.profile"
 fi
-for file in "${XDG_CONFIG_HOME}/bash/functions" "${XDG_CONFIG_HOME}/bash/exports"; do
-  if [[ -f "${file}" && -r "${file}" ]]; then
-    source "${file}"
-  fi
-done
-unset -v file
 
 # Arch Box Sourcing
 # /etc/profile
@@ -85,21 +83,32 @@ unset -v file
 #       /etc/bash_completion.d/*
 #       ~/.bash_completion
 
-## files to source
+## my files to source
+for file in \
+  "${XDG_CONFIG_HOME}/bash/functions" \
+  "${XDG_CONFIG_HOME}/bash/exports" \
+  "${XDG_CONFIG_HOME}/bash/aliases" \
+  "${XDG_CONFIG_HOME}/bash/local"; do
+  if [[ -f "${file}" && -r "${file}" ]]; then
+    source "${file}"
+  fi
+done
+
+## app files to source
 for file in \
   '/usr/share/fzf/key-bindings.bash' \
   '/usr/share/fzf/completion.bash' \
   '/usr/share/git/completion/git-completion.bash' \
   '/usr/share/doc/pkgfile/command-not-found.bash' \
   "${SDKMAN_DIR}/bin/sdkman-init.sh" \
-  "${XDG_CONFIG_HOME}/broot/launcher/bash/br" \
-  "${XDG_CONFIG_HOME}/bash/aliases" \
-  "${XDG_CONFIG_HOME}/bash/local"; do
+  "${XDG_CONFIG_HOME}/broot/launcher/bash/br"; do
   if is_readable_file "${file}"; then
+    ## TODO look into addressing sdkman unbound variables
+    set +u ## sdkman init references a bunch of unbound variables
     source "${file}"
+    set -u
   fi
 done
-unset -v file
 
 ## dirs to put on path
 for dir in \
@@ -112,10 +121,25 @@ for dir in \
     path_prepend "${dir}"
   fi
 done
-unset -v dir
 
 ## misc init stuff
 is_readable_file "${XDG_CONFIG_HOME}/dircolors" && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
-executable_exists 'zoxide' && eval "$(zoxide init bash)"
-executable_exists 'starship' && eval "$(starship init bash)"
 executable_exists 'aws_completer' && complete -C 'aws_completer' aws
+executable_exists 'zoxide' && eval "$(zoxide init bash)"
+
+# reset shell options to what they were initially
+set +euox pipefail
+for shell_option in 'e' 'u' 'x'; do
+  if [[ "${initial_shell_options}" == *"${shell_option}"* ]]; then
+    set "-${shell_option}"
+  fi
+done
+[[ -n "${initial_pipefail_option}" ]] && set -o pipefail
+
+# clean up vars
+unset -v file dir shell_option initial_shell_options initial_pipefail_option
+
+## TODO submit PR to address unbound variables?
+## put this dead last as starship_preexec() will run before every command
+#STARSHIP_PREEXEC_READY=false
+executable_exists 'starship' && eval "$(starship init bash)"
