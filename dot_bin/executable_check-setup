@@ -330,6 +330,15 @@ if executable_exists 'flatpak' && ! flatpak remotes | contains_word 'flathub'; t
   echo 'Flathub flatpak repo is not installed'
 fi
 
+if executable_exists 'pacman'; then
+  readonly pacman_conf_text="$(cat '/etc/pacman.conf')"
+  for pacman_repo in 'multilib' 'chaotic-aur'; do
+    if ! grep --fixed-strings "[${pacman_repo}]" <<< "${pacman_conf_text}"; then
+      echo "Pacman ${pacman_repo} repo is missing"
+    fi
+  done
+fi
+
 if is_distro 'fedora'; then
   expected_dnf_conf_vals=('max_parallel_downloads' 'defaultyes' 'keepcache')
   dnf_conf_text="$(cat '/etc/dnf/dnf.conf')"
