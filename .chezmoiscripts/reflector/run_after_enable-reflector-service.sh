@@ -9,14 +9,15 @@ if ! executable_exists 'reflector'; then
   exit 0
 fi
 
-if ! systemctl is-enabled --user --quiet 'reflector.timer' && prompt_yn 'Enable and start reflector services?'; then
+## TODO check if this should be a user or system service
+if ! systemctl is-enabled --system --quiet 'reflector.timer' && prompt_yn 'Enable and start reflector services?'; then
   log 'Enabling and starting reflector service'
-  sudo systemctl enable --now --quiet 'reflector.timer'
+  systemctl enable --now --system --quiet 'reflector.timer'
   log 'Enabled and started reflector service'
 fi
 
-if ! systemctl is-active --user --quiet 'reflector.timer' && prompt_yn 'Start reflector services?'; then
+if ! systemctl is-active --system --quiet 'reflector.timer' && prompt_yn 'Start reflector services?'; then
   log 'Starting reflector service'
-  sudo systemctl start --quiet 'reflector.timer'
+  systemctl start --system --quiet 'reflector.timer'
   log 'Started reflector service'
 fi
