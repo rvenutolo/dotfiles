@@ -368,3 +368,7 @@ fi
 if executable_exists 'aa-enabled' && ! aa-enabled | contains_word 'yes'; then
   echo "AppArmor is not enabled"
 fi
+
+if executable_exists 'sestatus' && sestatus | grep --quiet --perl-regexp --ignore-case 'selinux status:\s+enabled'; then
+  echo "SELinux is not enabled"
+fi
