@@ -17,6 +17,6 @@ fi
 
 if ! systemctl is-active --system --quiet 'apparmor.service' && prompt_yn 'Start apparmor services?'; then
   log 'Starting apparmor service'
-  systemctl start --system --system 'apparmor.service'
+  systemctl start --system --quiet 'apparmor.service'
   log 'Started apparmor service'
 fi
