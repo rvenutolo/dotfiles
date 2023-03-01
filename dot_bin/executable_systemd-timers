@@ -8,3 +8,4 @@ if [[ "$#" -ne 0 ]]; then
 fi
 
 systemctl status '*timer' --no-pager
+systemctl status --user '*timer' --no-pager
