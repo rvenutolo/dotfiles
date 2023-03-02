@@ -27,7 +27,7 @@ alias c='cl ${CODE_DIR}'
 alias bd='cd "$OLDPWD"'
 
 ## ls
-if executable_exists 'exa'; then
+if __executable_exists 'exa'; then
   alias exa='exa --classify --group-directories-first --icons --header --time-style=long-iso --color-scale --git'
   alias ls='exa'
   alias l='exa'
@@ -67,7 +67,7 @@ fi
 alias mkdir='mkdir --parents --verbose'
 alias cp='cp --verbose'
 alias mv='mv --verbose'
-if executable_exists 'trash' && trash --version | grep -qF 'rushsteve1/trash-d'; then
+if __executable_exists 'trash' && trash --version | grep -qF 'rushsteve1/trash-d'; then
   alias trash='trash --verbose'
   alias rm='trash'
 else
@@ -138,7 +138,7 @@ alias cls='clear'
 alias pager='${PAGER}'
 
 ## misc - replace commands
-if executable_exists 'riff'; then
+if __executable_exists 'riff'; then
   alias diff='riff'
 fi
 alias which='type'
@@ -165,5 +165,5 @@ alias da="date '+%Y-%m-%d %A %T %Z'"
 alias edit='${EDITOR}'
 alias hg='history | grep'
 if [[ -n "${SDKMAN_DIR}" && -f "${SDKMAN_DIR}/candidates/maven/current/bin/mvn" ]]; then
-  alias sdkmvn="${SDKMAN_DIR}/candidates/maven/current/bin/mvn"
+  alias sdkmvn='${SDKMAN_DIR}/candidates/maven/current/bin/mvn'
 fi

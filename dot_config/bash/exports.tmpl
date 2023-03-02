@@ -15,23 +15,23 @@ export CODE_DIR="${HOME}/Code"
 export WTTR_CITY='Atlanta'
 
 ## editor/visual
-if executable_exists 'micro'; then
+if __executable_exists 'micro'; then
   export EDITOR='micro'
-elif executable_exists 'nano'; then
+elif __executable_exists 'nano'; then
   export EDITOR='nano'
-elif executable_exists 'nvim'; then
+elif __executable_exists 'nvim'; then
   export EDITOR='nvim'
 else
   export EDITOR='vim'
 fi
-if executable_exists 'kate'; then
+if __executable_exists 'kate'; then
   export VISUAL='kate'
 else
   export VISUAL="${EDITOR}"
 fi
 
 ## pager/manpager
-if executable_exists 'moar'; then
+if __executable_exists 'moar'; then
   export PAGER='moar'
 else
   export PAGER='less -Fi'
