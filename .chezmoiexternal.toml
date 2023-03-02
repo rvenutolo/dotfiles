@@ -53,12 +53,6 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/arcticicestudio/nord-xfce-terminal/develop/src/nord.theme'
 refreshPeriod = '168h'
 
-['.config/Xresources']
-type = 'file'
-url = 'https://raw.githubusercontent.com/arcticicestudio/nord-xresources/develop/src/nord'
-refreshPeriod = '168h'
-
-['.bin/outher/kitty_keys.sh']
-type = 'file'
-url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/main/kitty_keys.sh'
-refreshPeriod = '168h'
+['Code/scripts']
+type = 'git-repo'
+url = 'git@github.com:rvenutolo/scripts.git'
