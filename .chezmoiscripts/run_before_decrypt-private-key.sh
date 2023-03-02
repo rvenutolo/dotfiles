@@ -6,8 +6,7 @@ function log() {
   echo "${0##*/}: $1" >&2
 }
 
-readonly chezmoi_config_dir="$(dirname '{{ .chezmoi.configFile }}')"
-readonly age_key_file="${chezmoi_config_dir}/age_key.txt"
+readonly age_key_file="$(dirname "${CHEZMOI_CONFIG_FILE}")/age_key.txt"
 
 if [[ -f "${age_key_file}" ]]; then
   exit 0
@@ -23,6 +22,6 @@ if ! type -aPf age > /dev/null 2>&1; then
 fi
 
 log 'Decrypting age key'
-age --decrypt --output "${age_key_file}" "{{ .chezmoi.sourceDir }}/key.txt.age"
+age --decrypt --output "${age_key_file}" "${CHEZMOI_SOURCE_DIR}/key.txt.age"
 log 'Decrypted age key'
 chmod 600 "${age_key_file}"
