@@ -96,11 +96,6 @@ function __path_prepend() {
 #       /etc/bash_completion.d/*
 #       ~/.bash_completion
 
-# this sets the XDG_* env vars
-if __is_readable_file "${HOME}/.profile"; then
-  source "${HOME}/.profile"
-fi
-
 ## my files to source
 for file in \
   "${XDG_CONFIG_HOME}/bash/functions" \
