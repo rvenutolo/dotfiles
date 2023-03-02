@@ -87,6 +87,7 @@ function __path_prepend() {
   __path_remove "$1" && PATH="$1:$PATH"
 }
 
+## TODO check this
 # Arch Box Sourcing
 # /etc/profile
 #   /etc/profile.d/*.sh (bunch of program-specific stuff, like autojump, safe-rm, snap, etc.)
