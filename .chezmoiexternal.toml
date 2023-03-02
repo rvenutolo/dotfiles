@@ -5,6 +5,16 @@ refreshPeriod = '168h'
 filter.command = 'sed'
 filter.args = ['s/^    bar:$/  footer_bar:/']
 
+['.config/dircolors']
+type = 'file'
+url = 'https://raw.githubusercontent.com/arcticicestudio/nord-dircolors/develop/src/dir_colors'
+refreshPeriod = '168h'
+
+['.config/kitty_keys/kitty_keys.sh']
+type = 'file'
+url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/main/kitty_keys.sh'
+refreshPeriod = '168h'
+
 ['.config/nano/syntax_highlighting']
 type = 'archive'
 url = 'https://github.com/scopatz/nanorc/archive/master.tar.gz'
@@ -23,9 +33,9 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/arcticicestudio/nord-tilix/develop/src/json/nord.json'
 refreshPeriod = '168h'
 
-['.config/dircolors']
+['.config/Xresources']
 type = 'file'
-url = 'https://raw.githubusercontent.com/arcticicestudio/nord-dircolors/develop/src/dir_colors'
+url = 'https://raw.githubusercontent.com/arcticicestudio/nord-xresources/develop/src/nord'
 refreshPeriod = '168h'
 
 ['.local/share/gedit/styles/nord.xml']
