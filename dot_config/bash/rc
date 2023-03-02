@@ -154,8 +154,9 @@ done
 [[ -n "${initial_pipefail_option}" ]] && set -o pipefail
 
 ## TODO submit PR to address unbound variables?
-## put this dead last as starship_preexec() will run before every command
 #STARSHIP_PREEXEC_READY=false
+## put this after resetting shell options as starship_preexec() will run before
+# every command after this
 __executable_exists 'starship' && eval "$(starship init bash)"
 
 # clean up vars & functions
