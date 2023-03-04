@@ -3,7 +3,7 @@
 set -euo pipefail
 
 function log() {
-  echo "${0##*/}: $1" >&2
+  echo "${0##*/}: $*" >&2
 }
 
 function executable_exists() {
