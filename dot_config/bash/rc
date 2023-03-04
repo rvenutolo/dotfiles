@@ -153,8 +153,8 @@ for dir in \
   "$(if __executable_exists 'go'; then echo "$(go env GOPATH)/bin"; else echo ''; fi)" \
   "$(if [[ -n "${CARGO_HOME}" ]]; then echo "${CARGO_HOME}/bin"; else echo ''; fi)" \
   "${HOME}/.local/bin" \
-  "${SCRIPTS_DIR}/main" \
-  "${SCRIPTS_DIR}/other"; do
+  "${SCRIPTS_DIR}/other" \
+  "${SCRIPTS_DIR}/main"; do
   if [[ -n "${dir}" && -d "${dir}" ]]; then
     __path_prepend "${dir}"
   fi
