@@ -131,9 +131,6 @@ alias cls='clear'
 alias pager='${PAGER}'
 
 ## misc - replace commands
-if __executable_exists 'riff'; then
-  alias diff='riff'
-fi
 alias which='type'
 
 ## misc - adds flags
