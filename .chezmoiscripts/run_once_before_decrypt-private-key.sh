@@ -6,7 +6,8 @@ function log() {
   echo "${0##*/}: $1" >&2
 }
 
-readonly age_key_file="$(dirname "${CHEZMOI_CONFIG_FILE}")/age_key.txt"
+age_key_file="$(dirname "${CHEZMOI_CONFIG_FILE}")/age_key.txt"
+readonly age_key_file
 
 if [[ -f "${age_key_file}" ]]; then
   exit 0
