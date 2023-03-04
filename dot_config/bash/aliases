@@ -74,13 +74,6 @@ else
   alias rm='rm --verbose'
 fi
 
-## trash
-alias trp='trash-put'
-alias tre='trash-empty'
-alias trl='trash-list'
-alias trr='trash-restore'
-alias trm='trash-rm'
-
 ## chown, chmod, chgrp
 alias chown='chown --preserve-root'
 alias chmod='chmod --preserve-root'
