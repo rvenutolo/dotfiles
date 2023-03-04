@@ -1,3 +1,3 @@
 This directory contains config files that may be linked to somewhere in /etc.
 
-Run executable_find_symlinks to show where the files are linked.
+Run `./find-etc-symlinks` to show where the files are linked.
