@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily cleanup of Trash items
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
