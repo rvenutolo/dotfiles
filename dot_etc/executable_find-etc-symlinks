@@ -2,4 +2,4 @@
 
 set -euo pipefail
 
-find_symlinks --dir '/etc' ./*
+find-symlinks --dir '/etc' ./*
