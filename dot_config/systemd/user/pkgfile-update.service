@@ -1,0 +1,6 @@
+[Unit]
+Description=Updates pkgfile database
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/pkgfile --update
