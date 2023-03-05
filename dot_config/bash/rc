@@ -166,6 +166,7 @@ command mkdir --parents "$(dirname "${HISTFILE}")"
 ## misc init stuff
 __is_readable_file "${XDG_CONFIG_HOME}/dircolors" && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
 __executable_exists 'aws_completer' && complete -C 'aws_completer' aws
+## TODO re-enable zoxide
 #__executable_exists 'zoxide' && eval "$(zoxide init bash)"
 
 # reset shell options to what they were initially
@@ -178,6 +179,7 @@ done
 [[ -n "${initial_pipefail_option}" ]] && set -o pipefail
 
 ## TODO submit PR to address unbound variables?
+## TODO re-enable starship
 #STARSHIP_PREEXEC_READY=false
 ## put this after resetting shell options as starship_preexec() will run before
 # every command after this
