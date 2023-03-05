@@ -181,7 +181,7 @@ done
 #STARSHIP_PREEXEC_READY=false
 ## put this after resetting shell options as starship_preexec() will run before
 # every command after this
-__executable_exists 'starship' && eval "$(starship init bash)"
+#__executable_exists 'starship' && eval "$(starship init bash)"
 
 # clean up vars & functions
 unset -v file dir shell_option initial_shell_options initial_pipefail_option
