@@ -1,6 +1,0 @@
-[Unit]
-Description=Updates maldet signatures
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/maldet --update-sigs --force

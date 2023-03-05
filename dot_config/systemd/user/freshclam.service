@@ -1,6 +1,0 @@
-[Unit]
-Description=Updates ClamAV virus definitions
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/freshclam
