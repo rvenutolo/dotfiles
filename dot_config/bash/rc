@@ -133,10 +133,11 @@ done
 
 ## app files to source
 for file in \
+  '/etc/bash_completion' \
+  '/usr/share/bash-completion/bash_completion' \
   '/usr/share/fzf/key-bindings.bash' \
   '/usr/share/fzf/completion.bash' \
   '/usr/share/git/completion/git-completion.bash' \
-  '/usr/share/doc/pkgfile/command-not-found.bash' \
   "${SDKMAN_DIR}/bin/sdkman-init.sh" \
   "${XDG_CONFIG_HOME}/broot/launcher/bash/br"; do
   if __is_readable_file "${file}"; then
