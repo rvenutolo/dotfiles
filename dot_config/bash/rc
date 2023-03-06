@@ -185,6 +185,9 @@ done
 ## put this after resetting shell options as starship_preexec() will run before
 # every command after this
 #__executable_exists 'starship' && eval "$(starship init bash)"
+if __is_readable_file "${XDG_CONFIG_HOME}/bash/prompt"; then
+  source "${XDG_CONFIG_HOME}/bash/prompt"
+fi
 
 # clean up vars & functions
 unset -v file dir shell_option initial_shell_options initial_pipefail_option
