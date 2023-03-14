@@ -1,13 +1,13 @@
 ['.config/alacritty/colors.yml']
 type = 'file'
-url = 'https://raw.githubusercontent.com/arcticicestudio/nord-alacritty/main/src/nord.yml'
+url = 'https://raw.githubusercontent.com/nordtheme/alacritty/main/src/nord.yaml'
 refreshPeriod = '168h'
 filter.command = 'sed'
 filter.args = ['s/^    bar:$/  footer_bar:/']
 
 ['.config/dircolors']
 type = 'file'
-url = 'https://raw.githubusercontent.com/arcticicestudio/nord-dircolors/develop/src/dir_colors'
+url = 'https://raw.githubusercontent.com/nordtheme/dircolors/develop/src/dir_colors'
 refreshPeriod = '168h'
 
 ['.config/kitty_keys/kitty_keys.sh']
@@ -25,7 +25,7 @@ include = ['*/*.nanorc']
 
 ['.config/nvim/colors/nord.vim']
 type = 'file'
-url = 'https://raw.githubusercontent.com/arcticicestudio/nord-vim/main/colors/nord.vim'
+url = 'https://raw.githubusercontent.com/nordtheme/vim/main/colors/nord.vim'
 refreshPeriod = '168h'
 
 ['.config/tilix/schemes/nord.json']
