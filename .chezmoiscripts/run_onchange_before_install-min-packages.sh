@@ -12,7 +12,7 @@ function executable_exists() {
 }
 
 if executable_exists 'pacman'; then
-  sudo pacman --sync --needed --noconfirm git openssh
+  sudo pacman --sync --refresh --needed --noconfirm git openssh
 elif executable_exists 'dnf'; then
   sudo dnf install --assumeyes git openssh
 elif executable_exists 'apt'; then
