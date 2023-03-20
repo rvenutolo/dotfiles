@@ -115,7 +115,6 @@ alias sc='systemctl'
 alias scu='systemctl --user'
 
 ## editors
-alias e='edit'
 alias k='kate'
 alias m='micro'
 alias n='nano'
@@ -154,7 +153,6 @@ alias du1='du --max-depth=1'
 alias bs='br --sizes'
 alias brc='source ${HOME}/.bashrc'
 alias da="date '+%Y-%m-%d %A %T %Z'"
-alias edit='${EDITOR}'
 alias hg='history | grep'
 if [[ -n "${SDKMAN_DIR}" && -f "${SDKMAN_DIR}/candidates/maven/current/bin/mvn" ]]; then
   alias sdkmvn='${SDKMAN_DIR}/candidates/maven/current/bin/mvn'
