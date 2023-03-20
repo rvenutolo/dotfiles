@@ -1,3 +1,8 @@
+['.etc/hosts']
+type = 'file'
+url = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts'
+refreshPeriod = '24h'
+
 ['.config/alacritty/colors.yml']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/alacritty/main/src/nord.yaml'
