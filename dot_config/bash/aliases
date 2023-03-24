@@ -145,7 +145,6 @@ alias jobs='jobs -l'
 alias tree='tree -Cph --si'
 alias shfmt='shfmt --list --indent 2 --case-indent --binary-next-line --space-redirects'
 alias xdg-ninja='xdg-ninja --skip-unsupported'
-alias wget='wget --hsts-file=$XDG_DATA_HOME/wget-hsts'
 
 ## misc - other
 alias cm='chezmoi'
