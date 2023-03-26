@@ -35,7 +35,7 @@ fi
 if __executable_exists 'moar'; then
   export PAGER='moar'
 else
-  export PAGER='less -Fi'
+  export PAGER='less --ignore-case'
 fi
 export MANPAGER="${PAGER}"
 
