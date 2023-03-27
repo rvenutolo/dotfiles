@@ -133,8 +133,6 @@ done
 
 ## app files to source
 for file in \
-  '/etc/bash_completion' \
-  '/usr/share/bash-completion/bash_completion' \
   '/usr/share/fzf/key-bindings.bash' \
   '/usr/share/fzf/completion.bash' \
   '/usr/share/git/completion/git-completion.bash' \
