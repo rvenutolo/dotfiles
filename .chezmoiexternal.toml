@@ -85,6 +85,12 @@ url = 'https://raw.githubusercontent.com/sapegin/dotfiles/master/bin/starship-gi
 refreshPeriod = '168h'
 executable = true
 
+['.local/share/bash-completion/completions/mvn']
+type = 'file'
+url = 'https://raw.githubusercontent.com/juven/maven-bash-completion/master/bash_completion.bash'
+refreshPeriod = '168h'
+executable = true
+
 ['.local/share/gedit/styles/nord.xml']
 type = 'file'
 url = 'https://raw.githubusercontent.com/arcticicestudio/nord-gedit/develop/src/xml/nord.xml'
