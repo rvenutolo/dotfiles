@@ -170,12 +170,6 @@ __executable_exists 'aws_completer' && complete -C 'aws_completer' aws
 ## TODO re-enable zoxide
 #__executable_exists 'zoxide' && eval "$(zoxide init bash)"
 
-# add completions for aliases
-# sourced here, rather than earlier, to make sure all aliases and bash completions have been sourced
-if __is_readable_file "${XDG_CONFIG_HOME}/bash/alias_completion"; then
-  source "${XDG_CONFIG_HOME}/bash/alias_completion"
-fi
-
 # reset shell options to what they were initially
 set +euox pipefail
 for shell_option in 'e' 'u' 'x'; do
@@ -184,6 +178,12 @@ for shell_option in 'e' 'u' 'x'; do
   fi
 done
 [[ -n "${initial_pipefail_option}" ]] && set -o pipefail
+
+# add completions for aliases
+# sourced here, rather than earlier, to make sure all aliases and bash completions have been sourced
+if __is_readable_file "${XDG_CONFIG_HOME}/bash/alias_completion"; then
+  source "${XDG_CONFIG_HOME}/bash/alias_completion"
+fi
 
 ## TODO submit PR to address unbound variables?
 ## TODO re-enable starship
