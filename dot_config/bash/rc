@@ -65,11 +65,6 @@ shopt -u shift_verbose
 shopt -s sourcepath
 shopt -u xpg_echo
 
-# capture existing shell options so I can reset to them later
-initial_shell_options="$-"
-initial_pipefail_option="$(grep --quiet --only-matching --fixed-strings 'pipefail' <<< "${SHELLOPTS}")"
-set -euo pipefail
-
 # functions used in my bash config files
 function __executable_exists() {
   type -aPf "$1" > /dev/null 2>&1
@@ -167,15 +162,6 @@ __is_readable_file "${XDG_CONFIG_HOME}/dircolors" && eval "$(dircolors "${XDG_CO
 __executable_exists 'aws_completer' && complete -C 'aws_completer' aws
 ## TODO re-enable zoxide
 #__executable_exists 'zoxide' && eval "$(zoxide init bash)"
-
-# reset shell options to what they were initially
-set +euox pipefail
-for shell_option in 'e' 'u' 'x'; do
-  if [[ "${initial_shell_options}" == *"${shell_option}"* ]]; then
-    set "-${shell_option}"
-  fi
-done
-[[ -n "${initial_pipefail_option}" ]] && set -o pipefail
 
 # add completions for aliases
 # sourced here, rather than earlier, to make sure all aliases and bash completions have been sourced
