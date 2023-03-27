@@ -10,6 +10,11 @@ refreshPeriod = '168h'
 filter.command = 'sed'
 filter.args = ['s/^    bar:$/  footer_bar:/']
 
+['.config/bash/complete_alias']
+type = 'file'
+url = 'https://raw.githubusercontent.com/cykerway/complete-alias/master/complete_alias'
+refreshPeriod = '168h'
+
 ['.config/dircolors']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/dircolors/develop/src/dir_colors'
