@@ -141,7 +141,7 @@ alias br='br --dates --hidden --permissions'
 alias ln='ln --verbose'
 alias jobs='jobs -l'
 alias tree='tree -Cph --si'
-alias shfmt='shfmt --list --indent 2 --case-indent --binary-next-line --space-redirects'
+alias shfmt='shfmt --list --indent 2 --case-indent --binary-next-line --space-redirects --write'
 alias xdg-ninja='xdg-ninja --skip-unsupported'
 
 ## misc - other
