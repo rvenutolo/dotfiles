@@ -128,7 +128,6 @@ alias w='which'
 alias hh='hstr'
 alias ms='manswitch'
 alias cls='clear'
-alias pager='${PAGER}'
 
 ## misc - replace commands
 alias which='type'
