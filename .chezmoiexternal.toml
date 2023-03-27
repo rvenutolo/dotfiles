@@ -89,7 +89,6 @@ executable = true
 type = 'file'
 url = 'https://raw.githubusercontent.com/juven/maven-bash-completion/master/bash_completion.bash'
 refreshPeriod = '168h'
-executable = true
 
 ['.local/share/gedit/styles/nord.xml']
 type = 'file'
