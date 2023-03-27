@@ -135,9 +135,7 @@ for file in \
   "${XDG_CONFIG_HOME}/broot/launcher/bash/br"; do
   if __is_readable_file "${file}"; then
     ## TODO look into addressing sdkman unbound variables
-    set +u ## sdkman init references a bunch of unbound variables
     source "${file}"
-    set -u
   fi
 done
 
