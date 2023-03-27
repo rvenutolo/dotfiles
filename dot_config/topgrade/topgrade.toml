@@ -42,7 +42,7 @@ set_title = false
 display_time = true
 
 # Cleanup temporary or old files
-cleanup = true
+#cleanup = true
 
 # Skip sending a notification at the end of a run
 skip_notify = true
