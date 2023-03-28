@@ -147,8 +147,7 @@ __prompt_command() {
   local arrow="${arrow_color}→"
   local dir="${dir_color}\w"
   export GIT_PS1_STATESEPARATOR='|'
-  local git_status=\
-      "\$(declare -f -F '__git_ps1' >/dev/null 2>&1 && __git_ps1 '${branch_icon_color}${branch_color}%s${reset}')"
+  local git_status="\$(declare -f -F '__git_ps1' >/dev/null 2>&1 && __git_ps1 '${branch_icon_color}${branch_color}%s${reset}')"
   local timestamp="${timestamp_color}\D{%I:%M:%S}"
   local last_command_time="${last_command_time_color}${__prompt_timer_string}"
   local prompt="${prompt_color}\\$"
