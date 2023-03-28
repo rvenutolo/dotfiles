@@ -66,12 +66,6 @@ url = 'https://raw.githubusercontent.com/xero/dotfiles/master/fun/bin/colorschem
 refreshPeriod = '168h'
 executable = true
 
-['.local/bin/dos2unix']
-type = 'file'
-url = 'https://raw.githubusercontent.com/sapegin/dotfiles/master/bin/dos2unix'
-refreshPeriod = '168h'
-executable = true
-
 ['.local/bin/git-wtf']
 type = 'file'
 url = 'https://raw.githubusercontent.com/ashishb/dotfiles/master/scripts/git-wtf'
