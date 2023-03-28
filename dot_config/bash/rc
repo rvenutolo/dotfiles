@@ -115,7 +115,7 @@ function __path_prepend() {
 #   -- (commented out) source /usr/share/bash-completion/bash_completion OR /etc/bash_completion
 # -- source /etc/profile.d/*.sh (bunch of program-specific stuff)
 
-## my files to source
+# my files to source
 for file in \
   "${XDG_CONFIG_HOME}/bash/functions" \
   "${XDG_CONFIG_HOME}/bash/exports" \
@@ -126,7 +126,7 @@ for file in \
   fi
 done
 
-## app files to source
+# app files to source
 for file in \
   '/usr/share/fzf/key-bindings.bash' \
   "${SDKMAN_DIR}/bin/sdkman-init.sh" \
@@ -137,7 +137,7 @@ for file in \
   fi
 done
 
-## completions to source
+# completions to source
 for file in \
   '/usr/share/bash/bash-completion/completions/'* \
   '/usr/share/fzf/completion.bash' \
@@ -152,7 +152,7 @@ for file in \
   fi
 done
 
-## dirs to put on path
+# dirs to put on path
 for dir in \
   "$(if __executable_exists 'ruby'; then echo "$(ruby -e 'puts Gem.user_dir')/bin"; else echo ''; fi)" \
   "$(if __executable_exists 'go'; then echo "$(go env GOPATH)/bin"; else echo ''; fi)" \
@@ -165,10 +165,10 @@ for dir in \
   fi
 done
 
-## create dirs that may not exist (need to use `command` because `mkdir` is aliased)
+# create dirs that may not exist (need to use `command` because `mkdir` is aliased)
 command mkdir --parents "$(dirname "${HISTFILE}")"
 
-## misc init stuff
+# misc init stuff
 __is_readable_file "${XDG_CONFIG_HOME}/dircolors" && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
 __executable_exists 'aws_completer' && complete -C 'aws_completer' aws
 ## TODO re-enable zoxide
@@ -184,7 +184,7 @@ fi
 ## TODO submit PR to address unbound variables?
 ## TODO re-enable starship
 #STARSHIP_PREEXEC_READY=false
-## put this after resetting shell options as starship_preexec() will run before
+# put this after resetting shell options as starship_preexec() will run before
 # every command after this
 #__executable_exists 'starship' && eval "$(starship init bash)"
 if __is_readable_file "${XDG_CONFIG_HOME}/bash/prompt"; then
