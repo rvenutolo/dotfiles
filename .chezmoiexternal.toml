@@ -25,7 +25,7 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/main/kitty_keys.sh'
 refreshPeriod = '168h'
 
-['.config/kitty/nord.conf']
+['.config/kitty/conf/nord.conf']
 type = 'file'
 url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/master/nord.conf'
 refreshPeriod = '168h'
