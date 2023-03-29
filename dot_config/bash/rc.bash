@@ -117,10 +117,10 @@ function __path_prepend() {
 
 # my files to source
 for file in \
-  "${XDG_CONFIG_HOME}/bash/functions" \
-  "${XDG_CONFIG_HOME}/bash/exports" \
-  "${XDG_CONFIG_HOME}/bash/aliases" \
-  "${XDG_CONFIG_HOME}/bash/local"; do
+  "${XDG_CONFIG_HOME}/bash/functions.bash" \
+  "${XDG_CONFIG_HOME}/bash/exports.bash" \
+  "${XDG_CONFIG_HOME}/bash/aliases.bash" \
+  "${XDG_CONFIG_HOME}/bash/local.bash"; do
   if __is_readable_file "${file}"; then
     source "${file}"
   fi
@@ -176,8 +176,8 @@ __executable_exists 'aws_completer' && complete -C 'aws_completer' aws
 
 # add completions for aliases
 # sourced here, rather than earlier, to make sure all aliases and bash completions have been sourced
-if __is_readable_file "${XDG_CONFIG_HOME}/bash/complete_alias"; then
-  source "${XDG_CONFIG_HOME}/bash/complete_alias"
+if __is_readable_file "${XDG_CONFIG_HOME}/bash/complete_alias.bash"; then
+  source "${XDG_CONFIG_HOME}/bash/complete_alias.bash"
   complete -F _complete_alias "${!BASH_ALIASES[@]}"
 fi
 
@@ -187,8 +187,8 @@ fi
 # put this after resetting shell options as starship_preexec() will run before
 # every command after this
 #__executable_exists 'starship' && eval "$(starship init bash)"
-if __is_readable_file "${XDG_CONFIG_HOME}/bash/prompt"; then
-  source "${XDG_CONFIG_HOME}/bash/prompt"
+if __is_readable_file "${XDG_CONFIG_HOME}/bash/prompt.bash"; then
+  source "${XDG_CONFIG_HOME}/bash/prompt.bash"
 fi
 
 # clean up vars & functions

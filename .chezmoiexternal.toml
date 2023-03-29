@@ -10,7 +10,7 @@ refreshPeriod = '168h'
 filter.command = 'sed'
 filter.args = ['s/^    bar:$/  footer_bar:/']
 
-['.config/bash/complete_alias']
+['.config/bash/complete_alias.bash']
 type = 'file'
 url = 'https://raw.githubusercontent.com/cykerway/complete-alias/master/complete_alias'
 refreshPeriod = '168h'
