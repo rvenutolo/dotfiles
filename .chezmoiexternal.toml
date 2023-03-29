@@ -20,6 +20,11 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/dircolors/develop/src/dir_colors'
 refreshPeriod = '168h'
 
+['.config/kitty/nord.conf']
+type = 'file'
+url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/master/nord.conf'
+refreshPeriod = '168h'
+
 ['.config/kitty_keys/kitty_keys.sh']
 type = 'file'
 url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/main/kitty_keys.sh'
@@ -40,12 +45,12 @@ refreshPeriod = '168h'
 
 ['.config/tilix/schemes/nord.json']
 type = 'file'
-url = 'https://raw.githubusercontent.com/arcticicestudio/nord-tilix/develop/src/json/nord.json'
+url = 'https://raw.githubusercontent.com/nordtheme/tilix/develop/src/json/nord.json'
 refreshPeriod = '168h'
 
 ['.config/Xresources']
 type = 'file'
-url = 'https://raw.githubusercontent.com/arcticicestudio/nord-xresources/develop/src/nord'
+url = 'https://raw.githubusercontent.com/nordtheme/xresources/develop/src/nord'
 refreshPeriod = '168h'
 
 ['.local/bin/ansi-colors']
@@ -96,12 +101,12 @@ refreshPeriod = '168h'
 
 ['.local/share/konsole/nord.colorscheme']
 type = 'file'
-url = 'https://raw.githubusercontent.com/arcticicestudio/nord-konsole/develop/src/nord.colorscheme'
+url = 'https://raw.githubusercontent.com/nordtheme/konsole/develop/src/nord.colorscheme'
 refreshPeriod = '168h'
 
 ['.local/share/xfce4/terminal/colorschemes/nord.theme']
 type = 'file'
-url = 'https://raw.githubusercontent.com/arcticicestudio/nord-xfce-terminal/develop/src/nord.theme'
+url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/develop/src/nord.theme'
 refreshPeriod = '168h'
 
 ['Code/scripts']
