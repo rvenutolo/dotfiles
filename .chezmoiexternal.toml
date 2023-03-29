@@ -20,14 +20,14 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/dircolors/develop/src/dir_colors'
 refreshPeriod = '168h'
 
+['.config/kitty/kitty_keys.sh']
+type = 'file'
+url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/main/kitty_keys.sh'
+refreshPeriod = '168h'
+
 ['.config/kitty/nord.conf']
 type = 'file'
 url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/master/nord.conf'
-refreshPeriod = '168h'
-
-['.config/kitty_keys/kitty_keys.sh']
-type = 'file'
-url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/main/kitty_keys.sh'
 refreshPeriod = '168h'
 
 ['.config/nano/syntax_highlighting']
