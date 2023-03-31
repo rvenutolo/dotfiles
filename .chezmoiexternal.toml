@@ -109,6 +109,6 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/develop/src/nord.theme'
 refreshPeriod = '168h'
 
-['Code/scripts']
+['Code/Personal/scripts']
 type = 'git-repo'
 url = 'git@github.com:rvenutolo/scripts.git'
