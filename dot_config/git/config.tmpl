@@ -160,6 +160,7 @@
   textconv = hexdump -v -C
 
 [fetch]
+
   prune = true
 
 [help]
@@ -168,12 +169,17 @@
   autocorrect = 1
 
 [init]
+
   defaultBranch = main
 
 [merge]
 
   # Include summaries of merged commits in newly created merge commit messages
   log = true
+
+[pager]
+
+  branch = false
 
 [push]
 
@@ -187,9 +193,6 @@
 [pull]
 
   rebase = false
-
-
-# URL shorthands
 
 [url "git@github.com:"]
 
