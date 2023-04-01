@@ -24,7 +24,7 @@ alias dl='cl ${HOME}/Downloads'
 alias dt='cl ${HOME}/Desktop'
 alias c='cl ${CODE_DIR}'
 alias s='cl ${SCRIPTS_DIR}'
-alias d='cl ${CODE_DIR}/dotfiles'
+alias d='cl ${CODE_DIR}/Personal/dotfiles'
 alias bd='cd "$OLDPWD"'
 
 ## ls
