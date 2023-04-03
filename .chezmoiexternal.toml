@@ -2,6 +2,8 @@
 type = 'file'
 url = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts'
 refreshPeriod = '24h'
+filter.command = 'sed'
+filter.args = ['$ a\4.30.239.66	vpn.digitalenvoy.net ###Cisco AnyConnect VPN client modified this file. Please do not modify contents until this comment is removed.']
 
 ['.config/alacritty/colors.yml']
 type = 'file'
