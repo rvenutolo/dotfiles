@@ -12,12 +12,12 @@ function executable_exists() {
 }
 
 if executable_exists 'pacman'; then
-  sudo pacman --sync --refresh --needed --noconfirm alacritty bash-completion git openssh ttf-jetbrains-mono-nerd
+  sudo pacman --sync --refresh --needed --noconfirm alacritty bash-completion exa git openssh ttf-jetbrains-mono-nerd
 elif executable_exists 'dnf'; then
   sudo dnf copr enable --assumeyes elxreno/jetbrains-mono-fonts
-  sudo dnf install --assumeyes alacritty bash-completion git jetbrains-mono-fonts openssh
+  sudo dnf install --assumeyes alacritty bash-completion exa git jetbrains-mono-fonts openssh
 elif executable_exists 'apt'; then
-  sudo apt install --assume-yes alacritty bash-completion git openssh-client
+  sudo apt install --assume-yes alacritty bash-completion exa git openssh-client
 else
   log 'Unable to determine package manager'
   exit 2
