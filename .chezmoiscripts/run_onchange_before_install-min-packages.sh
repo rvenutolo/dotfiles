@@ -12,11 +12,11 @@ function executable_exists() {
 }
 
 if executable_exists 'pacman'; then
-  sudo pacman --sync --refresh --needed --noconfirm bash-completion git openssh
+  sudo pacman --sync --refresh --needed --noconfirm alacritty bash-completion git openssh
 elif executable_exists 'dnf'; then
-  sudo dnf install --assumeyes bash-completion git openssh
+  sudo dnf install --assumeyes alacritty bash-completion git openssh
 elif executable_exists 'apt'; then
-  sudo apt install --assume-yes bash-completion git openssh-client
+  sudo apt install --assume-yes alacritty bash-completion git openssh-client
 else
   log 'Unable to determine package manager'
   exit 2
