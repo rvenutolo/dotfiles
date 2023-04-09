@@ -13,16 +13,7 @@ if [[ -f "${age_key_file}" ]]; then
   exit 0
 fi
 
-if ! type -aPf age > /dev/null 2>&1; then
-  log 'Downloading age'
-  curl --silent --show-error --location --output '/tmp/age.tar.gz' 'https://dl.filippo.io/age/latest?for=linux/amd64'
-  tar --extract --gzip --file '/tmp/age.tar.gz' --directory '/tmp' 'age/age'
-  chmod +x '/tmp/age/age'
-  PATH="/tmp/age:${PATH}"
-  log 'Downloaded age'
-fi
-
 log 'Decrypting age key'
-age --decrypt --output "${age_key_file}" "${CHEZMOI_SOURCE_DIR}/key.txt.age"
+until age --decrypt --output "${age_key_file}" "${CHEZMOI_SOURCE_DIR}/key.txt.age"; do :; done
 log 'Decrypted age key'
 chmod 600 "${age_key_file}"
