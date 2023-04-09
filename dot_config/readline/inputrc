@@ -1,19 +1,90 @@
 $include /etc/inputrc
 
-# Don't echo '^C' when Ctrl+C is pressed
+# https://www.gnu.org/software/bash/manual/html_node/Readline-Init-File-Syntax.html
+
+# When set to ‘on’, on operating systems that indicate they support it, Readline
+# echoes a character corresponding to a signal generated from the keyboard. The
+# default is ‘on’.
 set echo-control-characters off
 
-# Make Tab autocomplete regardless of filename case
+# If set to ‘on’, Readline performs filename matching and completion in a
+# case-insensitive fashion. The default value is ‘off’.
 set completion-ignore-case on
 
-# Treat hyphens and underscores as equivalent
+# If set to ‘on’, and completion-ignore-case is enabled, Readline treats hyphens
+# (‘-’) and underscores (‘_’) as equivalent when performing case-insensitive
+# filename matching and completion. The default value is ‘off’.
 set completion-map-case on
 
-# List all matches in case multiple possible completions are possible
+# This alters the default behavior of the completion functions. If set to ‘on’,
+# words which have more than one possible completion cause the matches to be
+# listed immediately instead of ringing the bell. The default value is ‘off’.
 set show-all-if-ambiguous on
 
-# Immediately add a trailing slash when autocompleting symlinks to directories
+# If set to ‘on’, completed names which are symbolic links to directories have a
+# slash appended (subject to the value of mark-directories). The default is
+# ‘off’.
 set mark-symlinked-directories on
+
+# This variable, when set to ‘on’, causes Readline to match files whose names
+# begin with a ‘.’ (hidden files) when performing filename completion. If set to
+# ‘off’, the leading ‘.’ must be supplied by the user in the filename to be
+# completed. This variable is ‘on’ by default.
+set match-hidden-files off
+
+# If set to ‘on’, Readline uses an internal more-like pager to display a
+# screenful of possible completions at a time. This variable is ‘on’ by default.
+set page-completions off
+
+# If set to ‘on’, a character denoting a file’s type is appended to the filename
+# when listing possible completions. The default is ‘off’.
+set visible-stats on
+
+# If set to ‘on’, this alters the default completion behavior when inserting a
+# single match into the line. It’s only active when performing completion in the
+# middle of a word. If enabled, Readline does not insert characters from the
+# completion that match characters after point in the word being completed, so
+# portions of the word following the cursor are not duplicated. For instance, if
+# this is enabled, attempting completion when the cursor is after the ‘e’ in
+# ‘Makefile’ will result in ‘Makefile’ rather than ‘Makefilefile’, assuming
+# there is a single possible completion. The default value is ‘off’.
+set skip-completed-text on
+
+# If set to ‘on’, when listing completions, Readline displays the common prefix
+# of the set of possible completions using a different color. The color
+# definitions are taken from the value of the LS_COLORS environment variable. If
+# there is a color definition in LS_COLORS for the custom suffix
+# ‘readline-colored-completion-prefix’, Readline uses this color for the common
+# prefix instead of its default. The default is ‘off’.
+set colored-completion-prefix on
+
+# If set to ‘on’, Readline displays possible completions using different colors
+# to indicate their file type. The color definitions are taken from the value of
+# the LS_COLORS environment variable. The default is ‘off’.
+set colored-stats on
+
+# If set to ‘on’, Readline will enable eight-bit input (it will not clear the
+# eighth bit in the characters it reads), regardless of what the terminal claims
+# it can support. The default value is ‘off’, but Readline will set it to ‘on’
+# if the locale contains eight-bit characters. The name meta-flag is a synonym
+# for this variable. This variable is dependent on the LC_CTYPE locale category,
+# and may change if the locale is changed.
+set input-meta on
+
+# If set to ‘on’, Readline will display characters with the eighth bit set
+# directly rather than as a meta-prefixed escape sequence. The default is ‘off’,
+# but Readline will set it to ‘on’ if the locale contains eight-bit characters.
+# This variable is dependent on the LC_CTYPE locale category, and may change if
+# the locale is changed.
+set output-meta on
+
+# If set to ‘on’, Readline will convert characters with the eighth bit set to an
+# ASCII key sequence by stripping the eighth bit and prefixing an ESC character,
+# converting them to a meta-prefixed key sequence. The default value is ‘on’,
+# but will be set to ‘off’ if the locale is one that contains eight-bit
+# characters. This variable is dependent on the LC_CTYPE locale category, and
+# may change if the locale is changed.
+set convert-meta off
 
 # Use the text that has already been typed as the prefix for searching through
 # commands (i.e. more intelligent Up/Down behavior)
@@ -23,35 +94,6 @@ set mark-symlinked-directories on
 # ensure that left and right continue to work correctly
 "\e[C": forward-char
 "\e[D": backward-char
-
-# Do not autocomplete hidden files unless the pattern explicitly begins with a dot
-set match-hidden-files off
-
-# Show all autocomplete results at once
-set page-completions off
-
-# If there are more than 200 possible completions for a word, ask to show them all
-set completion-query-items 200
-
-# Show extra file information when completing, like `ls -F` does
-set visible-stats on
-
-# Be more intelligent when autocompleting by also looking at the text after
-# the cursor. For example, when the current line is "cd ~/src/mozil", and
-# the cursor is on the "z", pressing Tab will not autocomplete it to "cd
-# ~/src/mozillail", but to "cd ~/src/mozilla". (This is supported by the
-# Readline used by Bash 4.)
-set skip-completed-text on
-
-# Displays possible completions using different colors to indicate their file
-# type. The color definitions are taken from the value of the LS_COLORS
-# environment variable.
-set colored-stats on
-
-# Allow UTF-8 input and output, instead of showing stuff like $'\0123\0456'
-set input-meta on
-set output-meta on
-set convert-meta off
 
 # Use Alt/Meta + Delete to delete the preceding word
 "\e[3;3~": kill-word
