@@ -1,0 +1,88 @@
+https://wiki.archlinux.org/title/Bash
+
+All interactive shells source /etc/bash.bashrc and ~/.bashrc, while
+interactive login shells also source /etc/profile and ~/.bash_profile.
+
+---
+
+https://www.gnu.org/software/bash/manual/bash.html#Bash-Startup-Files
+
+Invoked as an interactive login shell, or with --login
+When Bash is invoked as an interactive login shell, or as a non-interactive
+shell with the --login option, it first reads and executes commands from the
+file /etc/profile, if that file exists. After reading that file, it looks for
+~/.bash_profile, ~/.bash_login, and ~/.profile, in that order, and reads and
+executes commands from the first one that exists and is readable. The
+--noprofile option may be used when the shell is started to inhibit this
+behavior.
+When an interactive login shell exits, or a non-interactive login shell
+executes the exit builtin command, Bash reads and executes commands from the
+file ~/.bash_logout, if it exists.
+
+Invoked as an interactive non-login shell
+When an interactive shell that is not a login shell is started, Bash reads and
+executes commands from ~/.bashrc, if that file exists. This may be inhibited
+by using the --norc option. The --rcfile file option will force Bash to read
+and execute commands from file instead of ~/.bashrc.
+So, typically, your ~/.bash_profile contains the line
+if [ -f ~/.bashrc ]; then . ~/.bashrc; fi
+after (or before) any login-specific initializations.
+
+---
+
+arch 2023.03.01 interactive login shell
+/etc/profile
+- source /etc/profile.d/*.sh (some program-specific stuff)
+- source /etc/bash.bashrc
+  - set PS1 & PROMPT_COMMAND
+  - source /usr/share/bash-completion/bash_completion (need to install bash-completion package)
+    - source ~/.local/share/bash-completion/completions/*
+    - source /etc/bash_completion.d/*
+    - source ~/.bash_completion
+~/.bash_profile, ~/.bash_login, ~/.profile (first that exists and is readable - .bash_profile by default)
+  - source ~/.bashrc
+    - set PS1
+
+arch 2023.03.01 interactive non-login shell
+/etc/bash.bashrc
+- set PS1 & PROMPT_COMMAND
+- source /usr/share/bash-completion/bash_completion (need to install bash-completion package)
+  - source ~/.local/share/bash-completion/completions/*
+  - source /etc/bash_completion.d/*
+  - source ~/.bash_completion
+~/.bashrc
+- set PS1
+
+fedora 27 interactive login shell
+/etc/profile
+- source /etc/profile.d/*.sh (some program-specific stuff)
+- source /etc/profile.d/sh.local
+- source /etc/bashrc
+  - set PS1 & PROMPT_COMMAND
+~/.bash_profile, ~/.bash_login, ~/.profile (first that exists and is readable - .bash_profile by default)
+- source ~/.bashrc
+  - source /etc/bashrc (checks if it has already been sourced and short-circuits)
+  - source ~/.bashrc.d/* (dir does not exist by default)
+
+fedora 37 interactive non-login shell
+/etc/bashrc
+- set PS1 & PROMPT_COMMAND
+- source /etc/profile.d/*.sh (some program-specific stuff)
+~/.bashrc
+- source /etc/bashrc (checks if it has already been sourced and short-circuits)
+- source ~/.bashrc.d/* (dir does not exist by default)
+
+ubuntu 22.04 interactive login shell
+/etc/profile
+- source /etc/bash.bashrc (not much in there)
+- source /etc/profile.d/*.sh (some program-specific stuff)
+~/.bash_profile, ~/.bash_login, ~/.profile (first that exists and is readable - .profile by default)
+- source ~/.bashrc
+  - source ~/.bash_aliases (does not exist by default)
+  - source /usr/share/bash-completion/bash_completion or /etc/bash_completion
+
+ubuntu 22.04 interactive non-login shell
+/etc/bash.bashrc (not much in there)
+~/.bashrc
+- source ~/.bash_aliases (does not exist by default)
+- source /usr/share/bash-completion/bash_completion or /etc/bash_completion

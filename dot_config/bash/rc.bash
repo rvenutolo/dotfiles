@@ -82,39 +82,6 @@ function __path_prepend() {
   __path_remove "$1" && PATH="$1:$PATH"
 }
 
-# archlinux sourcing
-# /etc/profile
-# -- add to path /usr/local/sbin /usr/local/bin /usr/bin
-# -- source /etc/profile.d/*.sh (bunch of program-specific stuff)
-# -- source /etc/bash.bashrc
-#   -- sets PROMPT_COMMAND based on TERM
-#   -- source /usr/share/bash-completion/bash_completion
-#     -- source /etc/bash_completion.d/*
-#     -- source ~/.bash_completion
-
-# debian sourcing
-# /etc/profile
-# -- add to path /usr/local/bin /usr/bin /bin /usr/local/games /usr/games
-# -- source /etc/bash.bashrc
-#   -- (commented out) source /usr/share/bash-completion/bash_completion OR /etc/bash_completion
-# -- source /etc/profile.d/*.sh (bunch of program-specific stuff)
-
-# fedora sourcing
-# /etc/profile
-# -- add to path /usr/local/sbin /usr/sbin
-# -- source etc/profile.d/*.sh (bunch of program-specific stuff)
-# -- source /etc/bashrc
-#   -- sets PROMPT_COMMAND based on TERM
-#   -- source etc/profile.d/*.sh (bunch of program-specific stuff)
-
-# ubuntu sourcing
-# /etc/environment
-# -- add to path /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin /sbin /bin /usr/games /usr/local/games /snap/bin
-# /etc/profile
-# -- source /etc/bash.bashrc
-#   -- (commented out) source /usr/share/bash-completion/bash_completion OR /etc/bash_completion
-# -- source /etc/profile.d/*.sh (bunch of program-specific stuff)
-
 # my files to source
 for file in \
   "${XDG_CONFIG_HOME}/bash/functions.bash" \
