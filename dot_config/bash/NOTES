@@ -53,7 +53,7 @@ arch 2023.03.01 interactive non-login shell
 ~/.bashrc
 - set PS1
 
-fedora 27 interactive login shell
+fedora 37 interactive login shell
 /etc/profile
 - source /etc/profile.d/*.sh (some program-specific stuff)
 - source /etc/profile.d/sh.local
