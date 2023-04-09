@@ -122,11 +122,13 @@ unset -v file
 
 # completions to source
 for file in \
+  '/usr/share/bash-completion/bash_completion' \
   '/usr/share/bash/bash-completion/completions/'* \
   '/usr/share/fzf/completion.bash' \
   '/usr/share/git/completion/git-completion.bash' \
   '/usr/share/skim/completion.bash' \
   '/usr/share/the_silver_searcher/completions/ag.bashcomp.sh' \
+  '/etc/bash_completion' \
   "${SDKMAN_DIR}/candidates/mvnd/current/bin/mvnd-bash-completion.bash" \
   "${SDKMAN_DIR}/candidates/springboot/current/shell-completion/bash/spring"; do
   if __is_readable_file "${file}"; then
