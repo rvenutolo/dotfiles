@@ -97,6 +97,14 @@ function __path_prepend() {
   __path_remove "$1" && PATH="$1:$PATH"
 }
 
+# system bash config files to source
+for file in '/etc/bash.bashrc' '/etc/bashrc'; do
+  if __is_readable_file "${file}"; then
+    source "${file}"
+  fi
+done
+unset -v file
+
 # my files to source
 for file in \
   "${XDG_CONFIG_HOME}/bash/functions.bash" \
@@ -110,6 +118,7 @@ unset -v file
 
 # app files to source
 for file in \
+  '/usr/share/doc/pkgfile/command-not-found.bash' \
   '/usr/share/fzf/key-bindings.bash' \
   "${SDKMAN_DIR}/bin/sdkman-init.sh" \
   "${XDG_CONFIG_HOME}/broot/launcher/bash/br"; do
