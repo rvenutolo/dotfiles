@@ -23,7 +23,7 @@ function fff() {
 }
 
 function functions() {
-  typeset -F | cut --delimiter=' ' --fields=3 | while read func; do
+  typeset -F | cut --delimiter=' ' --fields=3 | while read -r func; do
     (
       shopt -s extdebug
       declare -F "${func}"
