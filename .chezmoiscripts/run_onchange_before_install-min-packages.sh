@@ -12,9 +12,10 @@ function executable_exists() {
 }
 
 if executable_exists 'pacman'; then
-  sudo pacman --sync --refresh --needed --noconfirm alacritty bash-completion git openssh
+  sudo pacman --sync --refresh --needed --noconfirm alacritty bash-completion git openssh ttf-jetbrains-mono-nerd
 elif executable_exists 'dnf'; then
-  sudo dnf install --assumeyes alacritty bash-completion git openssh
+  sudo dnf copr enable --assumeyes elxreno/jetbrains-mono-fonts
+  sudo dnf install --assumeyes alacritty bash-completion git jetbrains-mono-fonts openssh
 elif executable_exists 'apt'; then
   sudo apt install --assume-yes alacritty bash-completion git openssh-client
 else
