@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-## sudo
+# sudo
 alias sudo='sudo '
 alias sued='sudo --edit'
 alias please='sudo $(fc -ln -1)'
 alias plz='please'
 
-## cd
+# cd
 alias cd..='cd ..'
 alias ..='cd ..'
 alias ...='cd ../..'
@@ -27,7 +27,7 @@ alias s='cl ${SCRIPTS_DIR}'
 alias d='cl ${CODE_DIR}/Personal/dotfiles'
 alias bd='cd "$OLDPWD"'
 
-## ls
+# ls
 if __executable_exists 'exa'; then
   alias exa='exa --classify --group-directories-first --icons --header --time-style=long-iso --color-scale --git'
   alias ls='exa'
@@ -64,7 +64,7 @@ else
   alias la1='ls --almost-all -1'
 fi
 
-## cp, mv, rm, mkdir, trash
+# cp, mv, rm, mkdir, trash
 alias mkdir='mkdir --parents --verbose'
 alias cp='cp --verbose'
 alias mv='mv --verbose'
@@ -75,7 +75,7 @@ else
   alias rm='rm --verbose'
 fi
 
-## chown, chmod, chgrp
+# chown, chmod, chgrp
 alias chown='chown --preserve-root'
 alias chmod='chmod --preserve-root'
 alias chax='chmod a+x'
@@ -90,12 +90,12 @@ alias 755='chmod --recursive 755'
 alias 775='chmod --recursive 775'
 alias chgrp='chgrp --preserve-root'
 
-## grep
+# grep
 alias grep="grep --exclude-dir='.*' --colour=auto"
 alias egrep='grep --extended-regexp'
 alias fgrep='grep --fixed-strings'
 
-## tar
+# tar
 alias mktar='tar --create --verbose --file'
 alias mkbz2='tar --create --verbose --bzip2 --file'
 alias mkgz='tar --create --verbose --gzip --file'
@@ -103,22 +103,22 @@ alias untar='tar --extract --verbose --file'
 alias unbz2='tar --extract --verbose --bzip2 --file'
 alias ungz='tar --extract --verbose --gzip --file'
 
-## ps
+# ps
 alias psa='ps aux'
 alias psaf='ps auxf'
 
-## journalctl, systemctl
+# journalctl, systemctl
 alias jc='journalctl'
 alias jce='jounralctl --priority=3'
 alias sc='systemctl'
 alias scu='systemctl --user'
 
-## editors
+# editors
 alias k='kate'
 alias m='micro'
 alias n='nano'
 
-## misc - shorter alias
+# misc - shorter alias
 alias g='git'
 alias o='xdg-open'
 alias q='exit'
@@ -129,10 +129,10 @@ alias hh='hstr'
 alias ms='manswitch'
 alias cls='clear'
 
-## misc - replace commands
+# misc - replace commands
 alias which='type'
 
-## misc - adds flags
+# misc - adds flags
 alias type='type -a'
 alias du='du --total --human-readable --block-size=1K'
 alias df='df --block-size=1K --print-type --human-readable --exclude-type squashfs'
@@ -144,7 +144,7 @@ alias tree='tree -Cph --si'
 alias shfmt='shfmt --list --indent 2 --case-indent --binary-next-line --space-redirects --write'
 alias xdg-ninja='xdg-ninja --skip-unsupported'
 
-## misc - other
+# misc - other
 alias cm='chezmoi'
 alias du1='du --max-depth=1'
 alias bs='br --sizes'

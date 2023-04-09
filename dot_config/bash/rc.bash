@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [[ -z "${PROFILE_SOURCED-}" ]]; then
+  source "${HOME}/.profile"
+fi
+
 # if not running interactively, don't do anything
 [[ "$-" != *i* ]] && return
 
@@ -65,6 +69,17 @@ shopt -u shift_verbose
 shopt -s sourcepath
 shopt -u xpg_echo
 
+# history
+export HISTCONTROL='ignorespace:ignoredups'
+export HISTIGNORE='ls:ll:lla:pwd:bg:fg:history:h:exit:q:pwd:clear:cls:update:brc:dl:home:c'
+export HISTSIZE='100000'
+export HISTFILESIZE="${HISTSIZE}"
+export HISTTIMEFORMAT='%F %T%t'
+export HISTFILE="${XDG_STATE_HOME}/bash/history"
+if [[ ! -d "$(dirname "${HISTFILE}")" ]]; then
+  mkdir --parents "$(dirname "${HISTFILE}")"
+fi
+
 # functions used in my bash config files
 function __executable_exists() {
   type -aPf "$1" > /dev/null 2>&1
@@ -85,13 +100,13 @@ function __path_prepend() {
 # my files to source
 for file in \
   "${XDG_CONFIG_HOME}/bash/functions.bash" \
-  "${XDG_CONFIG_HOME}/bash/exports.bash" \
   "${XDG_CONFIG_HOME}/bash/aliases.bash" \
   "${XDG_CONFIG_HOME}/bash/local.bash"; do
   if __is_readable_file "${file}"; then
     source "${file}"
   fi
 done
+unset -v file
 
 # app files to source
 for file in \
@@ -103,6 +118,7 @@ for file in \
     source "${file}"
   fi
 done
+unset -v file
 
 # completions to source
 for file in \
@@ -118,22 +134,7 @@ for file in \
     source "${file}"
   fi
 done
-
-# dirs to put on path
-for dir in \
-  "$(if __executable_exists 'ruby'; then echo "$(ruby -e 'puts Gem.user_dir')/bin"; else echo ''; fi)" \
-  "$(if __executable_exists 'go'; then echo "$(go env GOPATH)/bin"; else echo ''; fi)" \
-  "$(if [[ -n "${CARGO_HOME}" ]]; then echo "${CARGO_HOME}/bin"; else echo ''; fi)" \
-  "${HOME}/.local/bin" \
-  "${SCRIPTS_DIR}/other" \
-  "${SCRIPTS_DIR}/main"; do
-  if [[ -n "${dir}" && -d "${dir}" ]]; then
-    __path_prepend "${dir}"
-  fi
-done
-
-# create dirs that may not exist (need to use `command` because `mkdir` is aliased)
-command mkdir --parents "$(dirname "${HISTFILE}")"
+unset -v file
 
 # misc init stuff
 __is_readable_file "${XDG_CONFIG_HOME}/dircolors" && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
@@ -148,6 +149,8 @@ if __is_readable_file "${XDG_CONFIG_HOME}/bash/complete_alias.bash"; then
   complete -F _complete_alias "${!BASH_ALIASES[@]}"
 fi
 
+## TODO deal with this
+#export PROMPT_COMMAND='history -a; history -n'
 ## TODO submit PR to address unbound variables?
 ## TODO re-enable starship
 #STARSHIP_PREEXEC_READY=false
@@ -158,6 +161,5 @@ if __is_readable_file "${XDG_CONFIG_HOME}/bash/prompt.bash"; then
   source "${XDG_CONFIG_HOME}/bash/prompt.bash"
 fi
 
-# clean up vars & functions
-unset -v file dir shell_option initial_shell_options initial_pipefail_option
+# clean up functions
 unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove

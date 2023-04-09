@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+## NOTE TO SELF
+## This is not being used. Instead I am using: https://github.com/cykerway/complete-alias
+
 # based on:
 # http://superuser.com/questions/436314/how-can-i-get-bash-to-perform-tab-completion-for-my-aliases
 
