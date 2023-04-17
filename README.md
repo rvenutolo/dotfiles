@@ -19,7 +19,7 @@ sudo dnf install --assumeyes age bash-completion git openssh
 ### Ubuntu
 
 ```shell
-sudo apt install --assume-yes age bash-completion git openssh-client
+sudo apt install --assume-yes --install-recommends --install-suggests age bash-completion git openssh-client
 ```
 
 ## Chezmoi
