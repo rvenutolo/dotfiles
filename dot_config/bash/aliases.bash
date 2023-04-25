@@ -134,8 +134,8 @@ alias which='type'
 
 # misc - adds flags
 alias type='type -a'
-alias du='du --total --human-readable --block-size=1K'
-alias df='df --block-size=1K --print-type --human-readable --exclude-type squashfs'
+alias du='du --total --summarize --si'
+alias df='df --print-type --si --exclude-type squashfs --exclude-type tmpfs --exclude-type devtmpfs'
 alias free='free --total --human --si'
 alias br='br --dates --hidden --permissions'
 alias ln='ln --verbose'
