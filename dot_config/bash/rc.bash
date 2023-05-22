@@ -150,8 +150,7 @@ unset -v file
 # misc init stuff
 __is_readable_file "${XDG_CONFIG_HOME}/dircolors" && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
 __executable_exists 'aws_completer' && complete -C 'aws_completer' aws
-## TODO re-enable zoxide
-#__executable_exists 'zoxide' && eval "$(zoxide init bash)"
+__executable_exists 'zoxide' && eval "$(zoxide init bash)"
 
 # add completions for aliases
 # sourced here, rather than earlier, to make sure all aliases and bash completions have been sourced
