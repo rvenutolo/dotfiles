@@ -105,19 +105,9 @@ for file in '/etc/bash.bashrc' '/etc/bashrc'; do
 done
 unset -v file
 
-# my files to source
-for file in \
-  "${XDG_CONFIG_HOME}/bash/functions.bash" \
-  "${XDG_CONFIG_HOME}/bash/aliases.bash" \
-  "${XDG_CONFIG_HOME}/bash/local.bash"; do
-  if __is_readable_file "${file}"; then
-    source "${file}"
-  fi
-done
-unset -v file
-
 # app files to source
 for file in \
+  "${HOME}/.nix-profile/etc/profile.d/nix.sh" \
   '/usr/share/doc/pkgfile/command-not-found.bash' \
   '/usr/share/fzf/key-bindings.bash' \
   "${SDKMAN_DIR}/bin/sdkman-init.sh" \
@@ -142,6 +132,17 @@ for file in \
   "${SDKMAN_DIR}/candidates/springboot/current/shell-completion/bash/spring"; do
   if __is_readable_file "${file}"; then
     ## TODO look into addressing sdkman unbound variables
+    source "${file}"
+  fi
+done
+unset -v file
+
+# my files to source
+for file in \
+  "${XDG_CONFIG_HOME}/bash/functions.bash" \
+  "${XDG_CONFIG_HOME}/bash/aliases.bash" \
+  "${XDG_CONFIG_HOME}/bash/local.bash"; do
+  if __is_readable_file "${file}"; then
     source "${file}"
   fi
 done
