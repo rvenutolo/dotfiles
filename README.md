@@ -25,6 +25,6 @@ sudo apt install --assume-yes --install-recommends --install-suggests age bash-c
 ## Chezmoi
 
 ```shell
-$ sh -c "$(curl -fsLS 'get.chezmoi.io')" -- -b '.' ## OR sh -c "$(wget -qO 'get.chezmoi.io')" -- -b '.'
+$ sh -c "$(curl -fsLS 'get.chezmoi.io')" -- -b '.' ## OR sh -c "$(wget -qO- 'get.chezmoi.io')" -- -b '.'
 $ ./chezmoi init --apply 'rvenutolo'
 ```
