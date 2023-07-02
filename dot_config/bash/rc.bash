@@ -167,10 +167,10 @@ fi
 #STARSHIP_PREEXEC_READY=false
 # put this after resetting shell options as starship_preexec() will run before
 # every command after this
-#__executable_exists 'starship' && eval "$(starship init bash)"
-if __is_readable_file "${XDG_CONFIG_HOME}/bash/prompt.bash"; then
-  source "${XDG_CONFIG_HOME}/bash/prompt.bash"
-fi
+__executable_exists 'starship' && eval "$(starship init bash)"
+#if __is_readable_file "${XDG_CONFIG_HOME}/bash/prompt.bash"; then
+#  source "${XDG_CONFIG_HOME}/bash/prompt.bash"
+#fi
 
 # clean up functions
 unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove
