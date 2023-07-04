@@ -128,13 +128,9 @@ alias o='xdg-open'
 alias q='exit'
 alias h='history'
 alias t='tldr'
-alias w='which'
 alias hh='hstr'
 alias ms='manswitch'
 alias cls='clear'
-
-# misc - replace commands
-alias which='type'
 
 # misc - adds flags
 alias type='type -a'
