@@ -20,7 +20,7 @@ if [[ -L "${sdkman_config_file}" ]]; then
   exit 0
 fi
 
-readonly target_file="${XDG_CONFIG_HOME}/sdkman/config"
+readonly target_file="${XDG_CONFIG_HOME:-${HOME}/.config}/sdkman/config"
 
 if cmp --silent "${sdkman_config_file}" "${target_file}"; then
   # files have same content, so delete and let chezmoi symlink the file
