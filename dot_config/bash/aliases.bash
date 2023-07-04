@@ -68,12 +68,7 @@ fi
 alias mkdir='mkdir --parents --verbose'
 alias cp='cp --verbose'
 alias mv='mv --verbose'
-if __executable_exists 'trash' && trash --version | grep -qF 'rushsteve1/trash-d'; then
-  alias trash='trash --verbose'
-  alias rm='trash'
-else
-  alias rm='rm --verbose'
-fi
+alias rm='rm -i --verbose'
 
 # chown, chmod, chgrp
 alias chown='chown --preserve-root'
