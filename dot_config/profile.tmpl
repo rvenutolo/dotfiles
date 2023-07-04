@@ -29,6 +29,9 @@ export XDG_CACHE_HOME="${HOME}/.cache"
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_DATA_HOME="${HOME}/.local/share"
 export XDG_STATE_HOME="${HOME}/.local/state"
+if [[ -d "${${HOME}/.nix-profile/share}" ]]; then
+  export XDG_DATA_DIRS="${XDG_DATA_DIRS:+${XDG_DATA_DIRS}:}${HOME}/.nix-profile/share"
+fi
 
 ## dirs and files
 export ANDROID_HOME="${XDG_DATA_HOME}/android"
