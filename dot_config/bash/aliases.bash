@@ -114,13 +114,8 @@ alias m='micro'
 alias n='nano'
 
 # nix
-alias nix-install='nix-env --install --attr'
 alias ni='nix-install'
-alias nix-list-installed='nix-env --query'
-alias nix-remove='nix-env --uninstall'
-alias nix-update='nix-env --upgrade'
 alias nu='nix-update'
-alias nix-generations='nix-env --list-generations'
 
 # misc - shorter alias
 alias g='git'
