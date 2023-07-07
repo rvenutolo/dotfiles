@@ -6,7 +6,7 @@ function log() {
   echo "${0##*/}: $*" >&2
 }
 
-if [[ -z "${SDKMAN_DIR-}" ]]; then
+if [[ -z "${SDKMAN_DIR:-}" ]]; then
   exit 0
 fi
 

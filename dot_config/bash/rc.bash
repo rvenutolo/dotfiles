@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [[ -z "${PROFILE_SOURCED-}" ]]; then
+if [[ -z "${PROFILE_SOURCED:-}" ]]; then
   source "${HOME}/.profile"
 fi
 

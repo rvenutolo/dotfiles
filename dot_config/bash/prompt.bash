@@ -162,7 +162,7 @@ __prompt_command() {
   PS1+="${bold_white}|"
   PS1+="${last_command_time}"
   PS1+="${bold_white}|"
-  if [[ -n "${SSH_CONNECTION-}" ]] || [[ "${USER}" == 'root' ]] || [[ "${LOGNAME}" != "${USER}" ]]; then
+  if [[ -n "${SSH_CONNECTION:-}" ]] || [[ "${USER}" == 'root' ]] || [[ "${LOGNAME}" != "${USER}" ]]; then
     PS1+="${user}${at}${host}:"
   fi
   PS1+="${dir}${git_status}"
