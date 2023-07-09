@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
-if [[ -z "${PROFILE_SOURCED:-}" ]]; then
-  source "${HOME}/.profile"
-fi
-
 # if not running interactively, don't do anything
 [[ "$-" != *i* ]] && return
+
+source "${HOME}/.profile"
 
 umask 022
 ulimit -S -c 0 # no core dumps
