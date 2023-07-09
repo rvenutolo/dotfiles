@@ -6,14 +6,15 @@ function log() {
   echo "${0##*/}: $*" >&2
 }
 
-age_key_file="${HOME}/.keys/age.key"
-readonly age_key_file
+readonly keys_dir="${HOME}/.keys"
+readonly age_key_file="${keys_dir}/age.key"
 
-if [[ -f "${age_key_file}" ]]; then
-  exit 0
+if [[ ! -f "${age_key_file}" ]]; then
+  log 'Decrypting age key'
+  mkdir --parents "${dir}"
+  until age --decrypt --output "${age_key_file}" "${CHEZMOI_SOURCE_DIR}/age.key.ENCRYPTED"; do :; done
+  log 'Decrypted age key'
 fi
 
-log 'Decrypting age key'
-until age --decrypt --output "${age_key_file}" "${CHEZMOI_SOURCE_DIR}/age.key.ENCRYPTED"; do :; done
-log 'Decrypted age key'
+chmod 700 "${keys_dir}"
 chmod 600 "${age_key_file}"
