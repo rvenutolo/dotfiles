@@ -11,7 +11,7 @@ readonly age_key_file="${keys_dir}/age.key"
 
 if [[ ! -f "${age_key_file}" ]]; then
   log 'Decrypting age key'
-  mkdir --parents "${dir}"
+  mkdir --parents "${keys_dir}"
   until age --decrypt --output "${age_key_file}" "${CHEZMOI_SOURCE_DIR}/age.key.ENCRYPTED"; do :; done
   log 'Decrypted age key'
 fi
