@@ -7,19 +7,19 @@ Dotfiles managed by [chezmoi](https://www.chezmoi.io/).
 ### Arch
 
 ```shell
-sudo pacman --sync --refresh --needed --noconfirm age bash-completion git openssh
+sudo pacman --sync --refresh --needed --noconfirm age git openssh
 ```
 
 ### Fedora
 
 ```shell
-sudo dnf install --assumeyes age bash-completion git openssh
+sudo dnf install --assumeyes age git openssh
 ```
 
 ### Ubuntu
 
 ```shell
-sudo apt install --assume-yes --install-recommends --install-suggests age bash-completion git openssh-client
+sudo apt install --assume-yes age git openssh-client
 ```
 
 ## Chezmoi
