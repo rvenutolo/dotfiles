@@ -115,12 +115,14 @@ refreshPeriod = '168h'
 ['Code/Personal/crypt']
 type = 'git-repo'
 url = 'git@github.com:rvenutolo/crypt.git'
-refreshPeriod = '12h'
+refreshPeriod = '1h'
 
 ['Code/Personal/packages']
 type = 'git-repo'
 url = 'git@github.com:rvenutolo/packages.git'
+refreshPeriod = '1h'
 
 ['Code/Personal/scripts']
 type = 'git-repo'
 url = 'git@github.com:rvenutolo/scripts.git'
+refreshPeriod = '1h'
