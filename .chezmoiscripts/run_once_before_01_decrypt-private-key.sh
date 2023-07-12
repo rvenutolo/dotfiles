@@ -6,6 +6,10 @@ function log() {
   echo "${0##*/}: $*" >&2
 }
 
+function executable_exists() {
+  command -v "$1" > /dev/null 2>&1
+}
+
 readonly keys_dir="${HOME}/.keys"
 readonly age_key_file="${keys_dir}/age.key"
 
