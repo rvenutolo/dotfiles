@@ -56,11 +56,6 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/xresources/develop/src/nord'
 refreshPeriod = '168h'
 
-['.crypt']
-type = 'git-repo'
-url = 'git@github.com:rvenutolo/crypt.git'
-refreshPeriod = '12h'
-
 ['.local/bin/ansi-colors']
 type = 'file'
 url = 'https://raw.githubusercontent.com/BachoSeven/dotfiles/master/.local/bin/colors/16'
@@ -116,6 +111,11 @@ refreshPeriod = '168h'
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/develop/src/nord.theme'
 refreshPeriod = '168h'
+
+['Code/Personal/crypt']
+type = 'git-repo'
+url = 'git@github.com:rvenutolo/crypt.git'
+refreshPeriod = '12h'
 
 ['Code/Personal/packages']
 type = 'git-repo'
