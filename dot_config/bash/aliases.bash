@@ -126,6 +126,7 @@ alias h='history'
 alias t='tldr'
 alias hh='hstr'
 alias ms='manswitch'
+alias ns='new-script'
 alias cls='clear'
 
 # misc - adds flags
