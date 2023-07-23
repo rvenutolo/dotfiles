@@ -58,3 +58,7 @@ function ipv4_to_num() {
   IFS=. read -r a b c d <<< "$*"
   printf '%d\n' "$((a * 256 ** 3 + b * 256 ** 2 + c * 256 + d))"
 }
+
+function tmpd() {
+  cd "$(mktemp --directory)"
+}
