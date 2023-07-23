@@ -46,7 +46,7 @@ if __executable_exists 'exa'; then
   alias llar='exa --long --all --recurse'
   alias l1='exa --oneline'
   alias la1='exa --all --oneline'
-  alias tree='exa --long --tree'
+  alias ltree='exa --long --tree'
 else
   alias ls='ls --classify --human-readable --color --group-directories-first'
   alias l='ls'
