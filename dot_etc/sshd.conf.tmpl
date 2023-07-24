@@ -1,0 +1,11 @@
+LogLevel VERBOSE
+LoginGraceTime 20m
+PermitRootLogin prohibit-password
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+AuthenticationMethods publickey
+UsePAM yes
+X11Forwarding yes
+PrintMotd no
+AcceptEnv LANG LC_*
+AllowUsers {{ .chezmoi.username }}
