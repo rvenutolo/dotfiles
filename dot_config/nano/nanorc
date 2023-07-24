@@ -1,3 +1,6 @@
+# Display line numbers to the left of the text area.
+set linenumbers
+
 # Use bold text instead of reverse video text.
 set boldtext
 
