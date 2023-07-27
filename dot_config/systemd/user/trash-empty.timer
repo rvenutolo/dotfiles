@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily deletion of Trash items
+Description=Delete old trash items
 
 [Timer]
 OnCalendar=daily

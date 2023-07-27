@@ -1,0 +1,6 @@
+[Unit]
+Description=Deletes trash items older than 30 days
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -c '$$(/usr/bin/which trash-empty) 30'
