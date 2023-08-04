@@ -106,6 +106,7 @@ unset -v file
 # app files to source
 for file in \
   "${HOME}/.nix-profile/etc/profile.d/nix.sh" \
+  "${HOME}/.nix-profile/etc/profile.d/hm-session-vars.sh" \
   '/usr/share/doc/pkgfile/command-not-found.bash' \
   '/usr/share/fzf/key-bindings.bash' \
   "${SDKMAN_DIR}/bin/sdkman-init.sh" \
