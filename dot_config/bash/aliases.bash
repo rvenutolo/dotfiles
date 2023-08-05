@@ -114,9 +114,15 @@ alias k='kate'
 alias m='micro'
 alias n='nano'
 
-# nix
-alias ni='nix-install'
-alias nu='nix-update'
+# nix home-manager
+if executable_exists 'home-manager'; then
+  alias hm='home-manager'
+  alias hmd='cd ${HOME_MANAGER_DIR}'
+  alias hmgd='home-manager generations | head -n 2 | tac | cut -d " " -f 7 | xargs nix store diff-closures'
+  alias hmp='home-manager packages'
+  alias hms='home-manager switch --flake ${HOME_MANAGER_DIR}#${USER} && hmgd'
+  alias hmu='nix flake update ${HOME_MANAGER_DIR} && hms'
+fi
 
 # misc - shorter alias
 alias g='git'
