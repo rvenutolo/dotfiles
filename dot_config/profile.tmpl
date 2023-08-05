@@ -23,6 +23,8 @@ export DESKTOP_OR_LAPTOP='{{ .desktop_or_laptop }}'
 export HEADLESS='{{ .is_headless }}'
 export CODE_DIR="${HOME}/Code"
 export SCRIPTS_DIR="${CODE_DIR}/Personal/scripts"
+export HOME_MANAGER_DIR="${XDG_CONFIG_HOME}/home-manager"
+export PACKAGES_DIR="${CODE_DIR}/Personal/packages"
 export WTTR_CITY='Atlanta'
 
 # xdg base dirs - https://wiki.archlinux.org/title/XDG_Base_Directory
@@ -60,7 +62,6 @@ export GOMODCACHE="${XDG_CACHE_HOME}/go/mod"
 export GOPATH="${HOME}/.go"
 export GRADLE_USER_HOME="${XDG_DATA_HOME}/gradle"
 export GTK2_RC_FILES="${XDG_CONFIG_HOME}/gtk-2.0/gtkrc"
-export HOME_MANAGER_DIR="${XDG_CONFIG_HOME}/home-manager"
 export INPUTRC="${XDG_CONFIG_HOME}/readline/inputrc"
 export KDEHOME="${XDG_CONFIG_HOME}/kde"
 export LESSHISTFILE="${XDG_STATE_HOME}/less/history"
