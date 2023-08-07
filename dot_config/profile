@@ -16,6 +16,19 @@ __path_prepend() {
   __path_remove "$1" && PATH="$1:$PATH"
 }
 
+# xdg base dirs - https://wiki.archlinux.org/title/XDG_Base_Directory
+export XDG_CACHE_HOME="${HOME}/.cache"
+export XDG_CONFIG_HOME="${HOME}/.config"
+export XDG_DATA_HOME="${HOME}/.local/share"
+export XDG_STATE_HOME="${HOME}/.local/state"
+if [[ -d "${HOME}/.nix-profile/share}" ]]; then
+  if [[ -z "${XDG_DATA_DIRS:-}" ]]; then
+    export XDG_DATA_DIRS="${HOME}/.nix-profile/share"
+  else
+    export XDG_DATA_DIRS="${XDG_DATA_DIRS}:${HOME}/.nix-profile/share"
+  fi
+fi
+
 # personal env vars
 export PERSONAL_DESKTOP_HOSTNAME='redstar'
 export PERSONAL_LAPTOP_HOSTNAME='blackstar'
@@ -30,19 +43,6 @@ export WTTR_CITY='Atlanta'
 export NIXPKGS_PACKAGES_URL='https://raw.githubusercontent.com/rvenutolo/packages/main/nixpkgs.csv'
 export FLATPAK_PACKAGES_URL='https://raw.githubusercontent.com/rvenutolo/packages/main/flatpaks.csv'
 export SDKMAN_PACKAGES_URL='https://raw.githubusercontent.com/rvenutolo/packages/main/sdkman.csv'
-
-# xdg base dirs - https://wiki.archlinux.org/title/XDG_Base_Directory
-export XDG_CACHE_HOME="${HOME}/.cache"
-export XDG_CONFIG_HOME="${HOME}/.config"
-export XDG_DATA_HOME="${HOME}/.local/share"
-export XDG_STATE_HOME="${HOME}/.local/state"
-if [[ -d "${HOME}/.nix-profile/share}" ]]; then
-  if [[ -z "${XDG_DATA_DIRS:-}" ]]; then
-    export XDG_DATA_DIRS="${HOME}/.nix-profile/share"
-  else
-    export XDG_DATA_DIRS="${XDG_DATA_DIRS}:${HOME}/.nix-profile/share"
-  fi
-fi
 
 # age / crypt
 export AGE_PUBLIC_KEY='age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs'
