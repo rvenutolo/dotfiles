@@ -8,7 +8,5 @@ identity = '~/.keys/age.key'
 recipient = 'age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs'
 
 [data]
-personal_or_work = {{ promptString "'personal' or 'work'?" | squote }}
-desktop_or_laptop = {{ (output "hostnamectl" "--json=short" | mustFromJson).Chassis | squote }}
-is_headless = {{ promptString "headless? ('yes' or 'no')" | squote }}
+personal_or_work = {{- if eq .chezmoi.hostname "silverstar" }} 'work' {{ else }} 'personal' {{ end }}
 git_email = {{ promptString "Git email address" | squote }}
