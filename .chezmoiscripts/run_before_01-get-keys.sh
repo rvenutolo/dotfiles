@@ -53,7 +53,7 @@ function die() {
 if ! executable_exists 'age'; then
   die 'age not found'
 fi
-
+# TODO check if keys need to be updated
 log 'Getting keys'
 if [[ ! -f "${HOME}/.keys/age.key" ]]; then
   mkdir --parents "${HOME}/.keys"
