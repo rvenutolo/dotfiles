@@ -116,12 +116,13 @@ alias n='nano'
 
 # nix home-manager
 if __executable_exists 'home-manager'; then
+  # TODO move some of these to scripts?
   alias hm='home-manager'
   alias hmd='cd ${HOME_MANAGER_DIR}'
-  alias hmgd='home-manager generations | head -n 2 | tac | cut -d " " -f 7 | xargs nix store diff-closures'
   alias hmp='home-manager packages'
-  alias hms='home-manager switch --flake ${HOME_MANAGER_DIR} && hmgd'
   alias hmu='nix flake update ${HOME_MANAGER_DIR} && hms'
+  alias hms='home-manager switch --flake ${HOME_MANAGER_DIR} && hmgd'
+  alias hmgd='home-manager generations | head -n 2 | tac | cut -d " " -f 7 | xargs nix store diff-closures'
 fi
 
 # misc - shorter alias
