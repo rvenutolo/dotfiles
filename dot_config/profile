@@ -143,6 +143,7 @@ for dir in \
   "$(if __executable_exists 'ruby'; then echo "$(ruby -e 'puts Gem.user_dir')/bin"; else echo ''; fi)" \
   "$(if __executable_exists 'go'; then echo "$(go env GOPATH)/bin"; else echo ''; fi)" \
   "$(if [[ -n "${CARGO_HOME}" ]]; then echo "${CARGO_HOME}/bin"; else echo ''; fi)" \
+  "${HOME}/.nix-profile/bin" \
   "${HOME}/.local/share/JetBrains/Toolbox/scripts" \
   "${HOME}/.local/bin" \
   "${HOME}/.bin" \
