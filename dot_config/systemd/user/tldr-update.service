@@ -3,4 +3,4 @@ Description=Updates tldr pages cache
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/tldr --clear-cache --update
+ExecStart=tldr --clear-cache --update
