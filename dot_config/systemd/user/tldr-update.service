@@ -3,4 +3,5 @@ Description=Updates tldr pages cache
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/bash -c '$$(/usr/bin/which tldr) --clear-cache --update'
+Environment="PATH=$PATH:%h/.nix-profile/bin"
+ExecStart=/usr/bin/bash '$$(which tldr) --clear-cache --update'
