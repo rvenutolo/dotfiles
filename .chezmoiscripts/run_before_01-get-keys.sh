@@ -2,43 +2,8 @@
 
 set -euo pipefail
 
-# $1 = URL
-# $2 = output file (optional)
-function dl() {
-  log "Downloading: $1"
-  if [[ -n "${2:-}" ]]; then
-    tries=0
-    until curl --fail --silent --location --show-error "$1" --output "$2"; do
-      ((tries += 1))
-      if ((${tries} > 10)); then
-        die "Failed to get in 10 tries: ${url}"
-      fi
-      sleep 15
-    done
-  else
-    tries=0
-    until curl --fail --silent --location --show-error "$1"; do
-      ((tries += 1))
-      if ((${tries} > 10)); then
-        die "Failed to get in 10 tries: ${url}"
-      fi
-      sleep 15
-    done
-  fi
-}
-
-# $1 = URL
-# $2 = output file (optional)
-function dl_decrypt() {
-  if [[ -n "${2:-}" ]]; then
-    dl "$1" | age --decrypt --identity "${HOME}/.keys/age.key" --output "$2"
-  else
-    dl "$1" | age --decrypt --identity "${HOME}/.keys/age.key"
-  fi
-}
-
 function log() {
-  echo -e "log [$(date +%T)]: $*" >&2
+  echo -e "$*" >&2
 }
 
 function executable_exists() {
@@ -50,22 +15,49 @@ function die() {
   exit 1
 }
 
+# $1 = url
+function dl() {
+  curl --fail --silent --location "$1"
+}
+
+# $1 = url
+function etag_dl() {
+  local etag_file="${etags_dir}/$(basename "$1").etag"
+  curl --fail --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" "$1"
+}
+
 if ! executable_exists 'age'; then
   die 'age not found'
 fi
-# TODO check if keys need to be updated
-log 'Getting keys'
-if [[ ! -f "${HOME}/.keys/age.key" ]]; then
-  mkdir --parents "${HOME}/.keys"
-  until dl 'https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/age.key' | age --decrypt --output "${HOME}/.keys/age.key"; do :; done
+
+if ! executable_exists 'curl'; then
+  die 'curl not found'
 fi
-chmod 700 "${HOME}/.keys"
-chmod 600 "${HOME}/.keys/age.key"
+
+etags_dir="${XDG_CACHE_HOME}/etags/keys"
+mkdir --parents "${etags_dir}"
+
+keys_dir="${HOME}/.keys"
+mkdir --parents "${keys_dir}"
+
+age_key_file="${keys_dir}/age.key"
+age_key_contents="$(etag_dl 'https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/age.key')"
+if [[ -n "${age_key_contents}" ]]; then
+  log "Decrypting: ${age_key_file}"
+  until age --decrypt --output "${age_key_file}" <<< "${age_key_contents}"; do :; done
+fi
 
 dl 'https://api.github.com/repos/rvenutolo/crypt/contents/keys' | grep --fixed-strings 'download_url' | cut --delimiter '"' --fields='4' | while read -r url; do
   filename="$(basename "${url}")"
   if [[ "${filename}" != 'age.key' ]]; then
-    dl_decrypt "${url}" "${HOME}/.keys/${filename}"
-    chmod 600 "${HOME}/.keys/${filename}"
+    key_contents="$(etag_dl "${url}")"
+    if [[ -n "${key_contents}" ]]; then
+      key_file="${keys_dir}/${filename}"
+      log "Decrypting: ${key_file}"
+      age --decrypt --identity "${age_key_file}" --output "${key_file}" <<< "${key_contents}"
+    fi
   fi
 done
+
+find "${keys_dir}" -type d -exec chmod 700 {} \;
+find "${keys_dir}" -type f -exec chmod 600 {} \;
