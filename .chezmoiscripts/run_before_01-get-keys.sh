@@ -34,7 +34,7 @@ if ! executable_exists 'curl'; then
   die 'curl not found'
 fi
 
-etags_dir="${XDG_CACHE_HOME}/etags/keys"
+etags_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/etags/keys"
 mkdir --parents "${etags_dir}"
 
 keys_dir="${HOME}/.keys"
