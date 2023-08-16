@@ -33,7 +33,7 @@ fi
 export PERSONAL_DESKTOP_HOSTNAME='redstar'
 export PERSONAL_LAPTOP_HOSTNAME='blackstar'
 export WORK_LAPTOP_HOSTNAME='silverstar'
-export SERVER_HOSTNAMES='genesis nunavut'
+export SERVER_HOSTNAMES='genesis nunavut alpha'
 export CODE_DIR="${HOME}/Code"
 export SCRIPTS_DIR="${CODE_DIR}/Personal/scripts"
 export HOME_MANAGER_DIR="${XDG_CONFIG_HOME}/home-manager"
