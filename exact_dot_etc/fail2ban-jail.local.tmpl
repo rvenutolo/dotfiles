@@ -6,7 +6,7 @@ ignoreip = 127.0.0.1/8 ::1 {{ output "bash" "-c" "ip -oneline route get to '8.8.
 {{- end }}
 bantime = 365d
 findtime = 10m
-maxretry = 5
+maxretry = 10
 backend = systemd
 
 [sshd]
