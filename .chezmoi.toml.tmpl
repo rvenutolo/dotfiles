@@ -8,4 +8,5 @@ identity = '~/.keys/age.key'
 recipient = 'age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs'
 
 [data]
-personal_or_work = {{- if eq .chezmoi.hostname "silverstar" }} 'work' {{ else }} 'personal' {{ end }}
+# TODO is there a more compact way to do this?
+system_profile = {{- if or (eq .chezmoi.hostname "redstar") (eq .chezmoi.hostname "bluestar") }} 'personal' {{ else if eq .chezmoi.hostname "silverstar" }} 'work' {{ else }} 'server' {{ end }}
