@@ -1,6 +1,6 @@
 [DEFAULT]
 {{- if eq .system_profile "server" }}
-ignoreip = 127.0.0.1/8
+ignoreip = 127.0.0.1/8 ::1
 {{- else }}
 ignoreip = 127.0.0.1/8 ::1 {{ output "bash" "-c" "ip -oneline route get to '8.8.8.8' | cut --delimiter ' ' --field 3 | sed --expression='s|^172\\..*|172.16.0.0/12|' --expression='s|^10\\..*|10.0.0.0/8|' --expression='s|^192\\..*|192.168.0.0/16|'" | trim }}
 {{- end }}
