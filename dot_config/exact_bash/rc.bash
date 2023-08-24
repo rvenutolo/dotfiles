@@ -3,6 +3,7 @@
 # if not running interactively, don't do anything
 [[ "$-" != *i* ]] && return
 
+SOURCED_BASH_RC='y'
 source "${HOME}/.profile"
 
 umask 022
