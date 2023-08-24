@@ -3,9 +3,6 @@
 # if not running interactively, don't do anything
 [[ "$-" != *i* ]] && return
 
-SOURCED_BASH_RC='y'
-source "${HOME}/.profile"
-
 umask 022
 ulimit -S -c 0 # no core dumps
 set -o notify

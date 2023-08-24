@@ -157,6 +157,6 @@ unset -v dir
 
 unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove
 
-if [ -z "${SOURCED_BASH_RC:-}" ] && [ -n "${BASH_VERSION:-}" ] && [ -f "${HOME}/.bashrc" ]; then
+if [ -n "${BASH_VERSION:-}" ] && [ -f "${HOME}/.bashrc" ]; then
   . "${HOME}/.bashrc"
 fi
