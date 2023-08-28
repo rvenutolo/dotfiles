@@ -31,7 +31,7 @@ fi
 
 # personal env vars
 export PERSONAL_DESKTOP_HOSTNAME='redstar'
-export PERSONAL_LAPTOP_HOSTNAME='blackstar'
+export PERSONAL_LAPTOP_HOSTNAME='bluestar'
 export WORK_LAPTOP_HOSTNAME='silverstar'
 export CODE_DIR="${HOME}/Code"
 export SCRIPTS_DIR="${CODE_DIR}/Personal/scripts"
