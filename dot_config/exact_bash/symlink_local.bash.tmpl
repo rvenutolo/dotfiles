@@ -1,1 +1,7 @@
-local_{{ .system_profile }}.bash
+{{- if .is_personal }}
+local_personal.bash
+{{- else if .is_work }}
+local_work.bash
+{{- else }}
+local_server.bash
+{{- end }}
