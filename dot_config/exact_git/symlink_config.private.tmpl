@@ -1,1 +1,7 @@
-config-{{ .system_profile }}.private
+{{- if .is_personal }}
+config_personal.private
+{{- else if .is_work }}
+config_work.private
+{{- else }}
+config_server.private
+{{- end }}

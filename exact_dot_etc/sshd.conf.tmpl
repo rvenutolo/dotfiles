@@ -1,7 +1,11 @@
 LogLevel VERBOSE
 LoginGraceTime 20m
 PermitRootLogin no
+{{- if and .is_personal .is_desktop }}
+PasswordAuthentication yes
+{{- else }}
 PasswordAuthentication no
+{{- end }}
 PermitEmptyPasswords no
 KbdInteractiveAuthentication no
 AuthenticationMethods publickey

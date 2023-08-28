@@ -8,5 +8,8 @@ identity = '~/.keys/age.key'
 recipient = 'age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs'
 
 [data]
-# TODO is there a more compact way to do this?
-system_profile = {{- if or (eq .chezmoi.hostname "redstar") (eq .chezmoi.hostname "bluestar") }} 'personal' {{ else if eq .chezmoi.hostname "silverstar" }} 'work' {{ else }} 'server' {{ end }}
+is_personal = {{- if or (eq .chezmoi.hostname "redstar") (eq .chezmoi.hostname "bluestar") }} true {{ else }} false {{ end }}
+is_work = {{- if eq .chezmoi.hostname "silverstar" }} true {{ else }} false {{ end }}
+is_desktop = {{- if eq .chezmoi.hostname "redstar" }} true {{ else }} false {{ end }}
+is_laptop = {{- if or (eq .chezmoi.hostname "bluestar") (eq .chezmoi.hostname "silverstar") }} true {{ else }} false {{ end }}
+is_server = {{- if not (or .is_personal .is_work) }} true {{ else }} false {{ end }}
