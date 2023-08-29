@@ -113,7 +113,6 @@ for file in \
   "${SDKMAN_DIR}/bin/sdkman-init.sh" \
   "${XDG_CONFIG_HOME}/broot/launcher/bash/br"; do
   if __is_readable_file "${file}"; then
-    ## TODO look into addressing sdkman unbound variables
     source "${file}"
   fi
 done
@@ -131,7 +130,6 @@ for file in \
   "${SDKMAN_DIR}/candidates/mvnd/current/bin/mvnd-bash-completion.bash" \
   "${SDKMAN_DIR}/candidates/springboot/current/shell-completion/bash/spring"; do
   if __is_readable_file "${file}"; then
-    ## TODO look into addressing sdkman unbound variables
     source "${file}"
   fi
 done
@@ -161,17 +159,8 @@ if __is_readable_file "${XDG_CONFIG_HOME}/bash/complete_alias.bash"; then
   complete -F _complete_alias "${!BASH_ALIASES[@]}"
 fi
 
-## TODO deal with this
-#export PROMPT_COMMAND='history -a; history -n'
-## TODO submit PR to address unbound variables?
-## TODO re-enable starship
-#STARSHIP_PREEXEC_READY=false
-# put this after resetting shell options as starship_preexec() will run before
-# every command after this
+# put this last as starship_preexec() will run before every command after this
 __executable_exists 'starship' && eval "$(starship init bash)"
-#if __is_readable_file "${XDG_CONFIG_HOME}/bash/prompt.bash"; then
-#  source "${XDG_CONFIG_HOME}/bash/prompt.bash"
-#fi
 
 # clean up functions
 unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove
