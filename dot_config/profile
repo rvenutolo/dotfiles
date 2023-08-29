@@ -16,6 +16,8 @@ __path_prepend() {
   __path_remove "$1" && PATH="$1:$PATH"
 }
 
+umask 022
+
 # xdg base dirs - https://wiki.archlinux.org/title/XDG_Base_Directory
 export XDG_CACHE_HOME="${HOME}/.cache"
 export XDG_CONFIG_HOME="${HOME}/.config"

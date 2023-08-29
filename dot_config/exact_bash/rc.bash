@@ -7,7 +7,6 @@ fi
 # if not running interactively, don't do anything
 [[ "$-" != *i* ]] && return
 
-umask 022
 ulimit -S -c 0 # no core dumps
 set -o notify
 set -o noclobber
