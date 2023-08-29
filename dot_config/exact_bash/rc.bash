@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [[ -f "${HOME}/.profile" ]]; then
+  source "${HOME}/.profile"
+fi
+
 # if not running interactively, don't do anything
 [[ "$-" != *i* ]] && return
 
