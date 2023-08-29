@@ -1,7 +1,7 @@
 {{- if .is_personal }}
-local_personal.bash
+local-personal.bash
 {{- else if .is_work }}
-local_work.bash
+local-work.bash
 {{- else }}
-local_server.bash
+local-server.bash
 {{- end }}
