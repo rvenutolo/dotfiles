@@ -11,7 +11,7 @@
 import:
   - ~/.config/alacritty/colors.yml
   - ~/.config/alacritty/font.yml
-#  - ~/.config/alacritty/key_bindings.yml
+#  - ~/.config/alacritty/key-bindings.yml
 
 # Any items in the `env` entry below will be added as
 # environment variables. Some entries may override variables
