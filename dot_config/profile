@@ -116,6 +116,13 @@ else
 fi
 export MANPAGER="${PAGER}"
 
+# file manager
+case "${XDG_CURRENT_DESKTOP}" in
+  KDE) export FILE_MANAGER='dolphin' ;;
+  *GNOME) export FILE_MANAGER='nautilus' ;;
+  *) export FILE_MANAGER='ranger' ;;
+esac
+
 ## less
 LESS_TERMCAP_mb=$(tput -T ansi blink) # start blink
 LESS_TERMCAP_md=$(tput -T ansi setaf 2 ; tput -T ansi bold) # start bold
