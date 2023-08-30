@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-if [[ -f "${HOME}/.profile" ]]; then
+if [[ -r "${HOME}/.profile" ]]; then
   source "${HOME}/.profile"
 fi
 
-if [[ -f "${HOME}/.bashrc" ]]; then
+if [[ -r "${HOME}/.bashrc" ]]; then
   source "${HOME}/.bashrc"
 fi
