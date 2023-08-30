@@ -2,7 +2,6 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 # ░▒▓  
-## TODO docker & terraform & container
 format = """\
 [](fg:#2E3440 bg:#8FBCBB)\
 [](fg:#8FBCBB bg:#3B4252)\
@@ -18,6 +17,7 @@ $git_status\
 $git_metrics\
 [](fg:#4C566A bg:#5E81AC)\
 $package\
+$docker_context\
 [](fg:#5E81AC bg:#81A1C1)\
 $c\
 $golang\
@@ -74,6 +74,11 @@ read_only_style = 'fg:#EBCB8B bg:#434C5E bold'
 #    
 read_only = ''
 truncation_length = 0
+
+[docker_context]
+format = '[$symbol$context]($style) '
+style = 'bg:#81A1C1 bold'
+symbol = '🐳'
 
 [fill]
 symbol = ' '
