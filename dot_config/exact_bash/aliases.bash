@@ -137,6 +137,7 @@ alias ns='new-script'
 alias cls='clear'
 
 # misc - adds flags
+alias curl="curl --write-out '\n'"
 alias type='type -a'
 alias du='du --total --summarize --si'
 alias df='df --print-type --si --exclude-type squashfs --exclude-type tmpfs --exclude-type devtmpfs'
