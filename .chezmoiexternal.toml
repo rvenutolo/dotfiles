@@ -43,7 +43,7 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/tilix/develop/src/json/nord.json'
 refreshPeriod = '168h'
 
-['.config/Xresources']
+['.config/X11/Xresources']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/xresources/develop/src/nord'
 refreshPeriod = '168h'
