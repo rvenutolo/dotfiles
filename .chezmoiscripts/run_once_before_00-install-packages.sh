@@ -24,11 +24,11 @@ function prompt_yn() {
 }
 
 if executable_exists 'apt-get'; then
-  sudo apt-get install --yes age git openssh-client
+  sudo apt-get install --yes age curl git openssh-client
 elif executable_exists 'dnf'; then
-  sudo dnf install --assumeyes age git openssh
+  sudo dnf install --assumeyes age curl git openssh
 elif executable_exists 'pacman'; then
-  sudo pacman --sync --refresh --needed --noconfirm age git openssh
+  sudo pacman --sync --refresh --needed --noconfirm age curl git openssh
 else
   log 'Unknown package manager - Please install age, git, and ssh'
   if ! prompt_yn 'Continue?'; then
