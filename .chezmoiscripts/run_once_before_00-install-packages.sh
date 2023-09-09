@@ -23,12 +23,14 @@ function prompt_yn() {
   [[ "${REPLY}" == 'y' ]]
 }
 
-if executable_exists 'pacman'; then
-  sudo pacman --sync --refresh --needed --noconfirm age git openssh
-elif executable_exists 'apt'; then
-  sudo apt install --assume-yes age git openssh-client
-elif exectuable_exists 'dnf'; then
+if executable_exists 'apt-get'; then
+  sudo apt-get install --assume-yes age git openssh-client
+elif executable_exists 'dnf'; then
   sudo dnf install --assumeyes age git openssh
+elif executable_exists 'pacman'; then
+  sudo pacman --sync --refresh --needed --noconfirm age git openssh
+elif executable_exists 'zypper'; then
+  ## TODO fill in
 else
   log 'Unknown package manager - Please install age, git, and ssh'
   if ! prompt_yn 'Continue?'; then
