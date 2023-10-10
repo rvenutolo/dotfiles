@@ -56,8 +56,8 @@ symbol = ''
 [character]
 format = '$symbol '
 # ▶ ❱ ➔ ➲ ⮊ ⮞ ⮩ 》 🠶 🡆
-success_symbol = '[⮞](fg:#A3BE8C)'
-error_symbol = '[⮞](fg:#BF616A)'
+success_symbol = '[▶](fg:#A3BE8C)'
+error_symbol = '[▶](fg:#BF616A)'
 
 [cmd_duration]
 format = '[$duration]($style) '
