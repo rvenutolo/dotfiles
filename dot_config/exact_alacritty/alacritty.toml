@@ -1,0 +1,21 @@
+import = ["/home/rvenutolo/.config/alacritty/colors.toml", "/home/rvenutolo/.config/alacritty/font.toml"]
+
+[colors]
+draw_bold_text_with_bright_colors = true
+
+[cursor.style]
+blinking = "On"
+
+[scrolling]
+multiplier = 10
+
+[selection]
+save_to_clipboard = false
+
+[window.dimensions]
+columns = 120
+lines = 36
+
+[window.padding]
+x = 6
+y = 6
