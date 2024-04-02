@@ -22,13 +22,13 @@ function dl() {
 
 # $1 = url
 function etag_dl() {
-  local etag_file="${etags_dir}/$(basename "$1").etag"
-  curl --fail --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" "$1"
+  if curl --help all | grep --quiet --fixed-strings 'etag-compare'; then
+    local etag_file="${etags_dir}/$(basename "$1").etag"
+    curl --fail --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" "$1"
+  else
+    # old curl version (< 7.68) not supporting etag
+    dl "$1"
 }
-
-if ! prompt_yn 'Install keys?'; then
-  exit 0
-fi
 
 if ! executable_exists 'age'; then
   die 'age not found'
