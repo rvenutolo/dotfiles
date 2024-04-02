@@ -23,6 +23,10 @@ function prompt_yn() {
   [[ "${REPLY}" == 'y' ]]
 }
 
+if ! prompt_yn 'Install age, curl, git, and openssh?'; then
+  exit 0
+fi
+
 if executable_exists 'apt-get'; then
   sudo apt-get install --yes age curl git openssh-client
 elif executable_exists 'dnf'; then
