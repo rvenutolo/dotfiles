@@ -23,7 +23,8 @@ function prompt_yn() {
   [[ "${REPLY}" == 'y' ]]
 }
 
-if ! prompt_yn 'Install age, curl, git, and openssh?'; then
+if executable_exists 'age' && executable_exists 'curl' && executable_exists 'git' && executable_exists 'ssh'; then
+  log 'age, curl, git, and ssh already installed'
   exit 0
 fi
 
