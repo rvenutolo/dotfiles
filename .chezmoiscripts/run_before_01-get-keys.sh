@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+set -x
+
 function log() {
   echo -e "$*" >&2
 }
