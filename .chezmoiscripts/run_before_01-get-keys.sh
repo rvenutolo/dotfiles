@@ -26,6 +26,10 @@ function etag_dl() {
   curl --fail --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" "$1"
 }
 
+if ! prompt_yn 'Install keys?'; then
+  exit 0
+fi
+
 if ! executable_exists 'age'; then
   die 'age not found'
 fi
