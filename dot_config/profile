@@ -156,6 +156,7 @@ for dir in \
   "${HOME}/.local/share/JetBrains/Toolbox/scripts" \
   "${HOME}/.local/bin" \
   "${HOME}/.bin" \
+  "${HOME}/bin" \
   "${SCRIPTS_DIR}/other" \
   "${SCRIPTS_DIR}/main"; do
   if [ -n "${dir}" ] && [ -d "${dir}" ]; then
