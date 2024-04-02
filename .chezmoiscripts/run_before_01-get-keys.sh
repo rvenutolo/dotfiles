@@ -28,6 +28,7 @@ function etag_dl() {
   else
     # old curl version (< 7.68) not supporting etag
     dl "$1"
+  fi
 }
 
 if ! executable_exists 'age'; then
