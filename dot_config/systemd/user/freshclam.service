@@ -1,0 +1,7 @@
+[Unit]
+Description=Updates ClamAV virus definitions
+
+[Service]
+Type=oneshot
+# TODO use ExecSearchPath when all boxes are on systemd 250+
+ExecStart=/usr/bin/bash -c '$$(which freshclam)
