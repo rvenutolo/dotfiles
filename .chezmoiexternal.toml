@@ -60,6 +60,12 @@ url = 'https://raw.githubusercontent.com/statico/dotfiles/main/bin/ansimodes'
 refreshPeriod = '168h'
 executable = true
 
+['.local/bin/appman']
+type = 'file'
+url = 'https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER'
+refreshPeriod = '168h'
+executable = true
+
 ['.local/bin/colorscheme']
 type = 'file'
 url = 'https://raw.githubusercontent.com/xero/dotfiles/master/fun/bin/colorscheme'
