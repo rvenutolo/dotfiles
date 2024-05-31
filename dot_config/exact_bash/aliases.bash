@@ -150,6 +150,7 @@ alias shfmt='shfmt --list --indent 2 --case-indent --binary-next-line --space-re
 alias xdg-ninja='xdg-ninja --skip-unsupported'
 
 # misc - other
+alias am='appman'
 alias cm='chezmoi'
 alias du1='du --max-depth=1'
 alias bs='br --sizes'
