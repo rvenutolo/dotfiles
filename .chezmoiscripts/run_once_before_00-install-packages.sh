@@ -23,18 +23,15 @@ function prompt_yn() {
   [[ "${REPLY}" == 'y' ]]
 }
 
-## TODO rework this
-
-if executable_exists 'age' && executable_exists 'curl' && executable_exists 'git' && executable_exists 'ssh'; then
-  log 'age, curl, git, and ssh already installed'
-  exit 0
-fi
-
 if executable_exists 'apt'; then
+  sudo apt update
+  sudo apt upgrade --yes
   sudo apt install --yes age curl git openssh-client
 elif executable_exists 'dnf'; then
+  sudo dnf upgrade
   sudo dnf install --assumeyes age curl git openssh
 elif executable_exists 'pacman'; then
+  sudo pacman --sync --refresh --sysupgrade
   sudo pacman --sync --refresh --needed --noconfirm age curl git openssh
 else
   log 'Unknown package manager - Please install age, git, and ssh'
