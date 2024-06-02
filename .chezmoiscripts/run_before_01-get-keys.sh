@@ -15,6 +15,19 @@ function die() {
   exit 1
 }
 
+function prompt_yn() {
+  REPLY=''
+  while [[ "${REPLY}" != 'y' && "${REPLY}" != 'n' ]]; do
+    read -rp "$1 [Y/n]: "
+    if [[ "${REPLY}" == '' || "${REPLY}" == [yY] ]]; then
+      REPLY='y'
+    elif [[ "${REPLY}" == [nN] ]]; then
+      REPLY='n'
+    fi
+  done
+  [[ "${REPLY}" == 'y' ]]
+}
+
 # $1 = url
 function dl() {
   curl --fail --silent --location "$1"
@@ -52,11 +65,14 @@ if [[ -n "${age_key_contents}" ]]; then
   until age --decrypt --output "${age_key_file}" <<< "${age_key_contents}"; do :; done
 fi
 
-dl 'https://api.github.com/repos/rvenutolo/crypt/contents/keys' | grep --fixed-strings 'download_url' | cut --delimiter '"' --fields='4' | while read -r url; do
+for url in $(dl 'https://api.github.com/repos/rvenutolo/crypt/contents/keys' | jq -r '.[].download_url'); do
   filename="$(basename "${url}")"
-  if [[ "${filename}" != 'age.key' ]]; then
-    key_contents="$(etag_dl "${url}")"
-    if [[ -n "${key_contents}" ]]; then
+  if [[ "${filename}" == 'age.key' ]]; then
+    continue
+  fi
+  key_contents="$(etag_dl "${url}")"
+  if [[ -n "${key_contents}" ]]; then
+    if prompt_yn "Decrypt ${filename}?"; then
       key_file="${keys_dir}/${filename}"
       log "Decrypting: ${key_file}"
       age --decrypt --identity "${age_key_file}" --output "${key_file}" <<< "${key_contents}"
