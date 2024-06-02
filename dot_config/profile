@@ -118,7 +118,7 @@ fi
 export MANPAGER="${PAGER}"
 
 # file manager
-case "${XDG_CURRENT_DESKTOP}" in
+case "${XDG_CURRENT_DESKTOP:-}" in
   KDE) export FILE_MANAGER='dolphin' ;;
   *GNOME) export FILE_MANAGER='nautilus' ;;
   *) export FILE_MANAGER='ranger' ;;
