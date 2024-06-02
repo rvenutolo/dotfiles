@@ -23,13 +23,15 @@ function prompt_yn() {
   [[ "${REPLY}" == 'y' ]]
 }
 
+## TODO rework this
+
 if executable_exists 'age' && executable_exists 'curl' && executable_exists 'git' && executable_exists 'ssh'; then
   log 'age, curl, git, and ssh already installed'
   exit 0
 fi
 
-if executable_exists 'apt-get'; then
-  sudo apt-get install --yes age curl git openssh-client
+if executable_exists 'apt'; then
+  sudo apt install --yes age curl git openssh-client
 elif executable_exists 'dnf'; then
   sudo dnf install --assumeyes age curl git openssh
 elif executable_exists 'pacman'; then
