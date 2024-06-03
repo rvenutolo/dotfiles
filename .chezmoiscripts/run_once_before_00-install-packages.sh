@@ -26,13 +26,13 @@ function prompt_yn() {
 if executable_exists 'apt'; then
   sudo apt update
   sudo apt upgrade --yes
-  sudo apt install --yes age curl git openssh-client
+  sudo apt install --yes age curl git jq openssh-client
 elif executable_exists 'dnf'; then
   sudo dnf upgrade
-  sudo dnf install --assumeyes age curl git openssh
+  sudo dnf install --assumeyes age curl git jq openssh
 elif executable_exists 'pacman'; then
   sudo pacman --sync --refresh --sysupgrade
-  sudo pacman --sync --refresh --needed --noconfirm age curl git openssh
+  sudo pacman --sync --refresh --needed --noconfirm age curl git jq openssh
 else
   log 'Unknown package manager - Please install age, git, and ssh'
   if ! prompt_yn 'Continue?'; then
