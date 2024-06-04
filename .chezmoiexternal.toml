@@ -74,7 +74,7 @@ executable = true
 
 ['.local/bin/git-wtf']
 type = 'file'
-url = 'https://raw.githubusercontent.com/ashishb/dotfiles/master/scripts/git-wtf'
+url = 'https://raw.githubusercontent.com/DanielVartanov/willgit/master/bin/git-wtf'
 refreshPeriod = '168h'
 executable = true
 
@@ -86,7 +86,7 @@ executable = true
 
 ['.local/bin/starship-git-simple']
 type = 'file'
-url = 'https://raw.githubusercontent.com/sapegin/dotfiles/master/bin/starship-git-simple'
+url = 'https://raw.githubusercontent.com/sapegin/dotfiles/master/bin/lib/starship-git-simple'
 refreshPeriod = '168h'
 executable = true
 
