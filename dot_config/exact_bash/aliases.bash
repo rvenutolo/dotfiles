@@ -130,6 +130,8 @@ alias o='xdg-open'
 alias q='exit'
 alias h='history'
 alias t='tldr'
+alias am='appman'
+alias cm='chezmoi'
 alias ff='fzf'
 alias hh='hstr'
 alias ms='manswitch'
@@ -150,14 +152,11 @@ alias shfmt='shfmt --list --indent 2 --case-indent --binary-next-line --space-re
 alias xdg-ninja='xdg-ninja --skip-unsupported'
 
 # misc - other
-alias am='appman'
-alias cm='chezmoi'
-alias du1='du --max-depth=1'
 alias bs='br --sizes'
-alias brc='source ${HOME}/.bashrc'
 alias da="date '+%Y-%m-%d %A %T %Z'"
+alias du1='du --max-depth=1'
 alias hg='history | grep'
-alias asl='aws sso login'
+alias sbp='source ${HOME}/.bash_profile'
 if [[ -n "${SDKMAN_DIR}" && -f "${SDKMAN_DIR}/candidates/maven/current/bin/mvn" ]]; then
   alias sdkmvn='${SDKMAN_DIR}/candidates/maven/current/bin/mvn'
 fi
