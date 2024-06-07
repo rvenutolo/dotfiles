@@ -13,14 +13,8 @@ source ~/.bash_profile
 ~/Code/Personal/scripts/run-set-up-scripts
 ```
 
-## Remove chezmoi directories
+## Remove relevant directories
 
 ```shell
-rm -rf ~/.local/share/chezmoi ~/.config/chezmoi
-```
-
-## Remove etags dir
-
-```shell
-rm -rf ~/.cache/etags/
+rm -rf ~/.cache/etags ~/.config/chezmoi ~/.keys ~/.local/share/chezmoi
 ```
