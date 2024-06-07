@@ -72,7 +72,7 @@ for url in $(dl 'https://api.github.com/repos/rvenutolo/crypt/contents/keys' | j
   fi
   key_contents="$(etag_dl "${url}")"
   if [[ -n "${key_contents}" ]]; then
-    if prompt_yn "Decrypt ${filename}?"; then
+    if [[ "${filename}" == "id_ed25519" ]] || prompt_ny "Decrypt ${filename}?"; then
       key_file="${keys_dir}/${filename}"
       log "Decrypting: ${key_file}"
       age --decrypt --identity "${age_key_file}" --output "${key_file}" <<< "${key_contents}"
