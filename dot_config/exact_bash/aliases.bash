@@ -137,6 +137,7 @@ alias hh='hstr'
 alias ms='manswitch'
 alias ns='new-script'
 alias cls='clear'
+alias sshh='ssh-host-selector'
 
 # misc - adds flags
 alias curl="curl --write-out '\n'"
