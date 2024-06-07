@@ -15,13 +15,14 @@ function die() {
   exit 1
 }
 
-function prompt_yn() {
+# $1 = question
+function prompt_ny() {
   REPLY=''
   while [[ "${REPLY}" != 'y' && "${REPLY}" != 'n' ]]; do
-    read -rp "$1 [Y/n]: "
-    if [[ "${REPLY}" == '' || "${REPLY}" == [yY] ]]; then
+    read -rp "$1 [y/N]: "
+    if [[ "${REPLY}" == [yY] ]]; then
       REPLY='y'
-    elif [[ "${REPLY}" == [nN] ]]; then
+    elif [[ "${REPLY}" == '' || "${REPLY}" == [nN] ]]; then
       REPLY='n'
     fi
   done
