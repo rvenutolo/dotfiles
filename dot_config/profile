@@ -143,21 +143,14 @@ for TERM in "${TERM}" 'xterm-256color' 'xterm-16color' 'xterm-color' 'xterm'; do
   fi
 done
 
-# dirs to put on path
 for dir in \
-  "$(if __executable_exists 'ruby'; then echo "$(ruby -e 'puts Gem.user_dir')/bin"; else echo ''; fi)" \
-  "$(if __executable_exists 'go'; then echo "$(go env GOPATH)/bin"; else echo ''; fi)" \
-  "$(if [[ -n "${CARGO_HOME}" ]]; then echo "${CARGO_HOME}/bin"; else echo ''; fi)" \
   "${HOME}/.nix-profile/bin" \
   "${HOME}/.local/share/JetBrains/Toolbox/scripts" \
   "${HOME}/.local/bin" \
   "${HOME}/.bin" \
-  "${HOME}/bin" \
   "${SCRIPTS_DIR}/other" \
   "${SCRIPTS_DIR}/main"; do
-  if [ -n "${dir}" ] && [ -d "${dir}" ]; then
-    __path_prepend "${dir}"
-  fi
+  __path_prepend "${dir}"
 done
 unset -v dir
 
