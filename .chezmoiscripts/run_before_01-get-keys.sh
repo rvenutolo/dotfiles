@@ -15,9 +15,16 @@ function die() {
   exit 1
 }
 
+function auto_answer() {
+  [[ "${SCRIPTS_AUTO_ANSWER:-}" == [Yy] ]]
+}
+
 # $1 = question
 function prompt_ny() {
   REPLY=''
+  if auto_answer; then
+    REPLY='n'
+  fi
   while [[ "${REPLY}" != 'y' && "${REPLY}" != 'n' ]]; do
     read -rp "$1 [y/N]: "
     if [[ "${REPLY}" == [yY] ]]; then
