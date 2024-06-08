@@ -7,7 +7,7 @@ Dotfiles managed by [chezmoi](https://www.chezmoi.io/).
 ```shell
 adduser --ingroup 'sudo' 'rvenutolo' && su - 'rvenutolo'
 sh -c "$(curl -fsLS 'get.chezmoi.io')" -- -b '/tmp' ## OR sh -c "$(wget -qO- 'get.chezmoi.io')" -- -b '/tmp'
-/tmp/chezmoi init --apply 'rvenutolo'
+SCRIPTS_AUTO_ANSWER='y' /tmp/chezmoi init --apply 'rvenutolo'
 SCRIPTS_AUTO_ANSWER='y' ~/Code/Personal/scripts/run-install-scripts
 SCRIPTS_AUTO_ANSWER='y' ~/Code/Personal/scripts/run-set-up-scripts
 ```
