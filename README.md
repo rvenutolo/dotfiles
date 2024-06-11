@@ -13,8 +13,8 @@ SCRIPTS_AUTO_ANSWER=y ~/Code/Personal/scripts/run-install-scripts
 SCRIPTS_AUTO_ANSWER=y ~/Code/Personal/scripts/run-set-up-scripts
 ```
 
-## Remove Misc Dirs to Reset State 
+## Remove Dirs to Reset Chezmoi State 
 
 ```shell
-rm -rf ~/.cache/etags ~/.config/chezmoi ~/.keys ~/.local/share/chezmoi
+rm -rf ~/.config/chezmoi ~/.local/share/chezmoi
 ```
