@@ -41,17 +41,6 @@ function dl() {
   curl --fail --silent --location "$1"
 }
 
-# $1 = url
-function etag_dl() {
-  if curl --help all | grep --quiet --fixed-strings 'etag-compare'; then
-    local etag_file="${etags_dir}/$(basename "$1").etag"
-    curl --fail --silent --location --etag-compare "${etag_file}" --etag-save "${etag_file}" "$1"
-  else
-    # old curl version (< 7.68) not supporting etag
-    dl "$1"
-  fi
-}
-
 if ! executable_exists 'age'; then
   die 'age not found'
 fi
@@ -60,14 +49,11 @@ if ! executable_exists 'curl'; then
   die 'curl not found'
 fi
 
-etags_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/etags/keys"
-mkdir --parents "${etags_dir}"
-
 keys_dir="${HOME}/.keys"
 mkdir --parents "${keys_dir}"
 
 age_key_file="${keys_dir}/age.key"
-age_key_contents="$(etag_dl 'https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/age.key')"
+age_key_contents="$(dl 'https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/age.key')"
 if [[ -n "${age_key_contents}" ]]; then
   log "Decrypting: ${age_key_file}"
   until age --decrypt --output "${age_key_file}" <<< "${age_key_contents}"; do :; done
@@ -78,7 +64,7 @@ for url in $(dl 'https://api.github.com/repos/rvenutolo/crypt/contents/keys' | j
   if [[ "${filename}" == 'age.key' ]]; then
     continue
   fi
-  key_contents="$(etag_dl "${url}")"
+  key_contents="$(dl "${url}")"
   if [[ -n "${key_contents}" ]]; then
     if [[ "${filename}" == "id_ed25519" ]] || prompt_ny "Decrypt ${filename}?"; then
       key_file="${keys_dir}/${filename}"
