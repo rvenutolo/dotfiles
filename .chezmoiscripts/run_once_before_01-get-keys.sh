@@ -54,7 +54,7 @@ mkdir --parents "${keys_dir}"
 
 age_key_file="${keys_dir}/age.key"
 age_key_contents="$(dl 'https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/age.key')"
-if [[ -n "${age_key_contents}" ]]; then
+if [[ -n "${age_key_content}" ]]; then
   log "Decrypting: ${age_key_file}"
   until age --decrypt --output "${age_key_file}" <<< "${age_key_contents}"; do :; done
 fi
