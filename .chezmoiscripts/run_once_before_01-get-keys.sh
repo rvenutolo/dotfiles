@@ -42,7 +42,7 @@ function prompt_ny() {
 }
 
 # $1 = url
-function dl() {
+function download() {
   curl --disable --fail --silent --location --show-error "$@"
 }
 
@@ -54,7 +54,7 @@ if ! executable_exists 'curl'; then
   die 'curl not found'
 fi
 
-keys_dir="${HOME}/.keys"
+readonly keys_dir="${HOME}/.keys"
 mkdir --parents "${keys_dir}"
 
 readonly age_key_file="${keys_dir}/age.key"
@@ -94,7 +94,7 @@ for url in $(download 'https://api.github.com/repos/rvenutolo/crypt/contents/key
   else
     if [[ "${filename}" == 'id_ed25519' ]]; then
       dl_key
-    elif prompt_ny "Download ${key_file}"; then
+    elif prompt_ny "Download ${key_file}?"; then
       dl_key
     fi
   fi
