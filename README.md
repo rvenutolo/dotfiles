@@ -5,7 +5,7 @@ Dotfiles managed by [chezmoi](https://www.chezmoi.io/).
 ## Install & Init
 
 ```shell
-adduser rvenutolo && usermod -aG sudo rvenutolo && ssh rvenutolo@localhost
+adduser rvenutolo && usermod -aG sudo rvenutolo && ssh -o StrictHostKeyChecking=no rvenutolo@localhost
 eval $(ssh-agent)
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /tmp ## OR sh -c "$(wget -qO- get.chezmoi.io)" -- -b /tmp
 SCRIPTS_AUTO_ANSWER=y /tmp/chezmoi init --apply rvenutolo
