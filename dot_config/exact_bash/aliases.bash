@@ -122,6 +122,7 @@ if __executable_exists 'home-manager'; then
   alias hmp='home-manager-packages'
   alias hmu='home-manager-update'
   alias hms='home-manager-switch'
+  alias hmn='home-manager news'
   alias hmgd='home-manager-generations-diff'
 fi
 
