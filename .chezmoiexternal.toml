@@ -63,6 +63,7 @@ executable = true
 ['.local/bin/appman']
 type = 'file'
 url = 'https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER'
+refreshPeriod = '0'
 executable = true
 
 ['.local/bin/colorscheme']
