@@ -1,7 +1,0 @@
-[Unit]
-Description=Updates tldr pages cache
-
-[Service]
-Type=oneshot
-# TODO use ExecSearchPath when all boxes are on systemd 250+
-ExecStart=/usr/bin/bash -c '$$(which tldr) --clear-cache --update'
