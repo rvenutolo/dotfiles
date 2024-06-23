@@ -1,114 +1,114 @@
 ['.config/alacritty/colors.yml']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/alacritty/main/src/nord.yaml'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 filter.command = 'sed'
 filter.args = ['s/^    bar:$/  footer_bar:/']
 
 ['.config/bash/complete_alias.bash']
 type = 'file'
 url = 'https://raw.githubusercontent.com/cykerway/complete-alias/master/complete_alias'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.config/dircolors']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/dircolors/develop/src/dir_colors'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.config/kitty/kitty_keys.sh']
 type = 'file'
 url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/main/kitty_keys.sh'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.config/kitty/conf/nord.conf']
 type = 'file'
 url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/master/nord.conf'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.config/nano/syntax_highlighting']
 type = 'archive'
 url = 'https://github.com/scopatz/nanorc/archive/master.tar.gz'
 exact = true
 stripComponents = 1
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 include = ['*/*.nanorc']
 
 ['.config/nvim/colors/nord.vim']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/vim/main/colors/nord.vim'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.config/tilix/schemes/nord.json']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/tilix/develop/src/json/nord.json'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.config/X11/Xresources']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/xresources/develop/src/nord'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.local/bin/ansi-colors']
 type = 'file'
 url = 'https://raw.githubusercontent.com/BachoSeven/dotfiles/master/.local/bin/colors/16'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/ansi-modes']
 type = 'file'
 url = 'https://raw.githubusercontent.com/statico/dotfiles/main/bin/ansimodes'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/appman']
 type = 'file'
 url = 'https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER'
-refreshPeriod = '0'
+refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/colorscheme']
 type = 'file'
 url = 'https://raw.githubusercontent.com/xero/dotfiles/master/fun/bin/colorscheme'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/git-wtf']
 type = 'file'
 url = 'https://raw.githubusercontent.com/DanielVartanov/willgit/master/bin/git-wtf'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/rain']
 type = 'file'
 url = 'https://raw.githubusercontent.com/xero/dotfiles/master/fun/bin/rain'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/starship-git-simple']
 type = 'file'
 url = 'https://raw.githubusercontent.com/sapegin/dotfiles/master/bin/lib/starship-git-simple'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 executable = true
 
 ['.local/share/bash-completion/completions/mvn']
 type = 'file'
 url = 'https://raw.githubusercontent.com/juven/maven-bash-completion/master/bash_completion.bash'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.local/share/gedit/styles/nord.xml']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/gedit/develop/src/xml/nord.xml'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.local/share/konsole/nord.colorscheme']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/konsole/develop/src/nord.colorscheme'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['.local/share/xfce4/terminal/colorschemes/nord.theme']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/develop/src/nord.theme'
-refreshPeriod = '168h'
+refreshPeriod = '1h'
 
 ['Code/Personal/crypt']
 type = 'git-repo'
