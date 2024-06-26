@@ -84,6 +84,12 @@ url = 'https://raw.githubusercontent.com/xero/dotfiles/master/fun/bin/rain'
 refreshPeriod = '1h'
 executable = true
 
+['.local/bin/nerd-font-test']
+type = 'file'
+url = 'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/bin/scripts/test-fonts.sh'
+refreshPeriod = '1h'
+executable = true
+
 ['.local/bin/starship-git-simple']
 type = 'file'
 url = 'https://raw.githubusercontent.com/sapegin/dotfiles/master/bin/lib/starship-git-simple'
