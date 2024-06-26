@@ -3,45 +3,22 @@
 set -euo pipefail
 
 function log() {
-  echo -e "$*" >&2
+  echo -e "\033[0;32m[$(date +%T) ${0##*/}] $*\033[0m" >&2
+}
+
+function die() {
+  echo -e "\033[0;31mDIE: $* (at ${BASH_SOURCE[1]}:${FUNCNAME[1]} line ${BASH_LINENO[0]})\033[0m" >&2
+  exit 1
 }
 
 function executable_exists() {
   command -v "$1" > /dev/null 2>&1
 }
 
-function die() {
-  echo -e "DIE: $* (at ${BASH_SOURCE[1]}:${FUNCNAME[1]} line ${BASH_LINENO[0]}.)" >&2
-  exit 1
-}
-
-# $1 = file
 function is_readable_file() {
   [[ -f "$1" && -r "$1" ]]
 }
 
-function auto_answer() {
-  [[ "${SCRIPTS_AUTO_ANSWER:-}" == [Yy] ]]
-}
-
-# $1 = question
-function prompt_ny() {
-  REPLY=''
-  if auto_answer; then
-    REPLY='n'
-  fi
-  while [[ "${REPLY}" != 'y' && "${REPLY}" != 'n' ]]; do
-    read -rp "$1 [y/N]: "
-    if [[ "${REPLY}" == [yY] ]]; then
-      REPLY='y'
-    elif [[ "${REPLY}" == '' || "${REPLY}" == [nN] ]]; then
-      REPLY='n'
-    fi
-  done
-  [[ "${REPLY}" == 'y' ]]
-}
-
-# $1 = url
 function download() {
   curl --disable --fail --silent --location --show-error "$@"
 }
