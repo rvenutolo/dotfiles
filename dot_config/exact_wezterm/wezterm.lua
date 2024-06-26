@@ -1,4 +1,5 @@
 local wezterm = require("wezterm")
+local act = wezterm.action
 
 local config = {}
 
@@ -34,10 +35,29 @@ config.initial_rows = 36
 
 config.mouse_bindings = {
   {
+    -- override default copy behavior with a no-op
     event = { Up = { streak = 1, button = "Left" } },
     mods = "NONE",
-    action = wezterm.action.Nop,
+    action = act.Nop,
   },
+  {
+    -- disable down event to avoid unexpected behavior
+    event = { Down = { streak = 1, button = "Left" } },
+    mods = "CTRL",
+    action = act.Nop,
+  },
+  {
+    -- CTRL-click to open hyperlinks
+    event = { Up = { streak = 1, button = "Left" } },
+    mods = "CTRL",
+    action = act.OpenLinkAtMouseCursor,
+  },
+  {
+    -- disable down event to avoid unexpected behavior
+    event = { Down = { streak = 1, button = "Left" } },
+    mods = "CTRL",
+    action = act.Nop,
+  }
 }
 
 config.scrollback_lines = 10000
