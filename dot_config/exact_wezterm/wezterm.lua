@@ -14,8 +14,6 @@ config.default_cursor_style = "BlinkingBlock"
 
 config.enable_scroll_bar = true
 
-config.enable_tab_bar = true
-
 config.font = wezterm.font({
   family = "JetBrains Mono",
   weight = "Regular",
@@ -44,19 +42,8 @@ config.mouse_bindings = {
 
 config.scrollback_lines = 10000
 
-config.term = "xterm-256color"
-
---config.use_fancy_tab_bar = false
-
 -- TODO dynamically enable based on number of tabs
 config.window_close_confirmation = "NeverPrompt"
-
-config.window_padding = {
-  left = "1cell",
-  right = "1cell",
-  top = "0.5cell",
-  bottom = "0.5cell",
-}
 
 -- TODO
 config.warn_about_missing_glyphs = false
