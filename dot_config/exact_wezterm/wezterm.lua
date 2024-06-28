@@ -1,6 +1,44 @@
 local wezterm = require("wezterm")
 local act = wezterm.action
 
+local function basename(path)
+  return path:gsub('(.*[/\\])(.*)', '%2')
+end
+
+local function remove_trailing_slash(s)
+  return s:gsub("/$", "")
+end
+
+local function get_display_cwd(tab)
+  local current_dir = remove_trailing_slash(tab.active_pane.current_working_dir.file_path)
+      or "unknown"
+  return current_dir == remove_trailing_slash(os.getenv("HOME"))
+      and "~"
+      or basename(current_dir)
+end
+
+local function get_process(tab)
+  return (not tab.active_pane or tab.active_pane.foreground_process_name == "")
+      and "[?]"
+      or basename(tab.active_pane.foreground_process_name)
+end
+
+local function get_tab_title(tab)
+  local title = tab.tab_title
+  return (title and #title > 0)
+      and title
+      or string.format(" [%s] %s ", get_display_cwd(tab), get_process(tab))
+end
+
+wezterm.on(
+  'format-tab-title',
+  function(tab, tabs, panes, config, hover, max_width)
+    return {
+      { Text = get_tab_title(tab) }
+    }
+  end
+)
+
 local config = {}
 
 if wezterm.config_builder then
