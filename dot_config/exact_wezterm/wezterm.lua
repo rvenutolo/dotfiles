@@ -14,20 +14,22 @@ local function remove_trailing_slash(s)
 end
 
 local function get_display_cwd(tab)
-  local cwd = remove_trailing_slash(tab.active_pane.current_working_dir.file_path)
-  if is_empty(cwd) then
-    return "unknown"
-  elseif cwd == remove_trailing_slash(os.getenv("HOME")) then
-    return "~"
+  if tab.active_pane.current_working_dir then
+    local cwd = remove_trailing_slash(tab.active_pane.current_working_dir.file_path)
+    if cwd == remove_trailing_slash(os.getenv("HOME")) then
+      return "~"
+    else
+      return basename(cwd)
+    end
   else
-    return basename(cwd)
+    return "???"
   end
 end
 
 local function get_process(tab)
   local process_name = tab.active_pane.foreground_process_name
   if not tab.active_pane or process_name == "" then
-    return "[?]"
+    return "???"
   else
     return basename(process_name)
   end
@@ -42,12 +44,60 @@ local function get_tab_title(tab)
   end
 end
 
+local function has_unseen_output(tab)
+  if not tab.is_active then
+    for _, pane in ipairs(tab.panes) do
+      if pane.has_unseen_output then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+local function scheme_color(key)
+  local current_color_scheme = wezterm.color.get_builtin_schemes()[COLOR_SCHEME]
+  local key_to_color = {
+    black = current_color_scheme.ansi[1],
+    red = current_color_scheme.ansi[2],
+    green = current_color_scheme.ansi[3],
+    yellow = current_color_scheme.ansi[4],
+    blue = current_color_scheme.ansi[5],
+    magenta = current_color_scheme.ansi[6],
+    cyan = current_color_scheme.ansi[7],
+    white = current_color_scheme.ansi[8],
+    black_bright = current_color_scheme.brights[1],
+    red_bright = current_color_scheme.brights[2],
+    green_bright = current_color_scheme.brights[3],
+    yellow_bright = current_color_scheme.brights[4],
+    blue_bright = current_color_scheme.brights[5],
+    magenta_bright = current_color_scheme.brights[6],
+    cyan_bright = current_color_scheme.brights[7],
+    white_bright = current_color_scheme.brights[8]
+  }
+  return key_to_color[key]
+end
+
 wezterm.on(
   "format-tab-title",
   function(tab, tabs, panes, config, hover, max_width)
-    return {
-      { Text = get_tab_title(tab) }
-    }
+    local tab_title = get_tab_title(tab)
+    if tab.is_active then
+      return {
+        { Foreground = { Color = scheme_color("blue_bright") } },
+        { Attribute = { Intensity = "Bold" } },
+        { Text = tab_title }
+      }
+    elseif has_unseen_output(tab) then
+      return {
+        { Foreground = { Color = scheme_color("green_bright") } },
+        { Text = tab_title }
+      }
+    else
+      return {
+        { Text = tab_title }
+      }
+    end
   end
 )
 
