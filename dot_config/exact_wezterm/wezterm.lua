@@ -13,35 +13,18 @@ local function remove_trailing_slash(s)
   return string.gsub(s, "/$", "")
 end
 
-local function get_display_cwd(tab)
-  if tab.active_pane.current_working_dir then
-    local cwd = remove_trailing_slash(tab.active_pane.current_working_dir.file_path)
-    if cwd == remove_trailing_slash(os.getenv("HOME")) then
-      return "~"
-    else
-      return basename(cwd)
-    end
-  else
-    return "???"
-  end
-end
-
-local function get_process(tab)
-  local process_name = tab.active_pane.foreground_process_name
-  if not tab.active_pane or process_name == "" then
-    return "???"
-  else
-    return basename(process_name)
-  end
+local function get_cwd(tab)
+  local cwd = remove_trailing_slash(tab.active_pane.current_working_dir.file_path) or "UNKNOWN"
+  return cwd == remove_trailing_slash(os.getenv("HOME")) and "~" or basename(cwd)
 end
 
 local function get_tab_title(tab)
-  local title = tab.tab_title
-  if title and #title > 0 then
-    return title
-  else
-    return string.format(" [%s] %s ", get_display_cwd(tab), get_process(tab))
+  local tab_title = tab.tab_title
+  if tab_title and #tab_title > 0 then
+    return tab_title
   end
+  local process = basename(tab.active_pane.foreground_process_name)
+  return is_empty(process) and "(debug)" or string.format("[%s] %s", get_cwd(tab), process)
 end
 
 local function has_unseen_output(tab)
@@ -55,8 +38,12 @@ local function has_unseen_output(tab)
   return false
 end
 
-local function scheme_color(key)
-  local current_color_scheme = wezterm.color.get_builtin_schemes()[COLOR_SCHEME]
+local function get_color_scheme(scheme_name)
+  return wezterm.color.get_builtin_schemes()[scheme_name]
+end
+
+local function scheme_color(scheme_name, key)
+  local current_color_scheme = get_color_scheme(scheme_name)
   local key_to_color = {
     black = current_color_scheme.ansi[1],
     red = current_color_scheme.ansi[2],
@@ -84,17 +71,17 @@ wezterm.on(
     local tab_title = get_tab_title(tab)
     if tab.is_active then
       return {
-        { Foreground = { Color = scheme_color("blue_bright") } },
-        { Attribute = { Intensity = "Bold" } },
+        { Foreground = { Color = scheme_color(config.color_scheme, "white") } },
         { Text = tab_title }
       }
     elseif has_unseen_output(tab) then
       return {
-        { Foreground = { Color = scheme_color("green_bright") } },
+        { Foreground = { Color = scheme_color(config.color_scheme, "green") } },
         { Text = tab_title }
       }
     else
       return {
+        { Foreground = { Color = scheme_color(config.color_scheme, "blue") } },
         { Text = tab_title }
       }
     end
