@@ -66,7 +66,6 @@ config.mouse_bindings = {
 
 config.scrollback_lines = 10000
 
--- TODO dynamically enable based on number of tabs
 config.window_close_confirmation = "NeverPrompt"
 
 -- TODO
