@@ -1,5 +1,4 @@
 local wezterm = require("wezterm")
-local act = wezterm.action
 local format_functions = require("format_functions")
 
 wezterm.on("format-tab-title", format_functions.format_tab_tile)
@@ -42,25 +41,25 @@ config.mouse_bindings = {
     -- override default copy behavior with a no-op
     event = { Up = { streak = 1, button = "Left" } },
     mods = "NONE",
-    action = act.Nop,
+    action = wezterm.action.Nop,
   },
   {
     -- disable down event to avoid unexpected behavior
     event = { Down = { streak = 1, button = "Left" } },
     mods = "CTRL",
-    action = act.Nop,
+    action = wezterm.action.Nop,
   },
   {
     -- CTRL-click to open hyperlinks
     event = { Up = { streak = 1, button = "Left" } },
     mods = "CTRL",
-    action = act.OpenLinkAtMouseCursor,
+    action = wezterm.action.OpenLinkAtMouseCursor,
   },
   {
     -- disable down event to avoid unexpected behavior
     event = { Down = { streak = 1, button = "Left" } },
     mods = "CTRL",
-    action = act.Nop,
+    action = wezterm.action.Nop,
   }
 }
 
