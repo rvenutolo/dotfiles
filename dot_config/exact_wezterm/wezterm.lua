@@ -61,6 +61,17 @@ wezterm.on(
   end
 )
 
+wezterm.on(
+  "format-window-title",
+  function(active_tab, pane, tabs, panes, config)
+    if #tabs > 1 then
+      return string.format("%s (%d/%d)", get_tab_title(active_tab), active_tab.tab_index + 1, #tabs)
+    else
+      return get_tab_title(active_tab)
+    end
+  end
+)
+
 local config = {}
 
 if wezterm.config_builder then
