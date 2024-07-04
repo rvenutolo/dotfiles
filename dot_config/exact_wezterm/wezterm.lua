@@ -1,3 +1,5 @@
+-- TODO key bindings
+
 local wezterm = require("wezterm")
 local format_functions = require("format_functions")
 local mouse = require("mouse")
@@ -44,7 +46,5 @@ config.scrollback_lines = 10000
 config.warn_about_missing_glyphs = false
 
 config.window_close_confirmation = "NeverPrompt"
-
--- TODO key bindings
 
 return config
