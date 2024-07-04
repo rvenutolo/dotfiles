@@ -66,11 +66,10 @@ config.mouse_bindings = {
 
 config.scrollback_lines = 10000
 
+config.warn_about_missing_glyphs = false
+
 config.window_close_confirmation = "NeverPrompt"
 
--- TODO
-config.warn_about_missing_glyphs = false
--- scroll lines (10 lines)
--- config.disable_default_key_bindings = true
+-- TODO key bindings
 
 return config
