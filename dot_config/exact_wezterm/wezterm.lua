@@ -1,5 +1,6 @@
 local wezterm = require("wezterm")
 local format_functions = require("format_functions")
+local mouse = require("mouse")
 
 wezterm.on("format-tab-title", format_functions.format_tab_tile)
 wezterm.on("format-window-title", format_functions.format_window_title)
@@ -36,32 +37,7 @@ config.initial_cols = 120
 
 config.initial_rows = 36
 
-config.mouse_bindings = {
-  {
-    -- override default copy behavior with a no-op
-    event = { Up = { streak = 1, button = "Left" } },
-    mods = "NONE",
-    action = wezterm.action.Nop,
-  },
-  {
-    -- disable down event to avoid unexpected behavior
-    event = { Down = { streak = 1, button = "Left" } },
-    mods = "CTRL",
-    action = wezterm.action.Nop,
-  },
-  {
-    -- CTRL-click to open hyperlinks
-    event = { Up = { streak = 1, button = "Left" } },
-    mods = "CTRL",
-    action = wezterm.action.OpenLinkAtMouseCursor,
-  },
-  {
-    -- disable down event to avoid unexpected behavior
-    event = { Down = { streak = 1, button = "Left" } },
-    mods = "CTRL",
-    action = wezterm.action.Nop,
-  }
-}
+config.mouse_bindings = mouse.bindings
 
 config.scrollback_lines = 10000
 
