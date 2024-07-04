@@ -1,76 +1,9 @@
 local wezterm = require("wezterm")
 local act = wezterm.action
+local format_functions = require("format_functions")
 
-local function is_empty(s)
-  return s == nil or s == ""
-end
-
-local function basename(path)
-  return string.gsub(path, "(.*[/\\])(.*)", "%2")
-end
-
-local function remove_trailing_slash(s)
-  return string.gsub(s, "/$", "")
-end
-
-local function get_cwd(tab)
-  local cwd = remove_trailing_slash(tab.active_pane.current_working_dir.file_path) or "UNKNOWN"
-  return cwd == remove_trailing_slash(os.getenv("HOME")) and "~" or basename(cwd)
-end
-
-local function get_tab_title(tab)
-  local tab_title = tab.tab_title
-  if tab_title and #tab_title > 0 then
-    return tab_title
-  end
-  local process = basename(tab.active_pane.foreground_process_name)
-  return is_empty(process) and "(debug)" or string.format("[%s] %s", get_cwd(tab), process)
-end
-
-local function has_unseen_output(tab)
-  if not tab.is_active then
-    for _, pane in ipairs(tab.panes) do
-      if pane.has_unseen_output then
-        return true
-      end
-    end
-  end
-  return false
-end
-
-wezterm.on(
-  "format-tab-title",
-  function(tab, tabs, panes, config, hover, max_width)
-    local tab_title = get_tab_title(tab)
-    if tab.is_active then
-      return {
-        { Foreground = { AnsiColor = "White" } },
-        { Text = tab_title }
-      }
-    elseif has_unseen_output(tab) then
-      return {
-        { Foreground = { AnsiColor = "Green" } },
-        { Text = tab_title }
-      }
-    else
-      return {
-        { Foreground = { AnsiColor = "Blue" } },
-        { Text = tab_title }
-      }
-    end
-  end
-)
-
-wezterm.on(
-  "format-window-title",
-  function(active_tab, pane, tabs, panes, config)
-    if #tabs > 1 then
-      return string.format("%s (%d/%d)", get_tab_title(active_tab), active_tab.tab_index + 1, #tabs)
-    else
-      return get_tab_title(active_tab)
-    end
-  end
-)
+wezterm.on("format-tab-title", format_functions.format_tab_tile)
+wezterm.on("format-window-title", format_functions.format_window_title)
 
 local config = {}
 
