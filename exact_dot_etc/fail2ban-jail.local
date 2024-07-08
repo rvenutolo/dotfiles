@@ -1,5 +1,5 @@
 [DEFAULT]
-ignoreip = 127.0.0.1/8 ::1
+ignoreip = 127.0.0.1/8 ::1 100.0.0.0/24
 bantime = 365d
 findtime = 10m
 maxretry = 10
