@@ -1,12 +1,18 @@
-LogLevel VERBOSE
-LoginGraceTime 20m
+Port 1349
+{{- if .is_server }}
+AllowUsers root {{ .chezmoi.username }}
+PermitRootLogin yes
+{{- else }}
+AllowUsers {{ .chezmoi.username }}
 PermitRootLogin no
+{{- end }}
 PasswordAuthentication no
 PermitEmptyPasswords no
 KbdInteractiveAuthentication no
 AuthenticationMethods publickey
+LoginGraceTime 20m
+LogLevel VERBOSE
 UsePAM yes
 X11Forwarding yes
 PrintMotd no
 AcceptEnv LANG LC_*
-AllowUsers {{ .chezmoi.username }}
