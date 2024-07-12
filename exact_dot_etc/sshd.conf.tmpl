@@ -1,11 +1,6 @@
 Port 1349
-{{- if .is_server }}
-AllowUsers root {{ .chezmoi.username }}
-PermitRootLogin yes
-{{- else }}
 AllowUsers {{ .chezmoi.username }}
 PermitRootLogin no
-{{- end }}
 PasswordAuthentication no
 PermitEmptyPasswords no
 KbdInteractiveAuthentication no
