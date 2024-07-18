@@ -5,4 +5,3 @@ findtime = 10m
 maxretry = 10
 backend = systemd
 usedns = no
-banaction = ufw
