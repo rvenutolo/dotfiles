@@ -46,16 +46,3 @@ out/
 /input
 /output
 /TODO
-
-### Terraform
-**/.terraform/*
-*.tfstate
-*.tfstate.*
-*.tfvars
-*.tfvars.json
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-.terraformrc
-terraform.rc
