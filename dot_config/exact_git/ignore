@@ -1,3 +1,52 @@
+### Docker
+.env
+
+### Gradle
+.gradle
+**/build/
+!src/**/build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+.gradletasknamecache
+.project
+.classpath
+
+### Java
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+hs_err_pid*
+replay_pid*
+
+### JetBrains
+atlassian-ide-plugin.xml
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+.idea/
+.idea_modules/
+out/
+*.iml
+*.ipr
+*.iws
+.attach_pid*
+
+### Kate
+.*.kate-swp
+.swp.*
+
+### Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+.swp
+
 ### Maven
 target/
 pom.xml.tag
@@ -10,6 +59,39 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
+### Misc
+/conf
+/input
+/output
+/TODO
+secring.*
+*.bak
+*.gho
+*.ori
+*.orig
+*.tmp
+*.private
+*.old
+*.log
+*.patch
+*.diff
+
+### Nix
+result
+result-*
+
+### Python
+.Python
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Ss]cripts
+pyvenv.cfg
+.venv
+pip-selfcheck.json
+
 ### SDKMAN
 .sdkmanrc
 
@@ -17,32 +99,12 @@ buildNumber.properties
 metastore_db/
 spark-warehouse/
 
-### Java HotSpot Error
-hs_err_pid*
-replay_pid*
-
-### IntelliJ
-*.iml
-*.ipr
-*.iws
-.idea/
-out/
-.attach_pid*
-
-### Linux
-*~
-.fuse_hidden*
-.directory
-.Trash-*
-.nfs*
-.swp
-
-### Misc
-*.bak
-*.private
-*.old
-*.log
-/conf
-/input
-/output
-/TODO
+### VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.vsix
