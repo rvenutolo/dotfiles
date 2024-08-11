@@ -3,5 +3,4 @@ Description=Deletes trash items older than 30 days
 
 [Service]
 Type=oneshot
-# TODO use ExecSearchPath when all boxes are on systemd 250+
-ExecStart=/usr/bin/bash -c '$$(which trash-empty) 30'
+ExecStart=%h/.nix-profile/bin/trash-empty 30
