@@ -38,6 +38,9 @@ export HOME_MANAGER_DIR="${XDG_CONFIG_HOME}/home-manager"
 export HOME_MANAGER_PACKAGES_FILE="${HOME_MANAGER_DIR}/packages.nix"
 export PACKAGES_DIR="${CODE_DIR}/Personal/packages"
 export WTTR_CITY='Atlanta'
+if __executable_exists 'tailscale'; then
+  export TAILNET_IP="$(tailscale ip --4)"
+fi
 
 # age / crypt
 export AGE_PUBLIC_KEY='age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs'
