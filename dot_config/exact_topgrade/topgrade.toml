@@ -16,7 +16,7 @@
 
 # Disable specific steps - same options as the command line flag
 # disable = ["system", "emacs"]
-disable = ["helix"]
+disable = ["clam_av_db", "helix"]
 
 # Ignore failures for these steps
 # ignore_failures = ["powershell"]
