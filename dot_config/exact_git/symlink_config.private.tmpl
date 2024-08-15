@@ -1,7 +1,5 @@
-{{- if .is_personal }}
-config-personal.private
-{{- else if .is_work }}
+{{- if .is_work }}
 config-work.private
 {{- else }}
-config-server.private
+config-personal.private
 {{- end }}
