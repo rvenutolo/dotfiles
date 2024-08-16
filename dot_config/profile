@@ -7,7 +7,7 @@ __is_readable_file() {
   [ -r "$1" ]
 }
 __path_remove() {
-  PATH=$(echo -n "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
+  PATH=$(printf '%s\n' "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
 }
 __path_append() {
   __path_remove "$1" && PATH="$PATH:$1"
