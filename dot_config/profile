@@ -39,7 +39,8 @@ export HOME_MANAGER_PACKAGES_FILE="${HOME_MANAGER_DIR}/packages.nix"
 export PACKAGES_DIR="${CODE_DIR}/Personal/packages"
 export WTTR_CITY='Atlanta'
 if __executable_exists 'tailscale'; then
-  export TAILNET_IP="$(tailscale ip --4)"
+  TAILNET_IP="$(tailscale ip --4)"
+  export TAILNET_IP
 fi
 
 # age / crypt
