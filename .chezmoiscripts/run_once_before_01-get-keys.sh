@@ -16,7 +16,7 @@ function executable_exists() {
 }
 
 function is_readable_file() {
-  [[ -f "$1" && -r "$1" ]]
+  [[ -r "$1" ]]
 }
 
 function download() {

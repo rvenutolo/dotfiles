@@ -84,7 +84,7 @@ function __executable_exists() {
   type -aPf "$1" > /dev/null 2>&1
 }
 function __is_readable_file() {
-  [[ -f "$1" && -r "$1" ]]
+  [[ -r "$1" ]]
 }
 function __path_remove() {
   PATH=$(echo -n "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
