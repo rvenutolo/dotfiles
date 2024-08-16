@@ -60,5 +60,5 @@ function ipv4_to_num() {
 }
 
 function tmpd() {
-  cd "$(mktemp --directory)"
+  cd "$(mktemp --directory)" || exit
 }
