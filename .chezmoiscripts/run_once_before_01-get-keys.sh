@@ -15,8 +15,8 @@ function executable_exists() {
   command -v "$1" > /dev/null 2>&1
 }
 
-function is_readable_file() {
-  [[ -r "$1" ]]
+function file_exists() {
+  [[ -f "$1" ]]
 }
 
 function download() {
@@ -35,7 +35,7 @@ readonly keys_dir="${HOME}/.keys"
 mkdir --parents "${keys_dir}"
 
 readonly age_key_file="${keys_dir}/age.key"
-if ! is_readable_file "${age_key_file}"; then
+if ! file_exists "${age_key_file}"; then
   log "Downloading: ${age_key_file}"
   age_key_content="$(download 'https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/age.key')"
   if [[ -n "${age_key_content}" ]]; then
@@ -48,7 +48,7 @@ fi
 
 for filename in 'id_ed25519' 'id_ed25519.pub'; do
   key_file="${keys_dir}/${filename}"
-  if ! is_readable_file "${key_file}"; then
+  if ! file_exists "${key_file}"; then
     log "Downloading: ${key_file}"
     key_contents="$(download "https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/${filename}")"
     if [[ -n "${key_contents}" ]]; then
