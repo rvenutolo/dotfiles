@@ -38,9 +38,17 @@ export HOME_MANAGER_DIR="${XDG_CONFIG_HOME}/home-manager"
 export HOME_MANAGER_PACKAGES_FILE="${HOME_MANAGER_DIR}/packages.nix"
 export PACKAGES_DIR="${CODE_DIR}/Personal/packages"
 export WTTR_CITY='Atlanta'
+PUID="$(id -u)"
+export PUID
+PGID="$(id -g)"
+export PGID
 if __executable_exists 'tailscale'; then
   TAILNET_IP="$(tailscale ip --4)"
   export TAILNET_IP
+fi
+if __executable_exists 'docker'; then
+  DOCKER_GROUP_ID="$(getent group 'docker' | cut --delimiter=':' --fields='3')"
+  export DOCKER_GROUP_ID
 fi
 
 # age / crypt
