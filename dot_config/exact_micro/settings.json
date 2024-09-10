@@ -43,9 +43,7 @@
     "parsecursor": true,
     "paste": false,
     "permbackup": false,
-    "pluginchannels": [
-        "https://raw.githubusercontent.com/micro-editor/plugin-channel/master/channel.json"
-    ],
+    "pluginchannels": ["https://raw.githubusercontent.com/micro-editor/plugin-channel/master/channel.json"],
     "pluginrepos": [],
     "readonly": false,
     "reload": "prompt",
