@@ -1,0 +1,12 @@
+# List unmerged .pacnew files after every update
+
+[Trigger]
+Operation = Upgrade
+Type = Package
+Target = *
+
+[Action]
+Description = Check for unmerged .pacnew files
+When = PostTransaction
+Exec = /usr/bin/pacdiff --output
+Depends = pacman-contrib

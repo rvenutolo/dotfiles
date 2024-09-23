@@ -1,0 +1,13 @@
+# Sign systemd-boot binaries on update
+
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Path
+Target = usr/lib/systemd/boot/efi/systemd-bootx64.efi
+
+[Action]
+Description = Sign systemd-boot EFI binary for Secure Boot
+When = PostTransaction
+Exec = /usr/bin/sbsign --key /etc/secure-boot/keys/db/db.key --cert /etc/secure-boot/keys/db/db.pem /usr/lib/systemd/boot/efi/systemd-bootx64.efi
+Depends = sbsigntools

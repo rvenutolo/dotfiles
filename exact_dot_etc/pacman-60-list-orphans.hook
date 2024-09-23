@@ -1,0 +1,12 @@
+# List orphans after every update.
+
+[Trigger]
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Checks for package orphans
+When = PostTransaction
+Exec = /usr/bin/bash -c "/usr/bin/pacman -Qdt || true"
