@@ -1,3 +1,4 @@
+[general]
 import = ["/home/rvenutolo/.config/alacritty/colors.toml", "/home/rvenutolo/.config/alacritty/font.toml"]
 
 [colors]
