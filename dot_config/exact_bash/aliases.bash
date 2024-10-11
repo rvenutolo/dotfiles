@@ -131,7 +131,7 @@ if __executable_exists 'docker'; then
   alias dc='docker compose'
   alias dcu='docker-compose-up'
   alias dcd='docker-compose-down'
-  alisa dcp='docker-compose-pull'
+  alias dcp='docker-compose-pull'
 fi
 
 # misc - shorter alias
