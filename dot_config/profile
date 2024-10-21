@@ -135,7 +135,7 @@ export LESS_TERMCAP_ue
 export LESS_TERMCAP_us
 
 ## tailscale
-if __executable_exists 'tailscale'; then
+if __executable_exists 'tailscale' && tailscale status > '/dev/null' ; then
   export TAILNET_IP="$(tailscale ip -4)"
 fi
 
