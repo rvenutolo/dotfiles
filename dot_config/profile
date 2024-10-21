@@ -139,9 +139,8 @@ if __executable_exists 'tailscale'; then
   export TAILNET_IP="$(tailscale ip -4)"
 fi
 
-if __is_readable_file '/opt/awsvpnclient/AWS VPN Client'; then
-  export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-fi
+## for aws vpn client
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 
 ## this addresses when ssh-ing to a box that doesn't have terminfo for whatever TERM currently is
 for TERM in "${TERM}" 'xterm-256color' 'xterm-16color' 'xterm-color' 'xterm'; do
