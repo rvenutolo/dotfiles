@@ -12,6 +12,7 @@
     linkDesktopApplications = {
       after = ["writeBoundary" "createXdgUserDirectories" ];
       before = [];
+      # make .desktop files executable for KDE
       data = "find $HOME/.nix-profile/share/applications/ -iname '*.desktop' | xargs -n 1 readlink | xargs chmod +x";
     };
   };
