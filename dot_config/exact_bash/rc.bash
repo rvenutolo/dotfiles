@@ -160,6 +160,8 @@ if __is_readable_file "${XDG_CONFIG_HOME}/bash/complete_alias.bash"; then
   complete -F _complete_alias "${!BASH_ALIASES[@]}"
 fi
 
+__executable_exists 'direnv' && eval "$(direnv hook bash)"
+
 # put this last as starship_preexec() will run before every command after this
 __executable_exists 'starship' && eval "$(starship init bash)"
 
