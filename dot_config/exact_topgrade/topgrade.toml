@@ -16,7 +16,7 @@
 
 # Disable specific steps - same options as the command line flag
 # disable = ["system", "emacs"]
-disable = ["clam_av_db", "helix"]
+disable = ["clam_av_db", "helix", "nix"] # Disabling nix here as topgrade will update it to a non-release version
 
 # Ignore failures for these steps
 # ignore_failures = ["powershell"]
