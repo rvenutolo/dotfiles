@@ -163,8 +163,8 @@ for dir in \
 done
 unset -v dir
 
-if __is_readable_file "${XDG_CONFIG_HOME}/profile-local";  then
-  . "${XDG_CONFIG_HOME}/profile-local"
+if __is_readable_file "${HOME}/.profile-local";  then
+  . "${HOME}/.profile-local"
 fi
 
 unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove

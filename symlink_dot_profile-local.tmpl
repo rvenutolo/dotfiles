@@ -1,0 +1,9 @@
+{{- if .is_personal }}
+.config/profile-local-personal
+{{- else if .is_work }}
+.config/profile-local-work
+{{- else if .is_wtf }}
+.config/profile-local-wtf
+{{- else }}
+.config/profile-local-server
+{{- end }}
