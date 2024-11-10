@@ -1,9 +1,9 @@
 {{- if .is_personal }}
-local-personal.bash
+profile-local-personal
 {{- else if .is_work }}
-local-work.bash
+profile-local-work
 {{- else if .is_wtf }}
-local-wtf.bash
+profile-local-wtf
 {{- else }}
-local-server.bash
+profile-local-server
 {{- end }}
