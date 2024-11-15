@@ -5,6 +5,7 @@ Dotfiles managed by [chezmoi](https://www.chezmoi.io/).
 ## Install & Init
 
 ```shell
+## SET HOSTNAME FIRST
 adduser rvenutolo && usermod -aG sudo rvenutolo && ssh -o StrictHostKeyChecking=no rvenutolo@localhost
 eval $(ssh-agent)
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /tmp ## OR sh -c "$(wget -qO- get.chezmoi.io)" -- -b /tmp
