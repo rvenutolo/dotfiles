@@ -156,9 +156,7 @@ for dir in \
   "${HOME}/.nix-profile/bin" \
   "${HOME}/.local/share/JetBrains/Toolbox/scripts" \
   "${HOME}/.local/bin" \
-  "${HOME}/.bin" \
-  "${SCRIPTS_DIR}/other" \
-  "${SCRIPTS_DIR}/main"; do
+  "${HOME}/.bin"; do
   __path_prepend "${dir}"
 done
 unset -v dir

@@ -146,6 +146,13 @@ for file in \
 done
 unset -v file
 
+for dir in \
+  "${SCRIPTS_DIR}/other" \
+  "${SCRIPTS_DIR}/main"; do
+  __path_prepend "${dir}"
+done
+unset -v dir
+
 # misc init stuff
 __is_readable_file "${XDG_CONFIG_HOME}/dircolors" && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
 __executable_exists 'aws_completer' && complete -C 'aws_completer' aws
