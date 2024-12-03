@@ -1,5 +1,4 @@
 {
 	"auths": {},
-	"currentContext": "rootless",
 	"psFormat": "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.ID}}\t{{.Ports}}"
 }
