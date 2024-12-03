@@ -15,7 +15,7 @@ is_laptop = {{- if (or (eq .chezmoi.hostname "bluestar") (eq .chezmoi.hostname "
 is_wtf = {{- if (eq .chezmoi.hostname "wtf") }} true {{ else }} false {{ end }}
 is_io= {{- if (eq .chezmoi.hostname "io") }} true {{ else }} false {{ end }}
 is_server = {{- if (not (or (eq .chezmoi.hostname "redstar") (eq .chezmoi.hostname "bluestar") (eq .chezmoi.hostname "silverstar"))) }} true {{ else }} false {{ end }}
-home_manager_state_version = '{{- promptStringOnce . "home_manager_state_version" "Home Manager state version?" "24.05" }}'
+home_manager_state_version = '{{- promptStringOnce . "home_manager_state_version" "Home Manager state version?" "24.11" }}'
 
 [edit]
 command = 'nano'
