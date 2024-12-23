@@ -33,6 +33,6 @@ if cmp --silent "${sdkman_config_file}" "${target_file}"; then
   rm "${sdkman_config_file}"
 else
   # files have different content
-  diff --color "${sdkman_config_file}" "${target_file}"
+  diff --color "${sdkman_config_file}" "${target_file}" || true
   die "${sdkman_config_file} and ${target_file} have different contents"
 fi
