@@ -110,6 +110,7 @@ else
   export PAGER='less --ignore-case'
 fi
 export MANPAGER="${PAGER}"
+export GROFF_NO_SGR=1
 
 # file manager
 case "${XDG_CURRENT_DESKTOP:-}" in
