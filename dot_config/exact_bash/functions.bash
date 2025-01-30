@@ -13,6 +13,10 @@ function mkcd() {
   esac
 }
 
+function mktempcd() {
+  cd "$(mktemp --directory)"
+}
+
 function cl() {
   cd "$@" && eval ll
 }
