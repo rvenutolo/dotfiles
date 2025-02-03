@@ -159,6 +159,10 @@
 
   prune = true
 
+[gpg]
+
+  format = ssh
+
 [help]
 
   # Automatically correct and execute mistyped commands
@@ -209,3 +213,7 @@
 [url "git://gist.github.com/"]
 
   insteadOf = "gist:"
+
+[user]
+
+  signingKey = ~/.keys/id_ed25519
