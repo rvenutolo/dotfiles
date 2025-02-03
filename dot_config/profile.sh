@@ -80,6 +80,7 @@ export WGETRC="${XDG_CONFIG_HOME}/wgetrc"
 
 ## misc
 export DIFFPROG='meld'
+export GPG_TTY="$(tty)"
 export HSTR_CONFIG='hicolor'
 export MAVEN_OPTS='-Xms256m -Xmx1g'
 export NIXPKGS_ALLOW_UNFREE='1'
