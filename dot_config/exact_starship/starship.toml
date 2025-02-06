@@ -194,7 +194,7 @@ style = 'bg:#81A1C1 bold'
 symbol = ''
 
 [shlvl]
-threshold = 1
+threshold = 2
 format = '[$symbol$shlvl]($style) '
 symbol = '↕'
 style = 'fg:#EBCB8B bold'
