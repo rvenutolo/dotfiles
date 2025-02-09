@@ -1,5 +1,3 @@
--- TODO key bindings
-
 local wezterm = require("wezterm")
 local format_functions = require("format_functions")
 local mouse = require("mouse")
