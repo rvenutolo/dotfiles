@@ -154,6 +154,12 @@
 
 [diff]
 
+  algorithm = histogram
+
+  colorMoved = plain
+
+  mnemonicPrefix = true
+
   # Detect copies as well as renames
   renames = copies
 
