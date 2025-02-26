@@ -201,6 +201,10 @@
 
   rebase = false
 
+[tag]
+
+  sort = version:refname
+
 [url "git@github.com:"]
 
   insteadOf = "gh:"
