@@ -210,6 +210,11 @@
   # https://git-scm.com/docs/git-config#Documentation/git-config.txt-pushautoSetupRemote
   autoSetupRemote = true
 
+[rerere]
+
+  enabled = true
+  autoupdate = true
+
 [tag]
 
   sort = version:refname
