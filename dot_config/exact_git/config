@@ -96,164 +96,112 @@
   whoami = config user.email
 
 [apply]
-
-  # Detect whitespace errors when applying a patch
   whitespace = fix
 
 [branch]
-
   sort = -committerdate
 
 [color]
-
-  # Use colors in Git commands that are capable of colored output when
-  # outputting to the terminal. (This is the default setting in Git ≥ 1.8.4.)
   ui = auto
 
 [color "branch"]
-
   current = yellow reverse
   local = yellow
   remote = green
 
 [color "diff"]
-
-  meta = yellow bold
   frag = magenta bold # line info
-  old = red # deletions
+  meta = yellow bold
   new = green # additions
+  old = red # deletions
 
 [color "status"]
-
   added = yellow
   changed = green
   untracked = cyan
 
 [column]
-
   ui = auto
 
 [commit]
-
   gpgSign = true
   verbose = true
 
 [core]
-
-  # Treat spaces before tabs and all kinds of trailing whitespace as an error
-  # [default] trailing-space: looks for spaces at the end of a line
-  # [default] space-before-tab: looks for spaces before tabs at the beginning of a line
+  precomposeUnicode = false
+  untrackedCache = true
   whitespace = space-before-tab,-indent-with-non-tab,trailing-space
 
-  # Prevent showing files whose names contain non-ASCII symbols as unversioned.
-  # http://michael-kuehnel.de/git/2014/11/21/git-mac-osx-and-german-umlaute.html
-  precomposeUnicode = false
-
-  # Speed up commands involving untracked files such as `git status`.
-  # https://git-scm.com/docs/git-update-index#_untracked_cache
-  untrackedCache = true
-
 [diff]
-
   algorithm = histogram
-
   colorMoved = plain
-
   mnemonicPrefix = true
-
-  # Detect copies as well as renames
   renames = copies
 
 [diff "bin"]
-
-  # Use `hexdump` to diff binary files
   textconv = hexdump -v -C
 
 [feature]
-
   experimental = true
 
 [fetch]
-
+  all = true
   prune = true
   pruneTags = true
-  all = true
 
 [gpg]
-
   format = ssh
 
 [grep]
-
-  # Ignore case when searching
   ignoreCase = true
   patternType = perl
 
 [help]
-
-  # Automatically correct and execute mistyped commands
   autocorrect = prompt
 
 [init]
-
   defaultBranch = main
 
 [merge]
-
-  # Include summaries of merged commits in newly created merge commit messages
-  log = true
   conflictstyle = zdiff3
+  log = true
 
 [pager]
-
   branch = false
 
 [pull]
-
   rebase = false
 
 [push]
-
-  # https://git-scm.com/docs/git-config#Documentation/git-config.txt-pushdefault
-  default = simple
-  # Make `git push` push relevant annotated tags when pushing branches out.
-  followTags = true
-  # https://git-scm.com/docs/git-config#Documentation/git-config.txt-pushautoSetupRemote
   autoSetupRemote = true
+  default = simple
+  followTags = true
 
 [rebase]
-
   updateRefs = true
 
 [rerere]
-
-  enabled = true
   autoupdate = true
+  enabled = true
 
 [tag]
-
   sort = version:refname
 
 [url "git@github.com:"]
-
   insteadOf = "gh:"
   pushInsteadOf = "github:"
   pushInsteadOf = "git://github.com/"
 
 [url "git://github.com/"]
-
   insteadOf = "github:"
 
 [url "git@gist.github.com:"]
-
   insteadOf = "gst:"
   pushInsteadOf = "gist:"
   pushInsteadOf = "git://gist.github.com/"
 
 [url "git://gist.github.com/"]
-
   insteadOf = "gist:"
 
 [user]
-
   signingKey = ~/.keys/id_ed25519.pub
