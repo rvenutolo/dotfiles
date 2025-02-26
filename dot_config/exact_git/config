@@ -179,6 +179,12 @@
 
   format = ssh
 
+[grep]
+
+  # Ignore case when searching
+  ignoreCase = true
+  patternType = perl
+
 [help]
 
   # Automatically correct and execute mistyped commands
