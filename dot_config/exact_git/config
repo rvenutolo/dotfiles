@@ -169,6 +169,10 @@
   # Use `hexdump` to diff binary files
   textconv = hexdump -v -C
 
+[feature]
+
+  experimental = true
+
 [fetch]
 
   prune = true
