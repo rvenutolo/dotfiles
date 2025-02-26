@@ -194,6 +194,10 @@
 
   branch = false
 
+[pull]
+
+  rebase = false
+
 [push]
 
   # https://git-scm.com/docs/git-config#Documentation/git-config.txt-pushdefault
@@ -202,10 +206,6 @@
   followTags = true
   # https://git-scm.com/docs/git-config#Documentation/git-config.txt-pushautoSetupRemote
   autoSetupRemote = true
-
-[pull]
-
-  rebase = false
 
 [tag]
 
