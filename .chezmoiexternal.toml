@@ -128,6 +128,11 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/develop/src/nord.theme'
 refreshPeriod = '1h'
 
+['.local/share/warp-terminal/themes/nord_dark.yaml']
+type = 'file'
+url = 'https://raw.githubusercontent.com/SilentGlasses/warp_themes/main/yaml_files/nord_dark.yaml'
+refreshPeriod = '1h'
+
 ['Code/Personal/crypt']
 type = 'git-repo'
 url = 'git@github.com:rvenutolo/crypt.git'
