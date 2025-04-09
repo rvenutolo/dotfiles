@@ -68,7 +68,7 @@ executable = true
 
 ['.local/bin/colorscheme']
 type = 'file'
-url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/master/fun/bin/colorscheme'
+url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/main/fun/.local/bin/colorscheme'
 refreshPeriod = '1h'
 executable = true
 
