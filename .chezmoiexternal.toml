@@ -1,28 +1,28 @@
 ['.config/alacritty/colors.yml']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/alacritty/main/src/nord.yaml'
+url = 'https://raw.githubusercontent.com/nordtheme/alacritty/refs/heads/main/src/nord.yaml'
 refreshPeriod = '1h'
 filter.command = 'sed'
 filter.args = ['s/^    bar:$/  footer_bar:/']
 
 ['.config/bash/complete_alias.bash']
 type = 'file'
-url = 'https://raw.githubusercontent.com/cykerway/complete-alias/master/complete_alias'
+url = 'https://raw.githubusercontent.com/cykerway/complete-alias/refs/heads/master/complete_alias'
 refreshPeriod = '1h'
 
 ['.config/dircolors']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/dircolors/develop/src/dir_colors'
+url = 'https://raw.githubusercontent.com/nordtheme/dircolors/refs/heads/develop/src/dir_colors'
 refreshPeriod = '1h'
 
 ['.config/kitty/kitty_keys.sh']
 type = 'file'
-url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/main/kitty_keys.sh'
+url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/refs/heads/main/kitty_keys.sh'
 refreshPeriod = '1h'
 
 ['.config/kitty/conf/nord.conf']
 type = 'file'
-url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/master/nord.conf'
+url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/refs/heads/master/nord.conf'
 refreshPeriod = '1h'
 
 ['.config/nano/syntax_highlighting']
@@ -35,102 +35,102 @@ include = ['*/*.nanorc']
 
 ['.config/nvim/colors/nord.vim']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/vim/main/colors/nord.vim'
+url = 'https://raw.githubusercontent.com/nordtheme/vim/refs/heads/main/colors/nord.vim'
 refreshPeriod = '1h'
 
 ['.config/tilix/schemes/nord.json']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/tilix/develop/src/json/nord.json'
+url = 'https://raw.githubusercontent.com/nordtheme/tilix/refs/heads/develop/src/json/nord.json'
 refreshPeriod = '1h'
 
 ['.config/X11/Xresources']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/xresources/develop/src/nord'
+url = 'https://raw.githubusercontent.com/nordtheme/xresources/refs/heads/develop/src/nord'
 refreshPeriod = '1h'
 
 ['.local/bin/ansi-colors']
 type = 'file'
-url = 'https://raw.githubusercontent.com/BachoSeven/dotfiles/master/.local/bin/colors/16'
+url = 'https://raw.githubusercontent.com/BachoSeven/dotfiles/refs/heads/master/.local/bin/colors/16'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/ansi-modes']
 type = 'file'
-url = 'https://raw.githubusercontent.com/statico/dotfiles/main/bin/ansimodes'
+url = 'https://raw.githubusercontent.com/statico/dotfiles/refs/heads/main/bin/ansimodes'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/appman']
 type = 'file'
-url = 'https://raw.githubusercontent.com/ivan-hc/AM/main/APP-MANAGER'
+url = 'https://raw.githubusercontent.com/ivan-hc/AM/refs/heads/main/APP-MANAGER'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/colorscheme']
 type = 'file'
-url = 'https://raw.githubusercontent.com/xero/dotfiles/master/fun/bin/colorscheme'
+url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/master/fun/bin/colorscheme'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/dockcheck']
 type = 'file'
-url = 'https://raw.githubusercontent.com/mag37/dockcheck/main/dockcheck.sh'
+url = 'https://raw.githubusercontent.com/mag37/dockcheck/refs/heads/main/dockcheck.sh'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/git-filter-repo']
 type = 'file'
-url = 'https://raw.githubusercontent.com/newren/git-filter-repo/main/git-filter-repo'
+url = 'https://raw.githubusercontent.com/newren/git-filter-repo/refs/heads/main/git-filter-repo'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/git-wtf']
 type = 'file'
-url = 'https://raw.githubusercontent.com/DanielVartanov/willgit/master/bin/git-wtf'
+url = 'https://raw.githubusercontent.com/DanielVartanov/willgit/refs/heads/master/bin/git-wtf'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/rain']
 type = 'file'
-url = 'https://raw.githubusercontent.com/xero/dotfiles/master/fun/bin/rain'
+url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/master/fun/bin/rain'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/nerd-font-test']
 type = 'file'
-url = 'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/bin/scripts/test-fonts.sh'
+url = 'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/refs/heads/master/bin/scripts/test-fonts.sh'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/bin/starship-git-simple']
 type = 'file'
-url = 'https://raw.githubusercontent.com/sapegin/dotfiles/master/bin/lib/starship-git-simple'
+url = 'https://raw.githubusercontent.com/sapegin/dotfiles/refs/heads/master/bin/lib/starship-git-simple'
 refreshPeriod = '1h'
 executable = true
 
 ['.local/share/bash-completion/completions/mvn']
 type = 'file'
-url = 'https://raw.githubusercontent.com/juven/maven-bash-completion/master/bash_completion.bash'
+url = 'https://raw.githubusercontent.com/juven/maven-bash-completion/refs/heads/master/bash_completion.bash'
 refreshPeriod = '1h'
 
 ['.local/share/gedit/styles/nord.xml']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/gedit/develop/src/xml/nord.xml'
+url = 'https://raw.githubusercontent.com/nordtheme/gedit/refs/heads/develop/src/xml/nord.xml'
 refreshPeriod = '1h'
 
 ['.local/share/konsole/nord.colorscheme']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/konsole/develop/src/nord.colorscheme'
+url = 'https://raw.githubusercontent.com/nordtheme/konsole/refs/heads/develop/src/nord.colorscheme'
 refreshPeriod = '1h'
 
 ['.local/share/xfce4/terminal/colorschemes/nord.theme']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/develop/src/nord.theme'
+url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/refs/heads/develop/src/nord.theme'
 refreshPeriod = '1h'
 
 ['.local/share/warp-terminal/themes/nord_dark.yaml']
 type = 'file'
-url = 'https://raw.githubusercontent.com/SilentGlasses/warp_themes/main/yaml_files/nord_dark.yaml'
+url = 'https://raw.githubusercontent.com/SilentGlasses/warp_themes/refs/heads/main/yaml_files/nord_dark.yaml'
 refreshPeriod = '1h'
 
 ['Code/Personal/crypt']
