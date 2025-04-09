@@ -92,7 +92,7 @@ executable = true
 
 ['.local/bin/rain']
 type = 'file'
-url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/master/fun/bin/rain'
+url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/main/fun/.local/bin/rain'
 refreshPeriod = '1h'
 executable = true
 
