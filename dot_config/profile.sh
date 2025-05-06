@@ -139,6 +139,7 @@ export LESS_TERMCAP_us
 ## tailscale
 if __executable_exists 'tailscale' && tailscale status > '/dev/null' ; then
   export TAILNET_IP="$(tailscale ip -4)"
+  export TAILNET_CIDR='100.64.0.0/10'
 fi
 
 ## this addresses when ssh-ing to a box that doesn't have terminfo for whatever TERM currently is
