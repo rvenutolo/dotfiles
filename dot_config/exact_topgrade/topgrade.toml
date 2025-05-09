@@ -90,7 +90,7 @@ cleanup = true
 [commands]
 # "Python Environment" = "~/dev/.env/bin/pip install -i https://pypi.python.org/simple -U --upgrade-strategy eager jupyter"
 # "Custom command using interactive shell (unix)" = "-i vim_upgrade"
-"home-manager packages" = "-i home-manager-update"
+"sync universal packages" = "-i sync-universal-packages"
 
 
 [python]
