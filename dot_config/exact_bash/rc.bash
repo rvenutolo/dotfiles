@@ -169,8 +169,6 @@ fi
 
 __executable_exists 'direnv' && eval "$(direnv hook bash)"
 
-__executable_exists 'carapace' && source <(carapace _carapace)
-
 # put this last as starship_preexec() will run before every command after this
 __executable_exists 'starship' && eval "$(starship init bash)"
 
