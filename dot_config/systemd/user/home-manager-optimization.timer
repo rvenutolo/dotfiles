@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily deletion of old home-manager generations
+Description=Daily nix store optimization
 
 [Timer]
 OnCalendar=*-*-* 5:00:00

@@ -1,5 +1,5 @@
 [Unit]
-Description=Delete old home-manager generations
+Description=Optimize nix store
 
 [Service]
 Type=oneshot
