@@ -119,6 +119,7 @@ alias n='nano'
 if __executable_exists 'home-manager'; then
   alias hm='home-manager'
   alias hmd='cd "${HOME_MANAGER_DIR}"'
+  alias hmm='home-manager-maintenance'
   alias hmp='home-manager-packages'
   alias hmu='home-manager-update'
   alias hms='home-manager-switch'
