@@ -85,7 +85,7 @@ export GPG_TTY="$(tty)"
 export HSTR_CONFIG='hicolor'
 export MAVEN_OPTS='-Xms256m -Xmx1g'
 export NIXPKGS_ALLOW_UNFREE='1'
-export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id --user)}/ssh-agent.socket"
+export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
 export STACK_XDG='1'
 export SYSTEMD_PAGER=''
 
