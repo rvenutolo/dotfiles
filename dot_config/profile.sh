@@ -27,6 +27,7 @@ export XDG_DATA_DIRS="${XDG_DATA_DIRS:-}"
 export XDG_DATA_DIRS="/var/lib/flatpak/exports/share:${XDG_DATA_DIRS}"
 export XDG_DATA_DIRS="${HOME}/.local/share/flatpak/exports/share:${XDG_DATA_DIRS}"
 export XDG_DATA_DIRS="${HOME}/.nix-profile/share:${XDG_DATA_DIRS}"
+exprot XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id --user)}"
 
 # personal env vars
 export PERSONAL_DESKTOP_HOSTNAME='redstar'
