@@ -157,6 +157,7 @@ unset -v dir
 __is_readable_file "${XDG_CONFIG_HOME}/dircolors" && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
 __executable_exists 'aws_completer' && complete -C 'aws_completer' aws
 __executable_exists 'appman' && complete -W "$(cat "${XDG_DATA_HOME}/appman/appman/list" 2> /dev/null)" appman
+__executable_exists 'carapace' && source <(carapace _carapace)
 __executable_exists 'batpipe' && eval "$(batpipe)"
 __executable_exists 'kubectl' && source <(kubectl completion bash)
 __executable_exists 'zoxide' && eval "$(zoxide init bash)"
