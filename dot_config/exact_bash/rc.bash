@@ -96,15 +96,6 @@ function __path_prepend() {
   __path_remove "$1" && PATH="$1:$PATH"
 }
 
-# ble.sh
-HAS_BLESH=''
-if __executable_exists 'blesh-share'; then
-  if __is_readable_file "$(blesh-share)/ble.sh"; then
-    HAS_BLESH='Y'
-    source -- "$(blesh-share)/ble.sh" --attach=none
-  fi
-fi
-
 # system bash config files to source
 for file in '/etc/bash.bashrc' '/etc/bashrc'; do
   if __is_readable_file "${file}"; then
@@ -183,8 +174,5 @@ __executable_exists 'direnv' && eval "$(direnv hook bash)"
 # put this last as starship_preexec() will run before every command after this
 __executable_exists 'starship' && eval "$(starship init bash)"
 
-# attach ble.sh
-[[ -n "${HAS_BLESH}" ]] && [[ -z "${BLE_VERSION:-}" ]] && ble-attach
-
 # clean up functions
-unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove HAS_BLESH
+unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove
