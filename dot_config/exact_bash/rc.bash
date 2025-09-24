@@ -166,7 +166,7 @@ __executable_exists 'appman' && complete -W "$(cat "${XDG_DATA_HOME}/appman/appm
 __executable_exists 'carapace' && source <(carapace _carapace)
 __executable_exists 'batpipe' && eval "$(batpipe)"
 __executable_exists 'kubectl' && source <(kubectl completion bash)
-__executable_exists 'zoxide' && eval "$(zoxide init bash)"
+__executable_exists 'zoxide' && export _ZO_DOCTOR='0' && eval "$(zoxide init bash)"
 
 # add completions for aliases
 # sourced here, rather than earlier, to make sure all aliases and bash completions have been sourced
