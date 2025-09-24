@@ -1,10 +1,27 @@
 #!/usr/bin/env bash
 
-if [[ -r "${HOME}/.profile" ]]; then
-  source "${HOME}/.profile"
-fi
+# system bash config files to source
+for file in '/etc/bash.bashrc' '/etc/bashrc'; do
+  if [[ -r "${file}" ]]; then
+    source "${file}"
+  fi
+done
+unset -v file
 
-# if not running interactively, don't do anything
+# source files that set env vars (like PATH)
+for file in \
+  "${HOME}/.profile" \
+  "${HOME}/.nix-profile/etc/profile.d/nix.sh" \
+  "${HOME}/.nix-profile/etc/profile.d/hm-session-vars.sh" \
+  "${SDKMAN_DIR}/bin/sdkman-init.sh" \
+; do
+  if [[ -r "${file}" ]]; then
+    source "${file}"
+  fi
+done
+unset -v file
+
+# if not running interactively, don't do anything more
 [[ "$-" != *i* ]] && return
 
 ulimit -S -c 0 # no core dumps
@@ -96,21 +113,10 @@ function __path_prepend() {
   __path_remove "$1" && PATH="$1:$PATH"
 }
 
-# system bash config files to source
-for file in '/etc/bash.bashrc' '/etc/bashrc'; do
-  if __is_readable_file "${file}"; then
-    source "${file}"
-  fi
-done
-unset -v file
-
 # app files to source
 for file in \
-  "${HOME}/.nix-profile/etc/profile.d/nix.sh" \
-  "${HOME}/.nix-profile/etc/profile.d/hm-session-vars.sh" \
   '/usr/share/doc/pkgfile/command-not-found.bash' \
   '/usr/share/fzf/key-bindings.bash' \
-  "${SDKMAN_DIR}/bin/sdkman-init.sh" \
   "${XDG_CONFIG_HOME}/broot/launcher/bash/br"; do
   if __is_readable_file "${file}"; then
     source "${file}"
