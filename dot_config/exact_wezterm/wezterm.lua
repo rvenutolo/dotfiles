@@ -12,7 +12,7 @@ if wezterm.config_builder then
   config = wezterm.config_builder()
 end
 
-config.color_scheme = "Nord (base16)"
+config.color_scheme = "nord"
 
 config.cursor_blink_rate = 1000
 
