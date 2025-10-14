@@ -173,6 +173,7 @@ alias da="date '+%Y-%m-%d %A %T %Z'"
 alias du1='du --max-depth=1'
 alias hg='history | grep'
 alias sbp='source ${HOME}/.bash_profile'
+alias watch='watch '
 if [[ -n "${SDKMAN_DIR}" && -f "${SDKMAN_DIR}/candidates/maven/current/bin/mvn" ]]; then
   alias sdkmvn='${SDKMAN_DIR}/candidates/maven/current/bin/mvn'
 fi
