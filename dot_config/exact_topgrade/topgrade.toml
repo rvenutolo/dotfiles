@@ -170,6 +170,14 @@ cleanup = true
 
 
 [git]
+
+repos = [
+  "~/Code/Personal/crypt",
+  "~/Code/Personal/dotfiles",
+  "~/Code/Personal/packages",
+  "~/Code/Personal/scripts"
+]
+
 # How many repos to pull at max in parallel
 # max_concurrency = 5
 
