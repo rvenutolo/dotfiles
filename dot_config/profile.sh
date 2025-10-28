@@ -106,8 +106,8 @@ else
 fi
 
 # pager
-if __executable_exists 'moar'; then
-  export PAGER='moar'
+if __executable_exists 'moor'; then
+  export PAGER='moor'
 else
   export PAGER='less --ignore-case'
 fi
