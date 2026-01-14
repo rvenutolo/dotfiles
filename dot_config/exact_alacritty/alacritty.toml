@@ -1,4 +1,4 @@
-import = ["/home/rvenutolo/.config/alacritty/colors.toml", "/home/rvenutolo/.config/alacritty/font.toml"]
+import = ["~/.config/alacritty/colors.toml", "~/.config/alacritty/font.toml"]
 
 [colors]
 draw_bold_text_with_bright_colors = true
