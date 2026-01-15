@@ -14,7 +14,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in {
       formatter.${system} = pkgs.alejandra;
-      homeConfigurations.${config.home.username} = home-manager.lib.homeManagerConfiguration {
+      homeConfigurations."rvenutolo" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [ ./home.nix ];
       };
