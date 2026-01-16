@@ -1,5 +1,4 @@
 {
-
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     home-manager = {
@@ -7,17 +6,16 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
-
   outputs = { nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+      vars = import ./vars.nix;
     in {
       formatter.${system} = pkgs.alejandra;
-      homeConfigurations."rvenutolo" = home-manager.lib.homeManagerConfiguration {
+      homeConfigurations.${vars.username} = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [ ./home.nix ];
       };
     };
-
 }

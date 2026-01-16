@@ -1,6 +1,6 @@
 {
-  home.username = "{{- .chezmoi.username }}";
-  home.homeDirectory = "{{- .chezmoi.homeDir }}";
+  username = "{{- .chezmoi.username }}";
+  homeDirectory = "{{- .chezmoi.homeDir }}";
   # This value determines the Home Manager release that your configuration is
   # compatible with. This helps avoid breakage when a new Home Manager release
   # introduces backwards incompatible changes.
@@ -9,5 +9,5 @@
   # Manager release notes for a list of state version changes in each release.
   #
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
-  home.stateVersion = "{{- .home_manager_state_version }}";
+  stateVersion = "{{- .home_manager_state_version }}";
 }
