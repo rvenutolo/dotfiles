@@ -1,0 +1,31 @@
+{{- $month := now | date "01" | atoi -}}
+{{- $yearShort := now | date "06" | atoi -}}
+{{- $version := "" -}}
+{{- if le $month 5 -}}
+  {{- $version = printf "%d.11" (sub $yearShort 1) -}}
+{{- else if eq $month 12 -}}
+  {{- $version = printf "%d.11" $yearShort -}}
+{{- else -}}
+  {{- $version = printf "%d.05" $yearShort -}}
+{{- end -}}
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-{{ $version }}";
+    home-manager = {
+      url = "github:nix-community/home-manager/release-{{ $version }}";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+  outputs = { nixpkgs, home-manager, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
+      vars = import ./vars.nix;
+    in {
+      formatter.${system} = pkgs.alejandra;
+      homeConfigurations.${vars.username} = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = [ ./home.nix ];
+      };
+    };
+}
