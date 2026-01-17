@@ -122,19 +122,19 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 esac
 
 ## less
-LESS_TERMCAP_mb=$(tput -T ansi blink) # start blink
-LESS_TERMCAP_md=$(tput -T ansi setaf 2 ; tput -T ansi bold) # start bold
-LESS_TERMCAP_me=$(tput -T ansi sgr0)  # turn off bold, blink and underline
-LESS_TERMCAP_so=$(tput -T ansi smso)  # start standout (reverse video)
-LESS_TERMCAP_se=$(tput -T ansi rmso)  # stop standout
-LESS_TERMCAP_us=$(tput -T ansi smul)  # start underline
-LESS_TERMCAP_ue=$(tput -T ansi rmul)  # stop underline
+LESS_TERMCAP_mb=$(tput -T ansi blink) # Begin blinking text
 export LESS_TERMCAP_mb
+LESS_TERMCAP_md=$(tput -T ansi setaf 2 ; tput -T ansi bold) # Begin bold text
 export LESS_TERMCAP_md
+LESS_TERMCAP_me=$(tput -T ansi sgr0)  # End all formatting modes
 export LESS_TERMCAP_me
+LESS_TERMCAP_se=$(tput -T ansi rmso)  # End standout mode
 export LESS_TERMCAP_se
+LESS_TERMCAP_so=$(tput -T ansi smso)  # Begin standout mode (used for highlighting/info boxes)
 export LESS_TERMCAP_so
+LESS_TERMCAP_ue=$(tput -T ansi rmul)  # End underline
 export LESS_TERMCAP_ue
+LESS_TERMCAP_us=$(tput -T ansi smul)  # Begin underline
 export LESS_TERMCAP_us
 
 ## tailscale
