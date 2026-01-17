@@ -86,6 +86,7 @@ export HSTR_CONFIG='hicolor'
 export MAVEN_OPTS='-Xms256m -Xmx1g'
 export NIXPKGS_ALLOW_UNFREE='1'
 export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
+export SBT_OPTS="-Dsbt.global.base=${XDG_DATA_HOME}/sbt/1.0 -Dsbt.boot.directory=${XDG_CACHE_HOME}/sbt/boot -Dsbt.repository.config=${XDG_CACHE_HOME}/sbt/repositories -Dsbt.ivy.home=${XDG_CACHE_HOME}/ivy2"
 export STACK_XDG='1'
 export SYSTEMD_PAGER=''
 
