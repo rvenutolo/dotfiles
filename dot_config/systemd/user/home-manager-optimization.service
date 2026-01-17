@@ -1,6 +1,0 @@
-[Unit]
-Description=Optimize nix store
-
-[Service]
-Type=oneshot
-ExecStart=%h/.nix-profile/bin/nix-store --optimise
