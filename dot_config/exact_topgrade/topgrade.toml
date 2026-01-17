@@ -79,6 +79,7 @@ cleanup = true
 # Commands to run before anything
 [pre_commands]
 # "Emacs Snapshot" = "rm -rf ~/.emacs.d/elpa.bak && cp -rl ~/.emacs.d/elpa ~/.emacs.d/elpa.bak"
+"Write home-manager packages" = "write-home-manager-packages"
 
 
 # Commands to run after anything
