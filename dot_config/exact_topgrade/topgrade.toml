@@ -16,7 +16,8 @@ pre_sudo = true
 
 # Disable specific steps - same options as the command line flag
 # disable = ["system", "emacs"]
-disable = ["clam_av_db", "helix", "gcloud"] # Disabling nix here as topgrade will update it to a non-release version
+# sdkman updates handled by sdkman-update script
+disable = ["clam_av_db", "helix", "gcloud", "sdkman"]
 
 # Ignore failures for these steps
 # ignore_failures = ["powershell"]
