@@ -36,7 +36,6 @@ export WORK_LAPTOP_HOSTNAME='silverstar'
 export CODE_DIR="${HOME}/Code"
 export SCRIPTS_DIR="${CODE_DIR}/Personal/scripts"
 export HOME_MANAGER_DIR="${XDG_CONFIG_HOME}/home-manager"
-export HOME_MANAGER_PACKAGES_FILE="${HOME_MANAGER_DIR}/packages.nix"
 export PACKAGES_DIR="${CODE_DIR}/Personal/packages"
 export WTTR_CITY='Atlanta'
 
