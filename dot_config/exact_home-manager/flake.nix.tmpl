@@ -9,23 +9,50 @@
   {{- $version = printf "%d.05" $yearShort -}}
 {{- end -}}
 {
+  description = "Home Manager configuration";
+  nixConfig = {
+    extra-substituters = [
+      "https://nix-community.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+    ];
+  };
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-{{ $version }}";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager/release-{{ $version }}";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
-  outputs = { nixpkgs, home-manager, ... }:
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, ... }@inputs:
     let
       system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
+      pkgs-unstable = import nixpkgs-unstable {
+        inherit system;
+        config.allowUnfree = true;
+      };
       vars = import ./vars.nix;
     in {
+      packages.${system}.default = self.homeConfigurations.${vars.username}.activationPackage;
       formatter.${system} = pkgs.alejandra;
+      checks.${system}.default = pkgs.runCommand "check-home-manager" {} ''
+        ${self.homeConfigurations.${vars.username}.activationPackage}
+        touch $out
+      '';
       homeConfigurations.${vars.username} = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        modules = [ ./home.nix ];
+        extraSpecialArgs = {
+          inherit pkgs-unstable vars;
+        };
+        modules = [ 
+          ./home.nix
+        ];
       };
     };
 }

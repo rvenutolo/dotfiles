@@ -1,3 +1,13 @@
+{{- $month := now | date "01" | atoi -}}
+{{- $yearShort := now | date "06" | atoi -}}
+{{- $stateVersion := "" -}}
+{{- if le $month 5 -}}
+  {{- $stateVersion = printf "%d.11" (sub $yearShort 1) -}}
+{{- else if eq $month 12 -}}
+  {{- $stateVersion = printf "%d.11" $yearShort -}}
+{{- else -}}
+  {{- $stateVersion = printf "%d.05" $yearShort -}}
+{{- end -}}
 {
   username = "{{- .chezmoi.username }}";
   homeDirectory = "{{- .chezmoi.homeDir }}";

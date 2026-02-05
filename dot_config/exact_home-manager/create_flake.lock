@@ -12,6 +12,18 @@
         "url": "https://github.com/NixOS/nixpkgs/archive/empty.tar.gz"
       }
     },
+    "nixpkgs-unstable": {
+      "locked": {
+        "lastModified": 0,
+        "narHash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/empty.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/empty.tar.gz"
+      }
+    },
     "root": {
       "inputs": {
         "nixpkgs": "nixpkgs"

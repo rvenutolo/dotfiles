@@ -1,10 +1,8 @@
-{ config, pkgs, lib, ... }:
-let
-  vars = import ./vars.nix;
-in
+{ config, pkgs, lib, vars, ... }:
 {
   imports = [
-    ./packages.nix
+    ./packages-stable.nix
+    ./packages-unstable.nix
   ];
   home= {
     username = vars.username;
@@ -19,11 +17,17 @@ in
       };
     };
   };
-  nixpkgs.config = {
-    allowUnfree = true;
-    allowUnfreePredicate = _: true;
+  nixpkgs.config.allowUnfree = true;
+  programs = {
+    home-manager.enable = true;
+    nix-index = {
+      enable = true;
+      enableBashIntegration = true;
+      enableFishIntegration = true;
+      enableZshIntegration = true;
+    };
+    command-not-found.enable = false;
   };
-  programs.home-manager.enable = true;
   targets.genericLinux.enable = true;
   xdg.mime.enable = true;
 }
