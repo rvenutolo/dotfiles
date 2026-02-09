@@ -1,12 +1,13 @@
+AcceptEnv LANG LC_*
 AllowUsers {{ .chezmoi.username }}
-PermitRootLogin no
-PasswordAuthentication no
-PermitEmptyPasswords no
-KbdInteractiveAuthentication no
 AuthenticationMethods publickey
+KbdInteractiveAuthentication no
 LoginGraceTime 20m
 LogLevel VERBOSE
-UsePAM yes
-X11Forwarding yes
+PasswordAuthentication no
+PermitEmptyPasswords no
+PermitRootLogin no
 PrintMotd no
-AcceptEnv LANG LC_*
+Protocol 2
+UsePAM yes
+X11Forwarding no
