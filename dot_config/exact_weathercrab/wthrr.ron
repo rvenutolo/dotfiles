@@ -1,0 +1,24 @@
+(
+    address: "Atlanta,US",
+    language: "en_US",
+    forecast: [
+        day,
+        tomorrow
+    ],
+    units: (
+        temperature: fahrenheit,
+        speed: mph,
+        time: am_pm,
+        precipitation: probability,
+    ),
+    gui: (
+        border: double,
+        color: default,
+        graph: (
+            style: lines(solid),
+            rowspan: double,
+            time_indicator: true,
+        ),
+        greeting: false,
+    ),
+)

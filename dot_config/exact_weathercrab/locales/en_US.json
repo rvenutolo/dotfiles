@@ -1,0 +1,51 @@
+{
+  "greeting": "Hey friend. I'm glad you are asking.",
+  "search_station": "You didn't specify a city. Should I check for a weather station close to your location?",
+  "config": {
+    "confirm": "Yes please",
+    "next_time": "No, ask me next time",
+    "deny": "No, dont ask me again",
+    "always_auto": "Always check for a weather station",
+    "save_as_default": "Would you like to use this as your default?",
+    "reset_config": "This will wipe wthrr's configuration. Continue?",
+    "no_selection": "User did not select anything or exited"
+  },
+  "weather": {
+    "feels_like": "Feels like",
+    "felt_like": "Felt like",
+    "humidity": "Humidity",
+    "dew_point": "Dew Point",
+    "hourly_forecast": "Hourly Forecast",
+    "daily_overview": "Daily Overview",
+    "weather_code": {
+      "clear_sky": "Clear Sky",
+      "mostly_clear": "Mostly Clear",
+      "partly_cloudy": "Partly Cloudy",
+      "overcast": "Overcast",
+      "fog": "Fog",
+      "depositing_rime_fog": "Depositing Rime Fog",
+      "light_drizzle": "Light Drizzle",
+      "moderate_drizzle": "Moderate Drizzle",
+      "dense_drizzle": "Dense Drizzle",
+      "light_freezing_drizzle": "Light Freezing Drizzle",
+      "dense_freezing_drizzle": "Dense Freezing Drizzle",
+      "slight_rain": "Slight Rain",
+      "moderate_rain": "Moderate Rain",
+      "heavy_rain": "Heavy Rain",
+      "light_freezing_rain": "Light Freezing Rain",
+      "heavy_freezing_rain": "Heavy Freezing Rain",
+      "slight_snow_fall": "Slight Snow Fall",
+      "moderate_snow_fall": "Moderate Snow Fall",
+      "heavy_snow_fall": "Heavy Snow Fall",
+      "snow_grains": "Snow Grains",
+      "slight_rain_showers": "Slight Rain Showers",
+      "moderate_rain_showers": "Moderate Rain Showers",
+      "violent_rain_showers": "Violent Rain Showers",
+      "slight_snow_showers": "Slight Snow Showers",
+      "heavy_snow_showers": "Heavy Snow Showers",
+      "thunderstorm": "Thunderstorm",
+      "thunderstorm_slight_hail": "Thunderstorm, Slight Hail",
+      "thunderstorm_heavy_hail": "Thunderstorm, Heavy Hail"
+    }
+  }
+}
