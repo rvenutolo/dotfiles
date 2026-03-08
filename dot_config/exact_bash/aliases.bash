@@ -115,6 +115,7 @@ alias scu='systemctl --user'
 alias k='kate'
 alias m='micro'
 alias n='nano'
+alias lx='lite-xl'
 if __executable_exists 'nvim'; then
   alias vim='nvim'
 fi
