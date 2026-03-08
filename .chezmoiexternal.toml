@@ -15,14 +15,14 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/dircolors/refs/heads/develop/src/dir_colors'
 refreshPeriod = '1h'
 
-['.config/kitty/kitty_keys.sh']
-type = 'file'
-url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/refs/heads/main/kitty_keys.sh'
-refreshPeriod = '1h'
-
 ['.config/kitty/conf/nord.conf']
 type = 'file'
 url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/refs/heads/master/nord.conf'
+refreshPeriod = '1h'
+
+['.config/kitty/kitty_keys.sh']
+type = 'file'
+url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/refs/heads/main/kitty_keys.sh'
 refreshPeriod = '1h'
 
 ['.config/nano/syntax_highlighting']
@@ -90,15 +90,15 @@ url = 'https://raw.githubusercontent.com/DanielVartanov/willgit/refs/heads/maste
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/rain']
-type = 'file'
-url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/main/fun/.local/bin/rain'
-refreshPeriod = '1h'
-executable = true
-
 ['.local/bin/nerd-font-test']
 type = 'file'
 url = 'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/refs/heads/master/bin/scripts/test-fonts.sh'
+refreshPeriod = '1h'
+executable = true
+
+['.local/bin/rain']
+type = 'file'
+url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/main/fun/.local/bin/rain'
 refreshPeriod = '1h'
 executable = true
 
@@ -123,14 +123,14 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/konsole/refs/heads/develop/src/nord.colorscheme'
 refreshPeriod = '1h'
 
-['.local/share/xfce4/terminal/colorschemes/nord.theme']
-type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/refs/heads/develop/src/nord.theme'
-refreshPeriod = '1h'
-
 ['.local/share/warp-terminal/themes/nord_dark.yaml']
 type = 'file'
 url = 'https://raw.githubusercontent.com/SilentGlasses/warp_themes/refs/heads/main/yaml_files/nord_dark.yaml'
+refreshPeriod = '1h'
+
+['.local/share/xfce4/terminal/colorschemes/nord.theme']
+type = 'file'
+url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/refs/heads/develop/src/nord.theme'
 refreshPeriod = '1h'
 
 ['Code/Personal/crypt']
