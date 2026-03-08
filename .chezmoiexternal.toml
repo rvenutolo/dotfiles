@@ -25,6 +25,14 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/refs/heads/main/kitty_keys.sh'
 refreshPeriod = '1h'
 
+['.config/lite-xl/colors']
+type = 'archive'
+url = 'https://github.com/lite-xl/lite-xl-colors/archive/refs/heads/master.zip'
+exact = true
+stripComponents = 2
+refreshPeriod = '1h'
+include = ['*/colors/*.lua']
+
 ['.config/lite-xl/libraries/widget']
 type = 'archive'
 url = 'https://github.com/lite-xl/lite-xl-widgets/archive/refs/heads/master.zip'
