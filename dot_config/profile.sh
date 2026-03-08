@@ -99,7 +99,9 @@ elif __executable_exists 'nvim'; then
 else
   export EDITOR='vim'
 fi
-if __executable_exists 'kate'; then
+if __executable_exists 'lite-xl'; then
+  export VISUAL='lite-xl'
+elif __executable_exists 'kate'; then
   export VISUAL='kate'
 else
   export VISUAL="${EDITOR}"
