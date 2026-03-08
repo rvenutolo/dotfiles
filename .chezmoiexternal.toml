@@ -25,6 +25,118 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/refs/heads/main/kitty_keys.sh'
 refreshPeriod = '1h'
 
+['.config/lite-xl/libraries/widget']
+type = 'archive'
+url = 'https://github.com/lite-xl/lite-xl-widgets/archive/refs/heads/master.zip'
+exact = true
+stripComponents = 1
+refreshPeriod = '1h'
+include = [
+  '*/*.lua',
+  '*/fonts',
+  '*/fonts/*.lua'
+]
+
+['.config/lite-xl/plugins']
+type = 'archive'
+url = 'https://github.com/lite-xl/lite-xl-plugins/archive/refs/heads/master.zip'
+stripComponents = 2
+refreshPeriod = '1h'
+include = [
+  '*/plugins/editorconfig',
+  '*/plugins/editorconfig/*.lua',
+  '*/plugins/bracketmatch.lua',
+  '*/plugins/copyfilelocation.lua',
+  '*/plugins/editorconfig',
+  '*/plugins/editorconfig',
+  '*/plugins/gitstatus.lua',
+  '*/plugins/indent_convert.lua',
+  '*/plugins/indentguide.lua',
+  '*/plugins/language_diff.lua',
+  '*/plugins/language_env.lua',
+  '*/plugins/language_fstab.lua',
+  '*/plugins/language_groovy.lua',
+#  '*/plugins/language_ignore.lua',
+  '*/plugins/language_ini.lua',
+  '*/plugins/language_java.lua',
+  '*/plugins/language_json.lua',
+  '*/plugins/language_kotlin.lua',
+  '*/plugins/language_nix.lua',
+  '*/plugins/language_scala.lua',
+  '*/plugins/language_sh.lua',
+  '*/plugins/language_ssh_config.lua',
+  '*/plugins/language_toml.lua',
+  '*/plugins/language_ts.lua',
+  '*/plugins/language_yaml.lua',
+  '*/plugins/minimap.lua',
+#  '*/plugins/nerdicons.lua',
+  '*/plugins/rainbowparen.lua',
+  '*/plugins/search_ui.lua',
+  '*/plugins/selectionhighlight.lua',
+  '*/plugins/sort.lua',
+  '*/plugins/su_save.lua',
+  '*/plugins/wordcount.lua'
+]
+
+['.config/lite-xl/plugins/lsp-servers']
+type = 'archive'
+url = 'https://github.com/lite-xl/lite-xl-lsp-servers/archive/refs/heads/master.zip'
+stripComponents = 2
+refreshPeriod = '1h'
+include = ['*/plugins/*.lua']
+
+['.config/lite-xl/plugins/code-plus.lua']
+type = 'file'
+url = 'https://raw.githubusercontent.com/chqs-git/code-plus/refs/heads/main/init.lua'
+refreshPeriod = '1h'
+
+['.config/lite-xl/plugins/exterm.lua']
+type = 'file'
+url = 'https://raw.githubusercontent.com/ShadiestGoat/lite-xl-exterm/refs/heads/main/exterm.lua'
+refreshPeriod = '1h'
+
+['.config/lite-xl/plugins/gitdiff_highlight']
+type = 'archive'
+url = 'https://github.com/vincens2005/lite-xl-gitdiff-highlight/archive/refs/heads/master.zip'
+exact = true
+stripComponents = 1
+refreshPeriod = '1h'
+
+['.config/lite-xl/plugins/language_containerfile.lua']
+type = 'file'
+url = 'https://raw.githubusercontent.com/FilBot3/lite-xl-language-containerfile/refs/heads/main/init.lua'
+refreshPeriod = '1h'
+
+['.config/lite-xl/plugins/lintplus']
+type = 'archive'
+url = 'https://github.com/liquidev/lintplus/archive/refs/heads/master.zip'
+exact = true
+stripComponents = 1
+refreshPeriod = '1h'
+include = [
+  '*/*.lua',
+  '*/linters',
+  '*/linters/*.lua'
+]
+
+['.config/lite-xl/plugins/lsp']
+type = 'archive'
+url = 'https://github.com/lite-xl/lite-xl-lsp/archive/refs/heads/master.zip'
+exact = true
+stripComponents = 1
+refreshPeriod = '1h'
+include = ['*/*.lua']
+
+['.config/lite-xl/plugins/lsp_snippets.lua']
+type = 'file'
+url = 'https://raw.githubusercontent.com/vqns/lite-xl-snippets/refs/heads/main/lsp_snippets.lua'
+refreshPeriod = '1h'
+
+['.config/lite-xl/plugins/snippets.lua']
+type = 'file'
+url = 'https://raw.githubusercontent.com/vqns/lite-xl-snippets/refs/heads/main/snippets.lua'
+refreshPeriod = '1h'
+
 ['.config/nano/syntax_highlighting']
 type = 'archive'
 url = 'https://github.com/scopatz/nanorc/archive/master.tar.gz'
