@@ -1,0 +1,10 @@
+[core]
+color-theme = "Lapce Dark"
+file-explorer-double-click = true
+auto-reload-plugin = true
+
+[editor]
+tab-width = 2
+
+[ui]
+scale = 1.2
