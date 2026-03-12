@@ -67,7 +67,7 @@ min_time = 0
 [directory]
 format = '[$path]($style)[ $read_only]($read_only_style)'
 #    
-repo_root_format = '[ $repo_root]($repo_root_style)[$path]($style)[ $read_only]($read_only_style)'
+repo_root_format = '[$repo_root]($repo_root_style)[$path]($style)[ $read_only]($read_only_style)'
 style = 'bg:#434C5E bold'
 repo_root_style = 'bg:#434C5E bold'
 read_only_style = 'fg:#EBCB8B bg:#434C5E bold'
