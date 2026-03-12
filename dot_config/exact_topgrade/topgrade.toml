@@ -17,7 +17,8 @@ pre_sudo = true
 # Disable specific steps - same options as the command line flag
 # disable = ["system", "emacs"]
 # sdkman updates handled by sdkman-update script
-disable = ["clam_av_db", "helix", "gcloud", "sdkman"]
+# claude_code binary managed by home-manager
+disable = ["clam_av_db", "claude_code", "helix", "gcloud", "sdkman"]
 
 # Ignore failures for these steps
 # ignore_failures = ["powershell"]
