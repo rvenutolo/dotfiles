@@ -153,17 +153,17 @@ for TERM in "${TERM}" 'xterm-256color' 'xterm-16color' 'xterm-color' 'xterm'; do
 done
 
 for dir in \
-  '/bin' \
-  '/sbin' \
-  '/usr/bin' \
-  '/usr/sbin' \
-  '/usr/local/bin' \
-  '/usr/local/sbin' \
-  "${HOME}/.nix-profile/bin" \
-  "${HOME}/.local/share/JetBrains/Toolbox/scripts" \
+  "${HOME}/.bin" \
   "${HOME}/.local/bin" \
-  "${HOME}/.bin"; do
-  __path_prepend "${dir}"
+  "${HOME}/.local/share/JetBrains/Toolbox/scripts" \
+  "${HOME}/.nix-profile/bin" \
+  '/usr/local/sbin' \
+  '/usr/local/bin' \
+  '/usr/sbin' \
+  '/usr/bin' \
+  '/sbin' \
+  '/bin'; do
+  __path_append "${dir}"
 done
 unset -v dir
 
