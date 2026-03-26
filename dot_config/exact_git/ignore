@@ -1,6 +1,9 @@
 ### Docker
 .env
 
+### Claude
+.claude/settings.local.json
+
 ### Gradle
 .gradle
 **/build/
