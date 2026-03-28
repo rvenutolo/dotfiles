@@ -41,3 +41,9 @@
 - Before running any Docker container, check IP forwarding: `sysctl net.ipv4.ip_forward`
 - Expected output: `net.ipv4.ip_forward = 1`
 - If the value is not 1, alert the user and do NOT run the container
+
+## Tool Availability
+
+- Before using a command-line tool that is not guaranteed to be present, check whether it is installed
+- If a required tool is missing, inform the user rather than silently failing or substituting a workaround
+- Prefer faster modern alternatives when available (e.g., `rg` over `grep`, `fd` over `find`, `yq` over manual YAML parsing)
