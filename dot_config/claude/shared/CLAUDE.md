@@ -21,3 +21,9 @@
 
 - Write concise commit messages in imperative mood
 - Prefer feature branches over direct commits to main
+
+## Docker
+
+- Before running any Docker container, check IP forwarding: `sysctl net.ipv4.ip_forward`
+- Expected output: `net.ipv4.ip_forward = 1`
+- If the value is not 1, alert the user and do NOT run the container
