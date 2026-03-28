@@ -1,0 +1,11 @@
+[Unit]
+Description=Enforce IP forwarding
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c 'while true; do if [ "$(cat /proc/sys/net/ipv4/ip_forward)" = "0" ]; then echo 1 > /proc/sys/net/ipv4/ip_forward; fi; sleep 5; done'
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
