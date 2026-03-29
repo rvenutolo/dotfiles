@@ -14,6 +14,13 @@
 - If `./mvnw` exists in the project root, use it instead of `mvn`
 - Prefer long options (e.g., `--batch-mode`, `--fail-at-end`)
 
+# Testing
+- Run integration tests with: mvn verify --fail-at-end 2>&1 | tee /tmp/test-output.log
+- Do NOT rerun tests just to find failures. Instead:
+  1. Check target/failsafe-reports/ for structured XML results
+  2. Or grep /tmp/test-output.log
+- Only rerun tests after making a code change to fix a failure.
+
 ## Shell Scripts
 
 - Use `#!/usr/bin/env bash`
