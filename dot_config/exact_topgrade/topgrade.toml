@@ -18,7 +18,17 @@ pre_sudo = true
 # disable = ["system", "emacs"]
 # sdkman updates handled by sdkman-update script
 # claude_code binary managed by home-manager
-disable = ["clam_av_db", "claude_code", "helix", "gcloud", "sdkman"]
+
+disable = [
+  "clam_av_db",
+  "claude_code",
+  "gcloud",
+  "helix",
+  "jetbrains_datagrip",
+  "jetbrains_idea",
+  "jetrbrains_toolbox",
+  "sdkman"
+]
 
 # Ignore failures for these steps
 # ignore_failures = ["powershell"]
