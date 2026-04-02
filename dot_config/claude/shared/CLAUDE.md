@@ -14,8 +14,8 @@
 - If `./mvnw` exists in the project root, use it instead of `mvn`
 - Prefer long options (e.g., `--batch-mode`, `--fail-at-end`)
 
-# Testing
-- Run integration tests with: mvn verify --fail-at-end 2>&1 | tee /tmp/test-output.log
+## Testing
+- Run integration tests with: `./mvnw` verify --fail-at-end 2>&1 | tee /tmp/test-output.log (use `mvn` if no wrapper exists)
 - Do NOT rerun tests just to find failures. Instead:
   1. Check target/failsafe-reports/ for structured XML results
   2. Or grep /tmp/test-output.log
@@ -25,7 +25,7 @@
 
 - Use `#!/usr/bin/env bash`
 - Use `[[ ]]` over `[ ]`
-- Use long options in commands (e.g., `grep --recursive` not `grep -r`)
+- Use long options in commands (e.g., `rg --hidden` not `rg -u`)
 - Quote all variable expansions: `"${var}"` not `$var`
 - Use `${var}` brace syntax consistently
 
