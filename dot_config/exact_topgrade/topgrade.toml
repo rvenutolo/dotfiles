@@ -26,7 +26,7 @@ disable = [
   "helix",
   "jetbrains_datagrip",
   "jetbrains_idea",
-  "jetrbrains_toolbox",
+  "jetbrains_toolbox",
   "sdkman"
 ]
 
