@@ -15,15 +15,21 @@
 - Prefer long options (e.g., `--batch-mode`, `--fail-at-end`)
 
 ## Maven Testing
+
 - Run integration tests with: `./mvnw verify --fail-at-end 2>&1 | tee /tmp/test-output.log` (or `mvn` if no wrapper exists)
 - Do NOT rerun tests just to find failures. Instead:
   1. Check target/failsafe-reports/ for structured XML results
   2. Or grep /tmp/test-output.log
 - Only rerun tests after making a code change to fix a failure.
 
+## Response Style
+
+- At the end of a response, add a brief summary of what you did
+
 ## Shell Scripts
 
 - Use `#!/usr/bin/env bash`
+- Use `set -euo pipefail`
 - Use `[[ ]]` over `[ ]`
 - Use long options in commands (e.g., `cut --delimiter` not `cut -d`)
 - Quote all variable expansions: `"${var}"` not `$var`
