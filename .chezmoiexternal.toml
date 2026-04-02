@@ -10,6 +10,11 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/cykerway/complete-alias/refs/heads/master/complete_alias'
 refreshPeriod = '1h'
 
+['.config/claude/shared/skills/prompt-master']
+type = 'git-repo'
+url = 'git@github.com:nidhinjs/prompt-master.git'
+refreshPeriod = '1h'
+
 ['.config/dircolors']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/dircolors/refs/heads/develop/src/dir_colors'
