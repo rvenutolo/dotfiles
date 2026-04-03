@@ -62,3 +62,7 @@
 - Before using a command-line tool that is not guaranteed to be present, check whether it is installed
 - If a required tool is missing, inform the user rather than silently failing or substituting a workaround
 - Prefer faster modern alternatives when available (e.g., `rg` over `grep`, `fd` over `find`, `yq` over manual YAML parsing)
+
+## Superpowers Documentation Paths
+- Save Superpowers plans to: `.claude/superpowers/plans/`
+- Save Superpowers specs to: `.claude/superpowers/specs/`
