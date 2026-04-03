@@ -63,6 +63,9 @@
 - If a required tool is missing, inform the user rather than silently failing or substituting a workaround
 - Prefer faster modern alternatives when available (e.g., `rg` over `grep`, `fd` over `find`, `yq` over manual YAML parsing)
 
+## Shell Commands
+When running Bash() tool commands, prefer `$VAR` over `${VAR}` unless the substitution syntax is necessary (e.g. `${VAR:-default}`, `${VAR%suffix}`). This does not apply to code Claude generates/edits — generated code should default to using `${}`.
+
 ## Superpowers Documentation Paths
 - Save Superpowers plans to: `.claude/superpowers/plans/`
 - Save Superpowers specs to: `.claude/superpowers/specs/`
