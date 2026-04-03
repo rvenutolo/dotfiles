@@ -3,6 +3,7 @@
 
 ### Claude
 .claude/settings.local.json
+.claude/superpowers
 
 ### Gradle
 .gradle
