@@ -15,6 +15,7 @@
 
 - If `./mvnw` exists in the project root, use it instead of `mvn`
 - Prefer long options (e.g., `--batch-mode`, `--fail-at-end`)
+- Maven exclusions must have a comment explaining why the dependency is excluded
 
 ## Maven Testing
 
