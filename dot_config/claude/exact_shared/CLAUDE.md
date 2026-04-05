@@ -48,6 +48,7 @@
 
 ## IntelliJ IDEA
 
+- Prefer to use the IntelliJ MCP server when available for code navigation, symbol lookup, and IDE operations
 - Do not suggest changes that conflict with checked-in `.idea` settings or `.editorconfig`
 - Respect project-level code style and inspection configurations
 
