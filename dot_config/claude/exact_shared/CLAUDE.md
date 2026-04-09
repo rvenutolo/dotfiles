@@ -19,7 +19,7 @@
 
 ## Maven Testing
 
-- Run integration tests with: `./mvnw verify --fail-at-end 2>&1 | tee /tmp/test-output.log` (or `mvn` if no wrapper exists)
+- Run integration tests with: `./mvnw clean verify --fail-at-end 2>&1 | tee /tmp/test-output.log` (or `mvn` if no wrapper exists)
 - Do NOT rerun tests just to find failures. Instead:
   1. Check target/failsafe-reports/ for structured XML results
   2. Or grep /tmp/test-output.log
