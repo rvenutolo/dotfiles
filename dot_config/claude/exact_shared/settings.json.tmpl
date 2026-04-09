@@ -2,28 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "autoUpdatesChannel": "stable",
   "cleanupPeriodDays": 365,
-  "env": {
-    "BASH_ENV": "{{- .chezmoi.homeDir }}/.bashrc",
-    "BASH_DEFAULT_TIMEOUT_MS": "120000",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "16384"
-  },
-  "includeGitInstructions": true,
   "effortLevel": "medium",
-  "projectDocPath": "CLAUDE.md",
-  "extraKnownMarketplaces": {
-    "claude-hud": {
-      "source": {
-        "source": "github",
-        "repo": "jarrodwatts/claude-hud"
-      }
-    },
-    "caveman": {
-      "source": {
-        "source": "github",
-        "repo": "JuliusBrussee/caveman"
-      }
-    }
-  },
   "enabledPlugins": {
     "caveman@caveman": true,
     "claude-code-setup@claude-plugins-official": true,
@@ -49,8 +28,27 @@
     "superpowers@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true
   },
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "120000",
+    "BASH_ENV": "{{- .chezmoi.homeDir }}/.bashrc",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "16384"
+  },
+  "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "repo": "JuliusBrussee/caveman",
+        "source": "github"
+      }
+    },
+    "claude-hud": {
+      "source": {
+        "repo": "jarrodwatts/claude-hud",
+        "source": "github"
+      }
+    }
+  },
+  "includeGitInstructions": true,
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
       "Bash(alejandra *)",
       "Bash(amm *)",
@@ -305,6 +303,7 @@
       "Bash(zip *)",
       "Bash(zstd *)"
     ],
+    "defaultMode": "acceptEdits",
     "deny": [
       "Bash(cfdisk *)",
       "Bash(docker run --privileged *)",
@@ -356,5 +355,6 @@
       "Write(~/.netrc)",
       "Write(~/.ssh/*)"
     ]
-  }
+  },
+  "projectDocPath": "CLAUDE.md"
 }
