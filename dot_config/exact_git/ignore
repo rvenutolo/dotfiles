@@ -38,6 +38,8 @@ out/
 *.ipr
 *.iws
 .attach_pid*
+/.factorypath
+/.settings
 
 ### Kate
 .*.kate-swp
