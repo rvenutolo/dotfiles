@@ -25,6 +25,12 @@
   2. Or grep /tmp/test-output.log
 - Only rerun tests after making a code change to fix a failure.
 
+## Unit Testing
+
+- Unit tests must only use the public API—never use reflection to access private fields or methods
+- Never change a field or method modifier (e.g., `private` → `package-private`) for the sole purpose of making it testable
+- If a feature cannot be tested through the public API, reconsider the design rather than exposing implementation details
+
 ## Response Style
 
 - At the end of a response, add a brief summary of what you did
