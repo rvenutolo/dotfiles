@@ -42,7 +42,7 @@
 
 - Branch naming: `type/description` in kebab-case 
   — Allowed types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `perf`, `style`, `build`, `revert` (e.g., `feat/add-lz4-support`, `fix/s3-retry-timeout`, `chore/update-quarkus-bom`)
-- Run `./mvnw spotless:apply` before committing
+- Only run `./mvnw spotless:apply` before committing if the spotless plugin exists in the project's pom.xml (including inherited from parent poms)
 - Commit messages follow the Angular convention: `type: subject`, imperative mood, 72-char subject line
   - Allowed types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `perf`, `style`, `build`, `revert`
   - Append `!` after the type for breaking changes: `feat!: drop Java 11 support`
