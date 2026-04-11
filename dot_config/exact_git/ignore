@@ -4,6 +4,8 @@
 ### Claude
 .claude/settings.local.json
 .claude/superpowers
+.claude/plans
+.claude/specs
 .remember
 
 ### Gradle
