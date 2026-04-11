@@ -46,6 +46,7 @@
 
 ## Git
 
+- Never force-add files that are listed in `.gitignore` (e.g., `git add --force`). If a file needs to be staged but is gitignored, stop and ask the user first.
 - Branch naming: `type/description` in kebab-case 
   — Allowed types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `perf`, `style`, `build`, `revert` (e.g., `feat/add-lz4-support`, `fix/s3-retry-timeout`, `chore/update-quarkus-bom`)
 - Only run `./mvnw spotless:apply` before committing if the spotless plugin exists in the project's pom.xml (including inherited from parent poms)
