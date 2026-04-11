@@ -80,6 +80,6 @@
 ## Shell Commands
 When running Bash() tool commands, prefer `$VAR` over `${VAR}` unless the substitution syntax is necessary (e.g. `${VAR:-default}`, `${VAR%suffix}`). This does not apply to code Claude generates/edits — generated code should default to using `${}`.
 
-## Superpowers Documentation Paths
-- Save Superpowers plans to: `.claude/superpowers/plans/`
-- Save Superpowers specs to: `.claude/superpowers/specs/`
+## Documentation Paths
+- Plans: `.claude/plans/`
+- Specs: `.claude/specs/`
