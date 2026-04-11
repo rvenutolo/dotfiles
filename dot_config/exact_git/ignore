@@ -73,6 +73,7 @@ buildNumber.properties
 /conf
 /input
 /output
+/tmp
 /TODO
 secring.*
 *.bak
