@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# /etc/NetworkManager/dispatcher.d/99-vpn-dns-fix
+#
+# When the AWS VPN tun0 interface comes up, add ~amazonaws.com as a
+# routing domain so that CNAME chases from *.deint.net to
+# *.amazonaws.com stay on the VPN resolver (10.131.0.2) instead of
+# falling through to the default-route resolver, which on some
+# networks (notably AT&T residential gateways) strips A records
+# pointing into RFC 1918 space and breaks resolution.
+
+set -euo pipefail
+
+readonly interface="$1"
+readonly action="$2"
+
+if [[ "${interface}" != 'tun0' ]]; then
+  exit 0
+fi
+
+case "${action}" in
+    up|vpn-up) ;;
+    *) exit 0 ;;
+esac
+
+# Read existing domains for tun0 and append ~amazonaws.com if not
+# already present. `resolvectl domain <iface> ...` REPLACES the full
+# list, so we have to preserve what the VPN client set.
+existing="$(resolvectl domain tun0 | sed --regexp-extended 's/^Link [0-9]+ \(tun0\): //')"
+readonly existing
+
+# Word-split into an array so we can match and re-pass cleanly.
+read -ra domains <<< "${existing}"
+
+for domain in "${domains[@]}"; do
+    if [[ "${domain}" == '~amazonaws.com' ]]; then
+      exit 0
+    fi
+done
+
+resolvectl domain tun0 "${domains[@]}" '~amazonaws.com'
+resolvectl flush-caches
