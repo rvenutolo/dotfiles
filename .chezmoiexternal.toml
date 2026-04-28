@@ -15,6 +15,11 @@ type = 'git-repo'
 url = 'git@github.com:nidhinjs/prompt-master.git'
 refreshPeriod = '1h'
 
+['.config/claude/shared/skills/task-observer']
+type = 'git-repo'
+url = 'git@github.com:rebelytics/one-skill-to-rule-them-all.git'
+refreshPeriod = '1h'
+
 ['.config/dircolors']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/dircolors/refs/heads/develop/src/dir_colors'
