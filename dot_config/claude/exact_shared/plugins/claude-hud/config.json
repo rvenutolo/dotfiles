@@ -1,26 +1,26 @@
 {
-  "lineLayout": "expanded",
-  "showSeparators": false,
-  "language": "en",
   "display": {
-    "showModel": true,
-    "showContextBar": true,
-    "showTools": true,
     "showAgents": true,
-    "showTodos": true,
-    "showProject": true,
     "showConfigCounts": true,
-    "showTokenBreakdown": true,
-    "showSpeed": true,
-    "showUsage": true,
+    "showContextBar": true,
     "showDuration": true,
+    "showModel": true,
+    "showProject": true,
     "showSessionName": true,
-    "showSessionTokens": true
+    "showSessionTokens": true,
+    "showSpeed": true,
+    "showTodos": true,
+    "showTokenBreakdown": true,
+    "showTools": true,
+    "showUsage": true
   },
   "gitStatus": {
     "enabled": true,
-    "showDirty": true,
     "showAheadBehind": true,
+    "showDirty": true,
     "showFileStats": true
-  }
+  },
+  "language": "en",
+  "lineLayout": "expanded",
+  "showSeparators": false
 }
