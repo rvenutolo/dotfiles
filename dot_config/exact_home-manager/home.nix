@@ -1,8 +1,8 @@
 { config, pkgs, lib, vars, ... }:
 {
   imports = [
-    ../home-manager-packages/stable.nix
-    ../home-manager-packages/unstable.nix
+    ./packages/stable.nix
+    ./packages/unstable.nix
   ];
   home= {
     username = vars.username;
