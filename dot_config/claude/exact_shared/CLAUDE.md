@@ -3,8 +3,6 @@
 ## Environment
 
 - Java version management: SDKMAN
-- SDKMAN auto-switching does not apply to non-interactive shells. If a Java version mismatch is suspected, source SDKMAN and activate the project's `.sdkmanrc` version before running any Java/Maven commands:
-  `source "$SDKMAN_DIR/bin/sdkman-init.sh" && sdk env`
 
 ## Coding Conventions
 
