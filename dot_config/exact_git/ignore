@@ -1,12 +1,20 @@
+### Claude Code
+.claude/*
+**/.claude/*
+!.claude/settings.json
+!**/.claude/settings.json
+!.claude/commands
+!.claude/commands/**
+!**/.claude/commands
+!**/.claude/commands/**
+!.claude/rules
+!.claude/rules/**
+!**/.claude/rules
+!**/.claude/rules/**
+.remember
+
 ### Docker
 .env
-
-### Claude
-.claude/settings.local.json
-.claude/superpowers
-.claude/plans
-.claude/specs
-.remember
 
 ### Gradle
 .gradle
