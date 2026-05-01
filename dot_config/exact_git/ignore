@@ -13,13 +13,6 @@
 !**/.claude/rules/**
 .remember
 
-### Coverage
-coverage/
-.coverage
-*.lcov
-htmlcov/
-.nyc_output/
-
 ### Docker
 .env
 .env.*
