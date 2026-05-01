@@ -13,19 +13,34 @@
 !**/.claude/rules/**
 .remember
 
+### Coverage
+coverage/
+.coverage
+*.lcov
+htmlcov/
+.nyc_output/
+
 ### Docker
 .env
+.env.*
+!.env.example
+
+### Go
+vendor/
+*.test
+*.exe
 
 ### Gradle
 .gradle
 **/build/
 !src/**/build/
 gradle-app.setting
-!gradle-wrapper.jar
-!gradle-wrapper.properties
 .gradletasknamecache
 .project
 .classpath
+
+### Groovy
+.groovy/
 
 ### Java
 *.class
@@ -35,6 +50,9 @@ gradle-app.setting
 *.ear
 hs_err_pid*
 replay_pid*
+rebel.xml
+!gradle-wrapper.jar
+!gradle-wrapper.properties
 
 ### JetBrains
 atlassian-ide-plugin.xml
@@ -56,6 +74,10 @@ out/
 .*.kate-swp
 .swp.*
 
+### Kotlin
+.kotlin/
+kotlin-js-store/
+
 ### Linux
 *~
 .fuse_hidden*
@@ -76,35 +98,101 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
+### Micro
+.micro/
+
 ### Misc
 /build
+dist/
 /conf
 /input
 /output
 /tmp
 /TODO
-secring.*
 *.bak
 *.gho
 *.ori
 *.orig
 *.tmp
-*.private
 *.old
 *.log
 *.patch
 *.diff
 
+### Nano
+*.save
+
 ### Nix
 result
 result-*
+.direnv/
+.devenv/
+devenv.local.nix
+
+### Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm/
+.yarn/cache/
+.pnp.js
+.pnp.cjs
+.next/
+.nuxt/
+.svelte-kit/
+.parcel-cache/
+.turbo/
+*.tgz
+
+### Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+.eggs/
+.ruff_cache/
+__pypackages__/
+
+### Rust
+**/*.rs.bk
+
+### Scala
+.metals/
+.bloop/
+.bsp/
+project/project/
 
 ### SDKMAN
 .sdkmanrc
 
+### Secrets
+secring.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.private
+
 ### Spark
 metastore_db/
 spark-warehouse/
+
+### Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+### Vim
+*.swp
+*.swo
+.netrwhist
 
 ### VSCode
 .vscode/*
@@ -115,3 +203,8 @@ spark-warehouse/
 !.vscode/*.code-snippets
 .history/
 *.vsix
+
+### Zig
+zig-out/
+zig-cache/
+.zig-cache/
