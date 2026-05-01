@@ -83,3 +83,6 @@
 ## Documentation Paths
 - Plans: `.claude/plans/`
 - Specs: `.claude/specs/`
+
+## settings.json
+- When reading or writing any `settings.json` file (e.g., `.claude/settings.json`, `~/.claude/settings.json`), always keep all JSON keys sorted alphabetically at every nesting level. This applies both when creating the file from scratch and when modifying existing content — never leave keys in an unsorted order.
