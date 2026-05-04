@@ -47,6 +47,7 @@
 - Use long options in commands (e.g., `cut --delimiter` not `cut -d`)
 - Quote all variable expansions: `"${var}"` not `$var`
 - Use `${var}` brace syntax consistently
+- All shell scripts must pass `shellcheck` before being considered complete
 
 ## Git
 
