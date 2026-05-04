@@ -29,6 +29,12 @@
 - Never change a field or method modifier (e.g., `private` → `package-private`) for the sole purpose of making it testable
 - If a feature cannot be tested through the public API, reconsider the design rather than exposing implementation details
 
+## Long Multi-Step Tasks
+
+- Before starting a long or multi-step process, identify all tools and permissions needed upfront
+- Ask the user to approve all required permissions at once so the task can run unattended
+- Do not begin execution until permission confirmations are in hand
+
 ## Response Style
 
 - At the end of a response, add a brief summary of what you did
