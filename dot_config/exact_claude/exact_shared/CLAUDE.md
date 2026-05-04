@@ -3,6 +3,7 @@
 ## Environment
 
 - Java version management: SDKMAN
+- Claude config dir: do NOT assume `~/.claude` exists. Always resolve via `$CLAUDE_CONFIG_DIR` env var (e.g., `$(printenv CLAUDE_CONFIG_DIR)` or `echo $CLAUDE_CONFIG_DIR`) to find the correct config directory
 
 ## Coding Conventions
 
