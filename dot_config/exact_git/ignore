@@ -69,7 +69,6 @@ kotlin-js-store/
 
 ## Maven
 .mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
 buildNumber.properties
 dependency-reduced-pom.xml
 pom.xml.next
@@ -205,9 +204,13 @@ zig-out/
 ## Gradle
 !src/**/build/
 
-## Java
+## Gradle
 !gradle-wrapper.jar
 !gradle-wrapper.properties
+
+## Maven
+!maven-wrapper.jar
+!maven-wrapper.properties
 
 ## VSCode
 !.vscode/*.code-snippets
