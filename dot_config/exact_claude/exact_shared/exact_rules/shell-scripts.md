@@ -10,7 +10,7 @@
 - Indent with 2 spaces; never tabs
 - Constants and config: `readonly` and `UPPER_SNAKE_CASE` at top of script
 - Locals: `local` (or `local -r` for read-only) inside every function
-- Functions: `snake_case`, defined with `name() { ... }` (no `function` keyword)
+- Functions: `snake_case`, defined with `function name() { ... }` (always use `function` keyword)
 - Default safely under `set -u`: `"${VAR:-default}"` for any externally-provided var
 - When parsing decimal strings that may have leading zeros (e.g. `date +%H` → `09`), use `10#` in arithmetic context (`$((10#${var}))`) or strip via `%-H`/`%-M` with GNU date — bash arithmetic treats `08`/`09` as invalid octal
 - Force-decimal numbers from external commands before arithmetic comparison
