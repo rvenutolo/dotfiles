@@ -50,13 +50,13 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Task",
         "hooks": [
           {
-            "type": "command",
-            "command": "bash \"${CLAUDE_CONFIG_DIR}/hooks/check-usage-before-spawn.sh\""
+            "command": "bash \"${CLAUDE_CONFIG_DIR}/hooks/check-usage-before-spawn.sh\"",
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "Task"
       }
     ],
     "Stop": [
@@ -398,6 +398,7 @@
       "WebFetch(domain:gitlab.com)",
       "WebFetch(domain:gnu.org)",
       "WebFetch(domain:go.dev)",
+      "WebFetch(domain:google.github.io)",
       "WebFetch(domain:googleapis.dev)",
       "WebFetch(domain:graalvm.org)",
       "WebFetch(domain:gradle.org)",
