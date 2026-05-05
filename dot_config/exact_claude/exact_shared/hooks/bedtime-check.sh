@@ -15,14 +15,14 @@ else
 fi
 readonly bedtime_display
 
-hour="$(date +%H)"
+hour="$(date '+%-H')"
 readonly hour
 
 if [[ "${hour}" -ge "${BEDTIME_START}" ]] || [[ "${hour}" -lt "${BEDTIME_END}" ]]; then
   message="
-============================================================================================================================
-⚠️⚠️⚠️ It is past ${bedtime_display}. You should considering wrapping up work for the day. You sleep poorly when you don't. ⚠️⚠️⚠️
-============================================================================================================================"
+=========================================================================================================================
+⚠️⚠️⚠️ It is past ${bedtime_display}. You should consider wrapping up work for the day. You sleep poorly when you don't. ⚠️⚠️⚠️
+========================================================================================================================="
   jq --null-input --arg msg "${message}" '{systemMessage: $msg}'
 else
   echo "{}"

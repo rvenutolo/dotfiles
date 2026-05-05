@@ -34,31 +34,31 @@ get_context_percent() {
     # 1. Native used_percentage (statusline stdin format, Claude Code v2.1.6+).
     #    A value of 0 is treated as "not yet populated" — fall through.
     local native
-    native="$(printf '%s' "${hook_json}" | jq -r '.context_window.used_percentage // empty' 2>/dev/null)" || native=""
+    native="$(printf '%s' "${hook_json}" | jq --raw-output '.context_window.used_percentage // empty' 2> /dev/null)" || native=""
     local -r native
-    if [[ -n "${native}" ]] && jq -en --argjson v "${native}" '$v > 0' >/dev/null 2>&1; then
-      jq -rn --argjson v "${native}" '[$v, 100] | min | floor' 2>/dev/null || printf '0\n'
+    if [[ -n "${native}" ]] && jq --exit-status --null-input --argjson v "${native}" '$v > 0' > /dev/null 2>&1; then
+      jq --raw-output --null-input --argjson v "${native}" '[$v, 100] | min | floor' 2> /dev/null || printf '0\n'
       return 0
     fi
 
     # 2. Token sum / context_window_size (also statusline stdin format).
     local cw_size
-    cw_size="$(printf '%s' "${hook_json}" | jq -r '.context_window.context_window_size // empty' 2>/dev/null)" || cw_size=""
+    cw_size="$(printf '%s' "${hook_json}" | jq --raw-output '.context_window.context_window_size // empty' 2> /dev/null)" || cw_size=""
     local -r cw_size
     if [[ "${cw_size}" =~ ^[0-9]+$ ]] && [[ "${cw_size}" -gt 0 ]]; then
       local cw_total
-      cw_total="$(printf '%s' "${hook_json}" | jq -r '
+      cw_total="$(printf '%s' "${hook_json}" | jq --raw-output '
         .context_window.current_usage as $u |
         ($u.input_tokens // 0) +
         ($u.cache_creation_input_tokens // 0) +
         ($u.cache_read_input_tokens // 0)
-      ' 2>/dev/null)" || cw_total=0
+      ' 2> /dev/null)" || cw_total=0
       local -r cw_total
       if [[ "${cw_total}" =~ ^[0-9]+$ ]] && [[ "${cw_total}" -gt 0 ]]; then
-        jq -rn \
+        jq --raw-output --null-input \
           --argjson total "${cw_total}" \
           --argjson size "${cw_size}" \
-          '[$total / $size * 100, 100] | min | floor' 2>/dev/null || printf '0\n'
+          '[$total / $size * 100, 100] | min | floor' 2> /dev/null || printf '0\n'
         return 0
       fi
     fi
@@ -69,7 +69,7 @@ get_context_percent() {
   local transcript_path
   transcript_path=""
   if [[ -n "${hook_json}" ]]; then
-    transcript_path="$(printf '%s' "${hook_json}" | jq -r '.transcript_path // empty' 2>/dev/null)" || transcript_path=""
+    transcript_path="$(printf '%s' "${hook_json}" | jq --raw-output '.transcript_path // empty' 2> /dev/null)" || transcript_path=""
   fi
   local -r transcript_path
 
@@ -79,7 +79,7 @@ get_context_percent() {
   fi
 
   local raw_total
-  raw_total="$(jq -Rn '
+  raw_total="$(jq --raw-input --null-input '
     [ inputs |
       try (
         fromjson |
@@ -94,14 +94,14 @@ get_context_percent() {
       (.cache_creation_input_tokens // 0) +
       (.cache_read_input_tokens // 0)
     end
-  ' "${transcript_path}" 2>/dev/null)" || raw_total=0
+  ' "${transcript_path}" 2> /dev/null)" || raw_total=0
   local -r total="${raw_total:-0}"
 
-  jq -rn \
+  jq --raw-output --null-input \
     --argjson total "${total}" \
     --argjson size "${fallback_window_size}" \
     '[$total / $size * 100, 100] | min | floor' \
-    2>/dev/null || printf '0\n'
+    2> /dev/null || printf '0\n'
 }
 
 input="$(cat)"
@@ -110,7 +110,7 @@ readonly input
 used_pct="$(get_context_percent "${input}")"
 readonly used_pct
 
-if (( used_pct >= THRESHOLD )); then
+if ((used_pct >= THRESHOLD)); then
   message="
 ======================================================================
 ⚠️⚠️⚠️ Context at ${used_pct}%. You should consider running /compact. ⚠️⚠️⚠️
