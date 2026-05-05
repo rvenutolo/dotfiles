@@ -21,7 +21,7 @@ readonly THRESHOLD=80
 #        Common values: 200000 (Claude 3.x/4.x), 1048576 (1M-context models)
 #
 # Requires: jq
-get_context_percent() {
+function get_context_percent() {
   local hook_json
   hook_json="${1:-}"
   local -r hook_json

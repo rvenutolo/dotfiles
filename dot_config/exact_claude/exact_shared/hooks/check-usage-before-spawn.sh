@@ -19,7 +19,7 @@ readonly CREDENTIAL="${CLAUDE_CONFIG_DIR:-}/.credentials.json"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-log() {
+function log() {
   # Writes to stderr — visible to user via Ctrl-R transcript; not fed to model
   # (PreToolUse exit 0 allows the call without surfacing stderr to the model).
   echo "$*" >&2
@@ -34,7 +34,7 @@ for cmd in curl jq awk date; do
 done
 
 # Returns the OAuth access token, or empty string on failure.
-get_token() {
+function get_token() {
   if [[ ! -f "${CREDENTIAL}" ]]; then
     echo ''
     return
@@ -44,7 +44,7 @@ get_token() {
 
 # Fetches usage JSON. Writes JSON to stdout; HTTP status to FD 3 of caller.
 # Returns 0 on HTTP 2xx, 1 on auth failure (401/403), 2 on network/other error.
-fetch_usage() {
+function fetch_usage() {
   local -r token="$1"
   local body http_code curl_rc=0
   local -r tmp="$(mktemp)"
@@ -84,13 +84,13 @@ fetch_usage() {
 }
 
 # Pretty-prints a Unix epoch as a human-readable local time.
-epoch_to_human() {
+function epoch_to_human() {
   local -r epoch="$1"
   date --date="@${epoch}" '+%Y-%m-%d %H:%M:%S %Z'
 }
 
 # Returns 0 if first numeric arg is strictly less than second; else 1. No bc dep.
-numeric_lt() {
+function numeric_lt() {
   awk -v a="$1" -v b="$2" 'BEGIN { exit !(a < b) }'
 }
 
