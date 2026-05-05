@@ -11,7 +11,7 @@
 - Constants and config: `readonly` and `UPPER_SNAKE_CASE` at top of script
 - Locals: `local` (or `local -r` for read-only) inside every function
 - Functions: `snake_case`, defined with `function name() { ... }` (always use `function` keyword)
-- Default safely under `set -u`: `"${VAR:-default}"` for any externally-provided var
+- Default safely under `set -u`: use `"${VAR:-default}"` for vars that may legitimately be unset; do NOT add defaults for well-known env vars expected to always be present (`HOME`, `USER`, `SDKMAN_DIR`, `PATH`, etc.) — let `set -u` catch them if missing
 - When parsing decimal strings that may have leading zeros (e.g. `date +%H` → `09`), use `10#` in arithmetic context (`$((10#${var}))`) or strip via `%-H`/`%-M` with GNU date — bash arithmetic treats `08`/`09` as invalid octal
 - Force-decimal numbers from external commands before arithmetic comparison
 - Tool availability: check with `command -v tool >/dev/null 2>&1`, never `which`
