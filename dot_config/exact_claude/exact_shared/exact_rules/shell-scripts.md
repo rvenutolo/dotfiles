@@ -124,7 +124,19 @@
   result="$(cmd)"
   ```
 
+- Never append `|| exit 1` (or `|| exit N`) to a plain command-substitution assignment: `var="$(cmd)" || exit 1` is redundant under the mandatory `set -Eeuo pipefail` and short-circuits the `ERR` trap, which would otherwise print the failing line and command. Write `var="$(cmd)"` and let strict mode + the trap handle failure. For an explicit user-visible failure with a custom message, use `|| { echo "msg" >&2; exit 1; }` (or the project's `die`/`log_err` helper if one exists):
+
+  ```bash
+  # wrong — redundant, suppresses ERR trap context
+  var="$(cmd)" || exit 1
+
+  # right — let strict mode + ERR trap handle it
+  var="$(cmd)"
+  ```
+
+  For `local`/`readonly`/`declare`/`export`, the split-declaration rule above applies — `local var="$(cmd)" || exit 1` never triggers because the builtin masks the substitution's exit status.
 - File layout: only the shebang, strict-mode pragma, IFS, sourced libraries / `set` options, and constants appear before function definitions. All functions are grouped together below constants. No executable code is interleaved between function definitions.
+- `main` function: top-level scripts containing one or more helper functions must wrap entry logic in `function main() { ... }`, defined as the last function. The final non-comment line of the script must be `main "$@"`. Scripts with zero helper functions may use straight-line code with no `main`. Library files (sourced helpers) are exempt. Keep arg-count guards and any `getopt` option parsing whose results modify `$@` at top-level above the `main` call — `main` should receive already-validated, already-parsed args.
 - For pipelines whose per-stage exit codes matter, capture `PIPESTATUS` into a variable on the very next line — any subsequent command overwrites it:
 
   ```bash
