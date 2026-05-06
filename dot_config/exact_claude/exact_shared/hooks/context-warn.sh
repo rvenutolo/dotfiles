@@ -112,9 +112,9 @@ readonly used_pct
 
 if ((used_pct >= THRESHOLD)); then
   message="
-======================================================================
+===================================================================
 ⚠️⚠️⚠️ Context at ${used_pct}%. You should consider running /compact. ⚠️⚠️⚠️
-======================================================================"
+==================================================================="
   readonly message
   jq --null-input --arg msg "${message}" '{systemMessage: $msg}'
 fi
