@@ -85,6 +85,8 @@
 ## Documentation Paths
 - Plans: `.claude/plans/`
 - Specs: `.claude/specs/`
+- Scratch: `.claude/scratch/`
+- Reports: `.claude/reports/`
 
 ## Writing Documentation
 - Never hardcode absolute paths to the current repository in docs, skills, commands, rules, plans, specs, or any other artifact stored inside the repo. Use repo-root-relative paths (e.g., `.claude/rules/shell-scripts.md`, not `/home/<user>/Code/Foo/.claude/rules/shell-scripts.md`). When the absolute path is genuinely needed at runtime, resolve it dynamically — e.g., `git rev-parse --show-toplevel` for the repo root, `$CLAUDE_CONFIG_DIR` for the Claude config dir, `$HOME` for the user's home — rather than embedding a literal path. Hardcoded paths break the moment the repo is cloned elsewhere or the user/machine changes.
