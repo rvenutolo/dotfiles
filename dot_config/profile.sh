@@ -168,8 +168,11 @@ for dir in \
 done
 unset -v dir
 
-if __is_readable_file "${HOME}/.profile-local";  then
-  . "${HOME}/.profile-local"
-fi
+for file in \
+  "${HOME}/.profile-local" \
+  "${HOME}/.profile-private"; do
+    . "${file}"
+done
+unset -v file
 
 unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove
