@@ -96,7 +96,7 @@
 - Document non-trivial functions with a comment block above the definition: description, globals used or modified, arguments (using the `# $1 = description` style for each positional; `# $@ = ...` for varargs), outputs (stdout/stderr), and return value semantics. Library functions always require this; small internal helpers may be lighter.
 - Comment tricky, non-obvious, or important code sections; explain *why*, not *what*.
 - Use `TODO:` (all caps, no author identifier) to mark deferred work.
-- Maximum line length is 80 characters. Wrap long strings via here-docs or embedded newlines. Long URLs and file paths may exceed when necessary.
+- Maximum line length is 120 characters. Wrap long lines via continuation, here-docs, or shorter expressions. Exempt: lines whose excess length comes from a single unbreakable string literal — URLs, file paths, embedded regex/awk/sed programs, multi-arg single-string command invocations. Multi-token or pipeline lines must still wrap.
 - Pipeline formatting: a pipeline that fits on one line stays on one line. When wrapping, put one segment per line with the `|` at the start of the continuation line, indented 2 spaces from the opening command.
 - Control flow opener: `; then` and `; do` on the same line as `if`/`while`/`for`. `else` on its own line. `fi`/`done` on their own line, aligned with the opener.
 - `case` statement formatting: indent each alternative 2 spaces; multi-line alternatives put the pattern, the actions, and the closing `;;` on separate lines. Never use `;&` or `;;&` (fall-through) — write explicit cases instead.
