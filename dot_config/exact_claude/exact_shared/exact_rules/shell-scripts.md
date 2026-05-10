@@ -35,6 +35,9 @@
   }
 
   # right — bind once, name everywhere
+  # @description Copy a file from src to dest, preserving attributes.
+  # @arg $1 src path to source file
+  # @arg $2 dest path to destination
   function copy_file() {
     local -r src="$1"
     local -r dest="$2"
@@ -46,7 +49,7 @@
 - Apply `${VAR:-}` defaults only to optional positional args (`"${2:-}"`) — required positionals are already validated by arg-count guards, so let `set -u` catch programming mistakes there. The existing rule about not defaulting well-known env vars still applies.
 - Locals: `local` (or `local -r` for read-only) inside every function. Use `snake_case` (lowercase) for local and other non-constant variables; reserve `UPPER_SNAKE_CASE` for constants, exported vars, and environment vars.
 - Functions: `snake_case`, defined with `function name() { ... }` (always use `function` keyword)
-- Document positional parameters above each function with `# $1 = description` comments (use `# $@ = ...` for varargs)
+- Document positional parameters above each function with shdoc-style `# @arg $1 description` comments (use `# @arg $@ description` for varargs). Add `# @description ...` above the function for the prose summary; add `# @noargs` for argument-less functions; use `# @stdout`, `# @stderr`, and `# @exitcode N meaning` where useful.
 - Default safely under `set -u`: use `"${VAR:-default}"` for vars that may legitimately be unset; do NOT add defaults for well-known env vars expected to always be present (`HOME`, `USER`, `SDKMAN_DIR`, `PATH`, etc.) — let `set -u` catch them if missing
 - When parsing decimal strings that may have leading zeros (e.g. `date +%H` → `09`), use `10#` in arithmetic context (`$((10#${var}))`) or strip via `%-H`/`%-M` with GNU date — bash arithmetic treats `08`/`09` as invalid octal
 - Force-decimal numbers from external commands before arithmetic comparison
