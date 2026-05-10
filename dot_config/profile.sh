@@ -31,6 +31,7 @@ export XDG_DATA_DIRS="${HOME}/.nix-profile/share:${XDG_DATA_DIRS}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id --user)}"
 
 # personal env vars
+export XDG_BIN_HOME="${HOME}/.local/bin"
 export PERSONAL_DESKTOP_HOSTNAME='redstar'
 export PERSONAL_LAPTOP_HOSTNAME='bluestar'
 export WORK_LAPTOP_HOSTNAME='silverstar'

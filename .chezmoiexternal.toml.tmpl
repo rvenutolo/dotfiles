@@ -1,42 +1,42 @@
-['.config/alacritty/colors.yml']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/alacritty/colors.yml']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/alacritty/refs/heads/main/src/nord.yaml'
 refreshPeriod = '1h'
 filter.command = 'sed'
 filter.args = ['s/^    bar:$/  footer_bar:/']
 
-['.config/bash/complete_alias.bash']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/bash/complete_alias.bash']
 type = 'file'
 url = 'https://raw.githubusercontent.com/cykerway/complete-alias/refs/heads/master/complete_alias'
 refreshPeriod = '1h'
 
-['.config/claude/shared/skills/prompt-master']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/claude/shared/skills/prompt-master']
 type = 'git-repo'
 url = 'git@github.com:nidhinjs/prompt-master.git'
 refreshPeriod = '1h'
 
 # Disabled - this eats tokens
-#['.config/claude/shared/skills/task-observer']
+#['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/claude/shared/skills/task-observer']
 #type = 'git-repo'
 #url = 'git@github.com:rebelytics/one-skill-to-rule-them-all.git'
 #refreshPeriod = '1h'
 
-['.config/dircolors']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/dircolors']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/dircolors/refs/heads/develop/src/dir_colors'
 refreshPeriod = '1h'
 
-['.config/kitty/conf/nord.conf']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/kitty/conf/nord.conf']
 type = 'file'
 url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/refs/heads/master/nord.conf'
 refreshPeriod = '1h'
 
-['.config/kitty/kitty_keys.sh']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/kitty/kitty_keys.sh']
 type = 'file'
 url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/refs/heads/main/kitty_keys.sh'
 refreshPeriod = '1h'
 
-['.config/lite-xl/colors']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/colors']
 type = 'archive'
 url = 'https://github.com/lite-xl/lite-xl-colors/archive/refs/heads/master.zip'
 exact = true
@@ -44,7 +44,7 @@ stripComponents = 2
 refreshPeriod = '1h'
 include = ['*/colors/*.lua']
 
-['.config/lite-xl/libraries/widget']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/libraries/widget']
 type = 'archive'
 url = 'https://github.com/lite-xl/lite-xl-widgets/archive/refs/heads/master.zip'
 exact = true
@@ -56,7 +56,7 @@ include = [
   '*/fonts/*.lua'
 ]
 
-['.config/lite-xl/plugins']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins']
 type = 'archive'
 url = 'https://github.com/lite-xl/lite-xl-plugins/archive/refs/heads/master.zip'
 stripComponents = 2
@@ -99,36 +99,36 @@ include = [
   '*/plugins/wordcount.lua'
 ]
 
-['.config/lite-xl/plugins/lsp-servers']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins/lsp-servers']
 type = 'archive'
 url = 'https://github.com/lite-xl/lite-xl-lsp-servers/archive/refs/heads/master.zip'
 stripComponents = 2
 refreshPeriod = '1h'
 include = ['*/plugins/*.lua']
 
-['.config/lite-xl/plugins/code-plus.lua']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins/code-plus.lua']
 type = 'file'
 url = 'https://raw.githubusercontent.com/chqs-git/code-plus/refs/heads/main/init.lua'
 refreshPeriod = '1h'
 
-['.config/lite-xl/plugins/exterm.lua']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins/exterm.lua']
 type = 'file'
 url = 'https://raw.githubusercontent.com/ShadiestGoat/lite-xl-exterm/refs/heads/main/exterm.lua'
 refreshPeriod = '1h'
 
-['.config/lite-xl/plugins/gitdiff_highlight']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins/gitdiff_highlight']
 type = 'archive'
 url = 'https://github.com/vincens2005/lite-xl-gitdiff-highlight/archive/refs/heads/master.zip'
 exact = true
 stripComponents = 1
 refreshPeriod = '1h'
 
-['.config/lite-xl/plugins/language_containerfile.lua']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins/language_containerfile.lua']
 type = 'file'
 url = 'https://raw.githubusercontent.com/FilBot3/lite-xl-language-containerfile/refs/heads/main/init.lua'
 refreshPeriod = '1h'
 
-['.config/lite-xl/plugins/lintplus']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins/lintplus']
 type = 'archive'
 url = 'https://github.com/liquidev/lintplus/archive/refs/heads/master.zip'
 exact = true
@@ -140,7 +140,7 @@ include = [
   '*/linters/*.lua'
 ]
 
-['.config/lite-xl/plugins/lsp']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins/lsp']
 type = 'archive'
 url = 'https://github.com/lite-xl/lite-xl-lsp/archive/refs/heads/master.zip'
 exact = true
@@ -148,17 +148,17 @@ stripComponents = 1
 refreshPeriod = '1h'
 include = ['*/*.lua']
 
-['.config/lite-xl/plugins/lsp_snippets.lua']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins/lsp_snippets.lua']
 type = 'file'
 url = 'https://raw.githubusercontent.com/vqns/lite-xl-snippets/refs/heads/main/lsp_snippets.lua'
 refreshPeriod = '1h'
 
-['.config/lite-xl/plugins/snippets.lua']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/lite-xl/plugins/snippets.lua']
 type = 'file'
 url = 'https://raw.githubusercontent.com/vqns/lite-xl-snippets/refs/heads/main/snippets.lua'
 refreshPeriod = '1h'
 
-['.config/nano/syntax_highlighting']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/nano/syntax_highlighting']
 type = 'archive'
 url = 'https://github.com/scopatz/nanorc/archive/master.tar.gz'
 exact = true
@@ -166,117 +166,117 @@ stripComponents = 1
 refreshPeriod = '1h'
 include = ['*/*.nanorc']
 
-['.config/nvim/colors/nord.vim']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/nvim/colors/nord.vim']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/vim/refs/heads/main/colors/nord.vim'
 refreshPeriod = '1h'
 
-['.config/tilix/schemes/nord.json']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/tilix/schemes/nord.json']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/tilix/refs/heads/develop/src/json/nord.json'
 refreshPeriod = '1h'
 
-['.config/X11/Xresources']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_CONFIG_HOME") }}/X11/Xresources']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/xresources/refs/heads/develop/src/nord'
 refreshPeriod = '1h'
 
-['.local/bin/ansi-colors']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/ansi-colors']
 type = 'file'
 url = 'https://raw.githubusercontent.com/BachoSeven/dotfiles/refs/heads/master/.local/bin/colors/16'
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/ansi-modes']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/ansi-modes']
 type = 'file'
 url = 'https://raw.githubusercontent.com/statico/dotfiles/refs/heads/main/bin/ansimodes'
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/appman']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/appman']
 type = 'file'
 url = 'https://raw.githubusercontent.com/ivan-hc/AM/refs/heads/main/APP-MANAGER'
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/colorscheme']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/colorscheme']
 type = 'file'
 url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/main/fun/.local/bin/colorscheme'
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/dockcheck']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/dockcheck']
 type = 'file'
 url = 'https://raw.githubusercontent.com/mag37/dockcheck/refs/heads/main/dockcheck.sh'
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/git-filter-repo']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/git-filter-repo']
 type = 'file'
 url = 'https://raw.githubusercontent.com/newren/git-filter-repo/refs/heads/main/git-filter-repo'
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/git-wtf']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/git-wtf']
 type = 'file'
 url = 'https://raw.githubusercontent.com/DanielVartanov/willgit/refs/heads/master/bin/git-wtf'
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/nerd-font-test']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/nerd-font-test']
 type = 'file'
 url = 'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/refs/heads/master/bin/scripts/test-fonts.sh'
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/rain']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/rain']
 type = 'file'
 url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/main/fun/.local/bin/rain'
 refreshPeriod = '1h'
 executable = true
 
-['.local/bin/starship-git-simple']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_BIN_HOME") }}/starship-git-simple']
 type = 'file'
 url = 'https://raw.githubusercontent.com/sapegin/dotfiles/refs/heads/master/bin/lib/starship-git-simple'
 refreshPeriod = '1h'
 executable = true
 
-['.local/share/bash-completion/completions/mvn']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_DATA_HOME") }}/bash-completion/completions/mvn']
 type = 'file'
 url = 'https://raw.githubusercontent.com/juven/maven-bash-completion/refs/heads/master/bash_completion.bash'
 refreshPeriod = '1h'
 
-['.local/share/gedit/styles/nord.xml']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_DATA_HOME") }}/gedit/styles/nord.xml']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/gedit/refs/heads/develop/src/xml/nord.xml'
 refreshPeriod = '1h'
 
-['.local/share/konsole/nord.colorscheme']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_DATA_HOME") }}/konsole/nord.colorscheme']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/konsole/refs/heads/develop/src/nord.colorscheme'
 refreshPeriod = '1h'
 
-['.local/share/warp-terminal/themes/nord_dark.yaml']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_DATA_HOME") }}/warp-terminal/themes/nord_dark.yaml']
 type = 'file'
 url = 'https://raw.githubusercontent.com/SilentGlasses/warp_themes/refs/heads/main/yaml_files/nord_dark.yaml'
 refreshPeriod = '1h'
 
-['.local/share/xfce4/terminal/colorschemes/nord.theme']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "XDG_DATA_HOME") }}/xfce4/terminal/colorschemes/nord.theme']
 type = 'file'
 url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/refs/heads/develop/src/nord.theme'
 refreshPeriod = '1h'
 
-['Code/Personal/crypt']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "PERSONAL_PROJECTS_DIR") }}/crypt']
 type = 'git-repo'
 url = 'git@github.com:rvenutolo/crypt.git'
 refreshPeriod = '0'
 
-['Code/Personal/packages']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "PERSONAL_PROJECTS_DIR") }}/packages']
 type = 'git-repo'
 url = 'git@github.com:rvenutolo/packages.git'
 refreshPeriod = '0'
 
-['Code/Personal/scripts']
+['{{ trimPrefix (printf "%s/" .chezmoi.homeDir) (env "PERSONAL_PROJECTS_DIR") }}/scripts']
 type = 'git-repo'
 url = 'git@github.com:rvenutolo/scripts.git'
 refreshPeriod = '0'
