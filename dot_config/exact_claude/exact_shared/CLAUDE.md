@@ -30,11 +30,36 @@
 - Never change a field or method modifier (e.g., `private` → `package-private`) for the sole purpose of making it testable
 - If a feature cannot be tested through the public API, reconsider the design rather than exposing implementation details
 
+## Testing Philosophy
+
+- Tests are **specification-driven**, not characterization-driven. Each test encodes what the function *should* do — derived from its name, doc comment, and reasonable invariants — not what the current code happens to do. Characterization tests lock in bugs; spec-driven tests find them.
+- When a test fails, classify the failure into one of three buckets and act accordingly:
+  - **Genuine bug** in the function under test → fix the function. Default action.
+  - **Spec ambiguity** (behavior is reasonable but undocumented; multiple plausible interpretations) → escalate to the user, get an explicit decision, then update whichever side (function or test) needs alignment.
+  - **Test bug** (assertion was wrong) → fix the test. Should be rare if tests are derived from the spec.
+- Default heavily toward the "genuine bug" interpretation. The whole point of spec-driven tests is to surface real defects in shipped code.
+- Separate `fix:` commits from the `test:` commit that surfaced the bug, even if they land back-to-back. The `fix:` commit message should reference the surfacing test by name. Bundling fixes into test commits hides defect history from `git log --grep='^fix:'` and from blame tooling.
+
+## Verifying Behavior Before Acting
+
+- Before "fixing" code that you suspect is broken, verify the broken behavior empirically: run the function/command against the suspected input and observe the actual output. Code that *looks* broken in trace often works fine in practice (and vice versa).
+- This applies during triage of test failures, debugging reported issues, and code review of suspect logic.
+- The cost of a 30-second probe is far lower than the cost of a fix that "addresses" non-existent behavior.
+
 ## Long Multi-Step Tasks
 
 - Before starting a long or multi-step process, identify all tools and permissions needed upfront
 - Ask the user to approve all required permissions at once so the task can run unattended
 - Do not begin execution until permission confirmations are in hand
+
+## Unattended Execution / Pre-Answer Halt Questions
+
+- Before kicking off any work that may run unattended (overnight, while user is away, or in a long subagent-driven loop), identify every likely "halt point" the work could hit and pre-answer each one with the user in a single batched message before execution begins. A halt point is anything where the executor would otherwise stop and ask: design ambiguities, multiple plausible fixes, behavior decisions where the spec is silent, edge cases with no clearly correct answer, sed/regex/parsing semantics that could go multiple ways, etc.
+- Lead each halt question with a recommended option and a one-line rationale, so the user can confirm with a single response (`A`, `approved`, etc.) rather than typing out reasoning.
+- Bake user-confirmed answers into the plan as "controller resolved with user" notes that subagent prompts cite verbatim. Do not let an executor rediscover an already-answered question.
+- For unforeseen low-stakes ambiguities discovered mid-execution: pick the most conservative interpretation, leave a `# TODO:` comment, and surface the decision in the morning summary. Halt as `BLOCKED` only for ambiguities with security or invariant implications.
+- This rule applies to any unattended-execution AI workflow — not just specific tools or domains. The cost of front-loading design decisions is paid once; the cost of an unanswered halt question paged at 3am is paid every time.
+- Verify delegated-work state independently before trusting reports. Subagent / agent / tool output occasionally truncates mid-report, or describes *intent* rather than verified state. After any delegated task that should have produced a code/file change, check the resulting state directly — `git status`, `git log`, re-run the verification command, read the file — before marking the task complete or moving to the next step.
 
 ## Response Style
 
