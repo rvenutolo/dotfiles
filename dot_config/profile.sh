@@ -19,6 +19,7 @@ __path_prepend() {
 umask 022
 
 # xdg base dirs - https://wiki.archlinux.org/title/XDG_Base_Directory
+export XDG_PROJECTS_DIR="${HOME}/Projects"
 export XDG_CACHE_HOME="${HOME}/.cache"
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_DATA_HOME="${HOME}/.local/share"
@@ -33,11 +34,14 @@ export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id --user)}"
 export PERSONAL_DESKTOP_HOSTNAME='redstar'
 export PERSONAL_LAPTOP_HOSTNAME='bluestar'
 export WORK_LAPTOP_HOSTNAME='silverstar'
+export PERSONAL_PROJECTS_DIR="${XDG_PROJECTS_DIR}/Personal"
+export WORK_PROJECTS_DIR="${XDG_PROJECTS_DIR}/Work"
 export CODE_DIR="${HOME}/Code"
-export SCRIPTS_DIR="${CODE_DIR}/Personal/scripts"
+export SCRIPTS_DIR="${PERSONAL_PROJECTS_DIR}/scripts"
+export DOTFILES_DIR="${PERSONAL_PROJECTS_DIR}/dotfiles"
+export PACKAGES_DIR="${PERSONAL_PROJECTS_DIR}/packages"
 export HOME_MANAGER_DIR="${XDG_CONFIG_HOME}/home-manager"
 export HOME_MANAGER_PACKAGES_DIR="${HOME_MANAGER_DIR}/packages"
-export PACKAGES_DIR="${CODE_DIR}/Personal/packages"
 export WTTR_CITY='Atlanta'
 
 # age / crypt
