@@ -21,7 +21,7 @@ config.default_cursor_style = "BlinkingBlock"
 config.enable_scroll_bar = true
 
 config.font = wezterm.font({
-  family = "JetBrains Mono",
+  family = "JetBrainsMono Nerd Font",
   weight = "Regular",
 })
 
