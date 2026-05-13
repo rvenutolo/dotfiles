@@ -1,0 +1,7 @@
+[Unit]
+Description=Delete old home-manager generations
+
+[Service]
+Type=oneshot
+ExecStart={{ env "NIX_USER_PROFILE" }}/bin/nix-collect-garbage --delete-older-than 10d
+ExecStart={{ env "NIX_USER_PROFILE" }}/bin/nix-store --optimise

@@ -11,8 +11,8 @@ unset -v file
 # source files that set env vars (like PATH)
 for file in \
   "${HOME}/.profile" \
-  "${HOME}/.nix-profile/etc/profile.d/nix.sh" \
-  "${HOME}/.nix-profile/etc/profile.d/hm-session-vars.sh" \
+  "${NIX_USER_PROFILE}/etc/profile.d/nix.sh" \
+  "${NIX_USER_PROFILE}/etc/profile.d/hm-session-vars.sh" \
   "${SDKMAN_DIR}/bin/sdkman-init.sh" \
 ; do
   if [[ -r "${file}" ]]; then

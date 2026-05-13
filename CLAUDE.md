@@ -37,43 +37,9 @@ Prefixes compose: `private_dot_ssh`, `encrypted_private_profile-local-personal.s
 
 ## Standard Env Vars
 
-User exports a fixed set of env vars in their shell profile and wants them reused everywhere possible instead of hardcoded paths or literals. Determine each value at runtime — do not hardcode values in this doc, they may change.
+User exports a fixed set of env vars in their shell profile and wants them reused everywhere possible instead of hardcoded paths or literals. The source of truth is `dot_config/profile.sh` in this repo (which becomes `${XDG_CONFIG_HOME}/profile.sh` on target).
 
-- `AGE_PRIVATE_KEY_FILE`
-- `AGE_PUBLIC_KEY`
-- `AWS_CONFIG_FILE`
-- `AWS_SHARED_CREDENTIALS_FILE`
-- `CRYPT_DIR`
-- `DOCKER_CONFIG`
-- `DOTFILES_DIR`
-- `HOME_MANAGER_DIR`
-- `HOME_MANAGER_PACKAGES_DIR`
-- `KEYS_DIR`
-- `PACKAGES_DIR`
-- `PERSONAL_DESKTOP_HOSTNAME`
-- `PERSONAL_LAPTOP_HOSTNAME`
-- `PERSONAL_PROJECTS_DIR`
-- `PERSONAL_SSH_PRIVATE_KEY`
-- `PERSONAL_SSH_PUBLIC_KEY`
-- `SCRIPTS_DIR`
-- `SDKMAN_DIR`
-- `STARSHIP_CACHE`
-- `WORK_LAPTOP_HOSTNAME`
-- `WORK_PROJECTS_DIR`
-- `WORK_SSH_PRIVATE_KEY`
-- `WORK_SSH_PUBLIC_KEY`
-- `XDG_BIN_HOME`
-- `XDG_CACHE_HOME`
-- `XDG_CONFIG_HOME`
-- `XDG_DATA_HOME`
-- `XDG_PROJECTS_DIR`
-- `XDG_STATE_HOME`
-
-Resolve all current values in one command:
-
-```shell
-for v in AGE_PRIVATE_KEY_FILE AGE_PUBLIC_KEY AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE CRYPT_DIR DOCKER_CONFIG DOTFILES_DIR HOME_MANAGER_DIR HOME_MANAGER_PACKAGES_DIR KEYS_DIR PACKAGES_DIR PERSONAL_DESKTOP_HOSTNAME PERSONAL_LAPTOP_HOSTNAME PERSONAL_PROJECTS_DIR PERSONAL_SSH_PRIVATE_KEY PERSONAL_SSH_PUBLIC_KEY SCRIPTS_DIR SDKMAN_DIR STARSHIP_CACHE WORK_LAPTOP_HOSTNAME WORK_PROJECTS_DIR WORK_SSH_PRIVATE_KEY WORK_SSH_PUBLIC_KEY XDG_BIN_HOME XDG_CACHE_HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_PROJECTS_DIR XDG_STATE_HOME; do printf '%s=%s\n' "$v" "${!v}"; done
-```
+Read `dot_config/profile.sh` to enumerate the available env vars and their definitions. Ignore conditional exports — `EDITOR`, `VISUAL`, `PAGER`, `MANPAGER`, `FILE_MANAGER`, `TAILNET_IP`, `TAILNET_CIDR`, `TERM`, etc. — that are gated on `__executable_exists` / `case` / runtime probes; they're not meant for cross-file reuse.
 
 ### Usage policy
 
