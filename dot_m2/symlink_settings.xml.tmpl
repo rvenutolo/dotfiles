@@ -1,7 +1,7 @@
 {{- if .is_personal }}
-{{ .chezmoi.homeDir }}/.config/maven/settings-personal.xml
+{{ env "XDG_CONFIG_HOME" }}/maven/settings-personal.xml
 {{- else if .is_work }}
-{{ .chezmoi.homeDir }}/.config/maven/settings-work.xml
+{{ env "XDG_CONFIG_HOME" }}/maven/settings-work.xml
 {{- else }}
-{{ .chezmoi.homeDir }}/.config/maven/settings-server.xml
+{{ env "XDG_CONFIG_HOME" }}/maven/settings-server.xml
 {{- end }}

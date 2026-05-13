@@ -31,34 +31,32 @@ if ! executable_exists 'curl'; then
   die 'curl not found'
 fi
 
-readonly keys_dir="${HOME}/.keys"
-mkdir --parents "${keys_dir}"
+mkdir --parents "${KEYS_DIR}"
 
-readonly age_key_file="${keys_dir}/age.key"
-if ! file_exists "${age_key_file}"; then
-  log "Downloading: ${age_key_file}"
+if ! file_exists "${AGE_PRIVATE_KEY_FILE}"; then
+  log "Downloading: ${AGE_PRIVATE_KEY_FILE}"
   age_key_content="$(download 'https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/age.key')"
   if [[ -n "${age_key_content}" ]]; then
-    log "Decrypting: ${age_key_file}"
-    until age --decrypt --output "${age_key_file}" <<< "${age_key_content}"; do :; done
+    log "Decrypting: ${AGE_PRIVATE_KEY_FILE}"
+    until age --decrypt --output "${AGE_PRIVATE_KEY_FILE}" <<< "${age_key_content}"; do :; done
   else
     die "age key file content is empty"
   fi
 fi
 
 for filename in 'id_ed25519' 'id_ed25519.pub'; do
-  key_file="${keys_dir}/${filename}"
+  key_file="${KEYS_DIR}/${filename}"
   if ! file_exists "${key_file}"; then
     log "Downloading: ${key_file}"
     key_contents="$(download "https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/${filename}")"
     if [[ -n "${key_contents}" ]]; then
       log "Decrypting: ${key_file}"
-      age --decrypt --identity "${age_key_file}" --output "${key_file}" <<< "${key_contents}"
+      age --decrypt --identity "${AGE_PRIVATE_KEY_FILE}" --output "${key_file}" <<< "${key_contents}"
     else
       die "${filename} content is empty"
     fi
   fi
 done
 
-find "${keys_dir}" -type d -exec chmod 700 {} \;
-find "${keys_dir}" -type f -exec chmod 600 {} \;
+find "${KEYS_DIR}" -type d -exec chmod 700 {} \;
+find "${KEYS_DIR}" -type f -exec chmod 600 {} \;

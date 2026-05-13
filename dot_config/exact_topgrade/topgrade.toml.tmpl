@@ -186,10 +186,10 @@ cleanup = true
 [git]
 
 repos = [
-  "~/Projects/Personal/crypt",
-  "~/Projects/Personal/dotfiles",
-  "~/Projects/Personal/packages",
-  "~/Projects/Personal/scripts"
+  "{{ env "CRYPT_DIR" }}",
+  "{{ env "DOTFILES_DIR" }}",
+  "{{ env "PACKAGES_DIR" }}",
+  "{{ env "SCRIPTS_DIR" }}"
 ]
 
 # How many repos to pull at max in parallel
