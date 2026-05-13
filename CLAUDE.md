@@ -35,6 +35,50 @@ Prefixes compose: `private_dot_ssh`, `encrypted_private_profile-local-personal.s
 
 `is_desktop` / `is_laptop` / `is_wtf` / `is_io` are also exposed. Templates in this repo gate config blocks on these flags — do not hardcode hostnames in new content; reuse the booleans from `.chezmoi.toml.tmpl` data.
 
+## Standard Env Vars
+
+User exports a fixed set of env vars in their shell profile and wants them reused everywhere possible instead of hardcoded paths or literals. Determine each value at runtime — do not hardcode values in this doc, they may change.
+
+- `AGE_PRIVATE_KEY_FILE`
+- `AWS_CONFIG_FILE`
+- `AWS_SHARED_CREDENTIALS_FILE`
+- `CRYPT_DIR`
+- `DOCKER_CONFIG`
+- `DOTFILES_DIR`
+- `HOME_MANAGER_DIR`
+- `HOME_MANAGER_PACKAGES_DIR`
+- `PACKAGES_DIR`
+- `PERSONAL_DESKTOP_HOSTNAME`
+- `PERSONAL_LAPTOP_HOSTNAME`
+- `PERSONAL_PROJECTS_DIR`
+- `SCRIPTS_DIR`
+- `SDKMAN_DIR`
+- `STARSHIP_CACHE`
+- `WORK_LAPTOP_HOSTNAME`
+- `WORK_PROJECTS_DIR`
+- `XDG_BIN_HOME`
+- `XDG_CACHE_HOME`
+- `XDG_CONFIG_HOME`
+- `XDG_DATA_HOME`
+- `XDG_PROJECTS_DIR`
+- `XDG_STATE_HOME`
+
+Resolve all current values in one command:
+
+```shell
+for v in AGE_PRIVATE_KEY_FILE AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE CRYPT_DIR DOCKER_CONFIG DOTFILES_DIR HOME_MANAGER_DIR HOME_MANAGER_PACKAGES_DIR PACKAGES_DIR PERSONAL_DESKTOP_HOSTNAME PERSONAL_LAPTOP_HOSTNAME PERSONAL_PROJECTS_DIR SCRIPTS_DIR SDKMAN_DIR STARSHIP_CACHE WORK_LAPTOP_HOSTNAME WORK_PROJECTS_DIR XDG_BIN_HOME XDG_CACHE_HOME XDG_CONFIG_HOME XDG_DATA_HOME XDG_PROJECTS_DIR XDG_STATE_HOME; do printf '%s=%s\n' "$v" "${!v}"; done
+```
+
+### Usage policy
+
+When a config file or script references a path or hostname covered by one of these vars, prefer (in order):
+
+1. **Literal env var inside the file** (`${XDG_CONFIG_HOME}/foo/bar`) — only if the consuming tool/parser expands env vars in that field. Verify with the tool's docs before using.
+2. **Chezmoi template** — rename file to `.tmpl` and use `{{ env "XDG_CONFIG_HOME" }}/foo/bar`. Chezmoi resolves at apply time, so the rendered file contains a literal absolute path the tool can read without env support.
+3. **Hardcoded path** — only when neither option above is viable (e.g. tool-specific format that breaks under templating *and* doesn't support env expansion).
+
+Inside an existing `.tmpl`, just use `{{ env "VAR" }}` directly; no need to fall back to the literal form.
+
 ## Template Data
 
 Beyond the custom `is_*` booleans, `.tmpl` files have access to chezmoi's built-in template data and funcs:
