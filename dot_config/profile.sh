@@ -42,11 +42,16 @@ export DOTFILES_DIR="${PERSONAL_PROJECTS_DIR}/dotfiles"
 export PACKAGES_DIR="${PERSONAL_PROJECTS_DIR}/packages"
 export HOME_MANAGER_DIR="${XDG_CONFIG_HOME}/home-manager"
 export HOME_MANAGER_PACKAGES_DIR="${HOME_MANAGER_DIR}/packages"
+export KEYS_DIR="${HOME}/.keys"
+export PERSONAL_SSH_PUBLIC_KEY="${KEYS_DIR}/id_ed25519.pub"
+export PERSONAL_SSH_PRIVATE_KEY="${KEYS_DIR}/id_ed25519"
+export WORK_SSH_PUBLIC_KEY="${KEYS_DIR}/id_ed25519.pub"
+export WORK_SSH_PRIVATE_KEY="${KEYS_DIR}/id_ed25519"
 export WTTR_CITY='Atlanta'
 
 # age / crypt
 export AGE_PUBLIC_KEY='age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs'
-export AGE_PRIVATE_KEY_FILE="${HOME}/.keys/age.key"
+export AGE_PRIVATE_KEY_FILE="${KEYS_DIR}/age.key"
 export CRYPT_DIR="${HOME}/.crypt"
 
 ## dirs and files
