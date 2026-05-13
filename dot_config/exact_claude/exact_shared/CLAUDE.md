@@ -65,10 +65,6 @@
 
 - At the end of a response, add a brief summary of what you did
 
-## Shell Scripts
-
-@rules/shell-scripts.md
-
 ## Git
 
 - Never force-add files that are listed in `.gitignore` (e.g., `git add --force`). If a file needs to be staged but is gitignored, stop and ask the user first.
