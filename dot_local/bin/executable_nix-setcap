@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Apply Linux capabilities to nix-installed network tools so they can run
+# unprivileged. Nix store paths change on each profile generation, so this
+# is meant to be invoked by a systemd path unit watching the nix profile.
+#
+# Requires a sudoers entry granting NOPASSWD for /usr/sbin/setcap.
+
+set -euo pipefail
+
+# Format: "<binary-name-in-PATH> <caps-string>"
+declare -a TARGETS=(
+    "bandwhich cap_net_raw,cap_net_admin+eip"
+    "iftop cap_net_raw+eip"
+    "mtr-packet cap_net_raw+eip"
+    "nmap cap_net_raw,cap_net_admin,cap_net_bind_service+eip"
+    "tcpdump cap_net_raw,cap_net_admin+eip"
+    "traceroute cap_net_raw+eip"
+)
+
+PROFILE_BIN="${HOME}/.nix-profile/bin"
+SETCAP=/usr/sbin/setcap
+GETCAP=/usr/sbin/getcap
+
+if [[ ! -x "$SETCAP" || ! -x "$GETCAP" ]]; then
+    echo "nix-setcap: missing $SETCAP or $GETCAP" >&2
+    exit 1
+fi
+
+for entry in "${TARGETS[@]}"; do
+    name="${entry%% *}"
+    caps="${entry#* }"
+
+    link="${PROFILE_BIN}/${name}"
+    if [[ ! -e "$link" ]]; then
+        echo "nix-setcap: skip ${name} (not installed)"
+        continue
+    fi
+
+    target=$(readlink -f "$link")
+    if [[ ! -f "$target" ]]; then
+        echo "nix-setcap: skip ${name} (target ${target} missing)" >&2
+        continue
+    fi
+
+    current=$("$GETCAP" "$target" 2>/dev/null | sed -E 's|.* = ||' || true)
+    if [[ "$current" == "$caps" ]]; then
+        echo "nix-setcap: ${name} already has ${caps}"
+        continue
+    fi
+
+    echo "nix-setcap: applying ${caps} to ${name} -> ${target}"
+    sudo "$SETCAP" "$caps" "$target"
+done
