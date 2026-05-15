@@ -1,0 +1,12 @@
+[Unit]
+Description=Pueue Daemon - CLI process scheduler and manager
+Documentation=https://github.com/Nukesor/pueue
+
+[Service]
+Type=simple
+ExecStart=%h/.nix-profile/bin/pueued
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
