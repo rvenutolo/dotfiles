@@ -62,6 +62,9 @@
 [gpg]
   format = ssh
 
+[gpg "ssh"]
+  allowedSignersFile = {{ env "XDG_CONFIG_HOME" }}/git/allowed_signers
+
 [grep]
   ignoreCase = true
   patternType = perl
