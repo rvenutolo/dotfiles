@@ -2,6 +2,10 @@
 Description=Enforce IP forwarding
 After=network.target
 
+# Must be an infinite loop, not a sysctl drop-in or oneshot. The AWS VPN Client
+# resets net.ipv4.ip_forward to 0 whenever the work VPN connects, so the value
+# must be re-asserted continuously. A boot-time setting alone does not survive.
+
 [Service]
 Type=simple
 ExecStart=/bin/bash -c 'while true; do if [ "$(cat /proc/sys/net/ipv4/ip_forward)" = "0" ]; then echo 1 > /proc/sys/net/ipv4/ip_forward; fi; sleep 5; done'
