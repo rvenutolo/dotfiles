@@ -18,4 +18,4 @@ tries = 3
 # '--retry-connrefused'.
 retry_connrefused = on
 
-hsts-file = {{ env "XDG_DATA_HOME" }}/wget-hsts
+hsts-file = {{ .chezmoi.homeDir }}/{{ .paths.xdg_data_home }}/wget-hsts

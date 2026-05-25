@@ -186,10 +186,10 @@ cleanup = true
 [git]
 
 repos = [
-  "{{ env "CRYPT_DIR" }}",
-  "{{ env "DOTFILES_DIR" }}",
-  "{{ env "PACKAGES_DIR" }}",
-  "{{ env "SCRIPTS_DIR" }}"
+  "{{ .chezmoi.homeDir }}/{{ .paths.crypt_dir }}",
+  "{{ .chezmoi.homeDir }}/{{ .paths.dotfiles_dir }}",
+  "{{ .chezmoi.homeDir }}/{{ .paths.packages_dir }}",
+  "{{ .chezmoi.homeDir }}/{{ .paths.scripts_dir }}"
 ]
 
 # How many repos to pull at max in parallel

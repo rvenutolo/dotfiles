@@ -4,17 +4,17 @@ progress = true
 verbose = false
 
 [age]
-identity = '{{ env "AGE_PRIVATE_KEY_FILE" }}'
-recipient = '{{ env "AGE_PUBLIC_KEY" }}'
+identity = '{{ .chezmoi.homeDir }}/{{ .paths.age_private_key_file }}'
+recipient = '{{ .age.public_key }}'
 
 [data]
-is_personal = {{- if (or (eq .chezmoi.hostname (env "PERSONAL_DESKTOP_HOSTNAME")) (eq .chezmoi.hostname (env "PERSONAL_LAPTOP_HOSTNAME"))) }} true {{ else }} false {{ end }}
-is_work = {{- if (eq .chezmoi.hostname (env "WORK_LAPTOP_HOSTNAME")) }} true {{ else }} false {{ end }}
-is_desktop = {{- if (eq .chezmoi.hostname (env "PERSONAL_DESKTOP_HOSTNAME")) }} true {{ else }} false {{ end }}
-is_laptop = {{- if (or (eq .chezmoi.hostname (env "PERSONAL_LAPTOP_HOSTNAME")) (eq .chezmoi.hostname (env "WORK_LAPTOP_HOSTNAME"))) }} true {{ else }} false {{ end }}
+is_personal = {{- if (or (eq .chezmoi.hostname .hostnames.personal_desktop) (eq .chezmoi.hostname .hostnames.personal_laptop)) }} true {{ else }} false {{ end }}
+is_work = {{- if (eq .chezmoi.hostname .hostnames.work_laptop) }} true {{ else }} false {{ end }}
+is_desktop = {{- if (eq .chezmoi.hostname .hostnames.personal_desktop) }} true {{ else }} false {{ end }}
+is_laptop = {{- if (or (eq .chezmoi.hostname .hostnames.personal_laptop) (eq .chezmoi.hostname .hostnames.work_laptop)) }} true {{ else }} false {{ end }}
 is_wtf = {{- if (eq .chezmoi.hostname "wtf") }} true {{ else }} false {{ end }}
 is_io= {{- if (eq .chezmoi.hostname "io") }} true {{ else }} false {{ end }}
-is_server = {{- if (not (or (eq .chezmoi.hostname (env "PERSONAL_DESKTOP_HOSTNAME")) (eq .chezmoi.hostname (env "PERSONAL_LAPTOP_HOSTNAME")) (eq .chezmoi.hostname (env "WORK_LAPTOP_HOSTNAME")))) }} true {{ else }} false {{ end }}
+is_server = {{- if (not (or (eq .chezmoi.hostname .hostnames.personal_desktop) (eq .chezmoi.hostname .hostnames.personal_laptop) (eq .chezmoi.hostname .hostnames.work_laptop))) }} true {{ else }} false {{ end }}
 
 [diff]
 command = 'diff'

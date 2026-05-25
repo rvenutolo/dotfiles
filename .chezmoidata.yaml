@@ -1,0 +1,39 @@
+---
+# Canonical source of host/path facts. Templates read these via `.foo.bar`;
+# `dot_config/profile.sh.tmpl` exports them as env vars for shell consumers.
+# Paths are home-relative (no leading slash); join with `.chezmoi.homeDir` in
+# templates, e.g. `{{ .chezmoi.homeDir }}/{{ .paths.keys_dir }}`.
+
+hostnames:
+  personal_desktop: redstar
+  personal_laptop: bluestar
+  work_laptop: silverstar
+
+paths:
+  age_private_key_file: .keys/age.key
+  crypt_dir: .crypt
+  dotfiles_dir: Projects/Personal/dotfiles
+  home_manager_dir: .config/home-manager
+  home_manager_packages_dir: .config/home-manager/packages
+  keys_dir: .keys
+  nix_user_profile: .nix-profile
+  packages_dir: Projects/Personal/packages
+  personal_projects_dir: Projects/Personal
+  personal_ssh_private_key: .keys/id_ed25519
+  personal_ssh_public_key: .keys/id_ed25519.pub
+  scripts_dir: Projects/Personal/scripts
+  work_projects_dir: Projects/Work
+  work_ssh_private_key: .keys/id_ed25519
+  work_ssh_public_key: .keys/id_ed25519.pub
+  xdg_bin_home: .local/bin
+  xdg_cache_home: .cache
+  xdg_config_home: .config
+  xdg_data_home: .local/share
+  xdg_projects_dir: Projects
+  xdg_state_home: .local/state
+
+age:
+  public_key: age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs
+
+weather:
+  wttr_city: Atlanta

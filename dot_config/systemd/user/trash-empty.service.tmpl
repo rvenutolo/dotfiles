@@ -3,4 +3,4 @@ Description=Deletes trash items older than 30 days
 
 [Service]
 Type=oneshot
-ExecStart={{ env "NIX_USER_PROFILE" }}/bin/trash-empty 30
+ExecStart={{ .chezmoi.homeDir }}/{{ .paths.nix_user_profile }}/bin/trash-empty 30

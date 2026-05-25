@@ -1,5 +1,5 @@
 (
-    address: "{{ env "WTTR_CITY" }},US",
+    address: "{{ .weather.wttr_city }},US",
     language: "en_US",
     forecast: [
         day,

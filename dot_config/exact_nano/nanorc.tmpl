@@ -80,4 +80,4 @@ set wordbounds
 set constantshow
 
 # Add syntax highlighting
-include "{{ env "XDG_CONFIG_HOME" }}/nano/syntax_highlighting/*.nanorc"
+include "{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/nano/syntax_highlighting/*.nanorc"
