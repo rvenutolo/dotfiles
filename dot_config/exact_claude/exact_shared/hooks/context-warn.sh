@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 # Hook — warns when context window usage exceeds the threshold.
 # Works with any hook type: uses native context_window data when available

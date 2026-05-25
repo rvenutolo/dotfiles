@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -Eeuo pipefail
 
 function log() {
   echo -e "\033[0;32m[$(date +%T) ${0##*/}] $*\033[0m" >&2

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 readonly BEDTIME_START=22
 readonly BEDTIME_END=6

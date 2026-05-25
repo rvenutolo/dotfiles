@@ -4,7 +4,7 @@
 # If usage is at or above THRESHOLD, sleeps until the window resets, then
 # exits 0 so Claude proceeds automatically without human intervention.
 
-set -euo pipefail
+set -Eeuo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
 readonly THRESHOLD=85 # Block new agents at this % of 5-hour window
