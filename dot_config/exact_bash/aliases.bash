@@ -109,7 +109,7 @@ alias psaf='ps auxf'
 
 # journalctl, systemctl
 alias jc='journalctl'
-alias jce='jounralctl --priority=3'
+alias jce='journalctl --priority=3'
 alias sc='systemctl'
 alias scu='systemctl --user'
 
