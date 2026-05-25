@@ -4,7 +4,7 @@
     "autosave": 0,
     "autosu": true,
     "backup": true,
-    "backupdir": "{{ env "XDG_STATE_HOME" }}/micro/backups",
+    "backupdir": "{{ .chezmoi.homeDir }}/{{ .paths.xdg_state_home }}/micro/backups",
     "basename": false,
     "clipboard": "external",
     "colorcolumn": 0,

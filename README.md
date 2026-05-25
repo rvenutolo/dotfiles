@@ -9,7 +9,6 @@ Dotfiles managed by [chezmoi](https://www.chezmoi.io/).
 adduser rvenutolo && usermod -aG sudo rvenutolo && ssh -o StrictHostKeyChecking=no rvenutolo@localhost
 eval $(ssh-agent)
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b /tmp ## OR sh -c "$(wget -qO- get.chezmoi.io)" -- -b /tmp
-source <(curl --disable --silent --show-error --fail --location 'https://raw.githubusercontent.com/rvenutolo/dotfiles/refs/heads/main/dot_config/profile.sh' | grep --extended-regexp '^export ')
 SCRIPTS_AUTO_ANSWER=y /tmp/chezmoi init --apply rvenutolo
 . ~/.bash_profile
 SCRIPTS_AUTO_ANSWER=y ~/Projects/Personal/scripts/run-install-scripts

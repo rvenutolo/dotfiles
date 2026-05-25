@@ -13,7 +13,7 @@
         after = ["writeBoundary" "createXdgUserDirectories" ];
         before = [];
         # make .desktop files executable for KDE
-        data = "find {{ env "NIX_USER_PROFILE" }}/share/applications/ -iname '*.desktop' | xargs --no-run-if-empty --max-args=1 readlink | xargs --no-run-if-empty chmod +x";
+        data = "find {{ .chezmoi.homeDir }}/{{ .paths.nix_user_profile }}/share/applications/ -iname '*.desktop' | xargs --no-run-if-empty --max-args=1 readlink | xargs --no-run-if-empty chmod +x";
       };
     };
   };

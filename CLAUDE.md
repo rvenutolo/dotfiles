@@ -37,19 +37,25 @@ Prefixes compose: `private_dot_ssh`, `encrypted_private_profile-local-personal.s
 
 ## Standard Env Vars
 
-User exports a fixed set of env vars in their shell profile and wants them reused everywhere possible instead of hardcoded paths or literals. The source of truth is `dot_config/profile.sh` in this repo (which becomes `${XDG_CONFIG_HOME}/profile.sh` on target).
+Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.age.*`, `.weather.*`.
 
-Read `dot_config/profile.sh` to enumerate the available env vars and their definitions. Ignore conditional exports — `EDITOR`, `VISUAL`, `PAGER`, `MANPAGER`, `FILE_MANAGER`, `TAILNET_IP`, `TAILNET_CIDR`, `TERM`, etc. — that are gated on `__executable_exists` / `case` / runtime probes; they're not meant for cross-file reuse.
+Shell consumers get the same values via `dot_config/profile.sh.tmpl`, which renders `export FOO=...` lines from `.chezmoidata.yaml` and lands at `${XDG_CONFIG_HOME}/profile.sh` on target. Both shell and chezmoi templates therefore share one source — no need to source profile.sh before `chezmoi init` on a fresh machine.
+
+Paths in `.chezmoidata.yaml` are home-relative (no leading slash). Join with `.chezmoi.homeDir` when an absolute path is needed.
+
+Conditional exports in `profile.sh.tmpl` — `EDITOR`, `VISUAL`, `PAGER`, `MANPAGER`, `FILE_MANAGER`, `TAILNET_IP`, `TAILNET_CIDR`, `TERM`, etc. — that are gated on `__executable_exists` / `case` / runtime probes are not in chezmoidata; they're shell-only and not meant for cross-file reuse.
 
 ### Usage policy
 
-When a config file or script references a path or hostname covered by one of these vars, prefer (in order):
+When a config file or script references a path or hostname covered by these vars, prefer (in order):
 
 1. **Literal env var inside the file** (`${XDG_CONFIG_HOME}/foo/bar`) — only if the consuming tool/parser expands env vars in that field. Verify with the tool's docs before using.
-2. **Chezmoi template** — rename file to `.tmpl` and use `{{ env "XDG_CONFIG_HOME" }}/foo/bar`. Chezmoi resolves at apply time, so the rendered file contains a literal absolute path the tool can read without env support.
-3. **Hardcoded path** — only when neither option above is viable (e.g. tool-specific format that breaks under templating *and* doesn't support env expansion).
+2. **Chezmoi template** — rename file to `.tmpl` and use `{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/foo/bar` (or `.hostnames.*`, `.age.*`, etc.). Chezmoi resolves at apply time; the rendered file contains a literal absolute path.
+3. **Hardcoded path** — only when neither option above is viable.
 
-Inside an existing `.tmpl`, just use `{{ env "VAR" }}` directly; no need to fall back to the literal form.
+Never use `{{ env "FOO" }}` for these vars — `env` reads the user's *current* shell, which may not have profile.sh sourced (e.g. fresh-machine `chezmoi init`). Use chezmoidata instead.
+
+If a new shared fact is needed, add it to `.chezmoidata.yaml` and (if shell needs it) `profile.sh.tmpl` — do not introduce one without the other.
 
 ## Template Data
 

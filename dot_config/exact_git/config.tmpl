@@ -2,7 +2,7 @@
   path = aliases
   path = config-personal.private
 
-[includeIf "gitdir:{{ env "WORK_PROJECTS_DIR" }}/"]
+[includeIf "gitdir:{{ .chezmoi.homeDir }}/{{ .paths.work_projects_dir }}/"]
   path = config-work.private
 
 [apply]
@@ -63,7 +63,7 @@
   format = ssh
 
 [gpg "ssh"]
-  allowedSignersFile = {{ env "XDG_CONFIG_HOME" }}/git/allowed_signers
+  allowedSignersFile = {{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/git/allowed_signers
 
 [grep]
   ignoreCase = true

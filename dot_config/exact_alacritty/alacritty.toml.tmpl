@@ -1,4 +1,4 @@
-import = ["{{ env "XDG_CONFIG_HOME" }}/alacritty/colors.toml", "{{ env "XDG_CONFIG_HOME" }}/alacritty/font.toml"]
+import = ["{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/alacritty/colors.toml", "{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/alacritty/font.toml"]
 
 [colors]
 draw_bold_text_with_bright_colors = true

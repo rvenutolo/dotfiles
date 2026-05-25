@@ -28,6 +28,9 @@ function download() {
   curl --disable --fail --silent --location --show-error "$@"
 }
 
+readonly KEYS_DIR="${HOME}/{{ .paths.keys_dir }}"
+readonly AGE_PRIVATE_KEY_FILE="${HOME}/{{ .paths.age_private_key_file }}"
+
 function main() {
   if ! executable_exists 'age'; then
     die 'age not found'

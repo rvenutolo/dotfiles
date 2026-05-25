@@ -5,14 +5,13 @@ IFS=$'\n\t'
 trap 'printf "error: line %s (exit %d): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
 
 readonly DOTFILE_GIT_URL='git@github.com:rvenutolo/dotfiles'
+readonly DOTFILES_DIR="${HOME}/{{ .paths.dotfiles_dir }}"
 
 function log() {
   printf '\033[0;32m[%s %s] %s\033[0m\n' "$(date +%T)" "${0##*/}" "$*" >&2
 }
 
 function main() {
-  # shellcheck disable=SC1091 # user's own profile; not statically analyzable
-  source "${HOME}/.profile"
   log "Setting dotfiles URL to: ${DOTFILE_GIT_URL}"
   git -C "${DOTFILES_DIR}" remote set-url origin "${DOTFILE_GIT_URL}"
   log "Set dotfiles URL to: ${DOTFILE_GIT_URL}"
