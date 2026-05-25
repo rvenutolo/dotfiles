@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 
 set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "error: line %s (exit %d): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
+
+readonly DOTFILE_GIT_URL='git@github.com:rvenutolo/dotfiles'
 
 function log() {
-  echo -e "\033[0;32m[$(date +%T) ${0##*/}] $*\033[0m" >&2
+  printf '\033[0;32m[%s %s] %s\033[0m\n' "$(date +%T)" "${0##*/}" "$*" >&2
 }
 
-source "${HOME}/.profile"
-readonly dotfile_git_url='git@github.com:rvenutolo/dotfiles'
-log "Setting dotfiles URL to: ${dotfile_git_url}"
-git -C "${DOTFILES_DIR}" remote set-url origin "${dotfile_git_url}"
-log "Set dotfiles URL to: ${dotfile_git_url}"
+function main() {
+  # shellcheck disable=SC1091 # user's own profile; not statically analyzable
+  source "${HOME}/.profile"
+  log "Setting dotfiles URL to: ${DOTFILE_GIT_URL}"
+  git -C "${DOTFILES_DIR}" remote set-url origin "${DOTFILE_GIT_URL}"
+  log "Set dotfiles URL to: ${DOTFILE_GIT_URL}"
+}
+
+main "$@"

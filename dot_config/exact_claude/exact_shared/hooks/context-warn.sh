@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
+
 set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "error: line %s (exit %d): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
 
 # Hook — warns when context window usage exceeds the threshold.
 # Works with any hook type: uses native context_window data when available
@@ -104,19 +107,22 @@ function get_context_percent() {
     2> /dev/null || printf '0\n'
 }
 
-input="$(cat)"
-readonly input
+function main() {
+  local input
+  input="$(cat)"
+  local -r input
 
-used_pct="$(get_context_percent "${input}")"
-readonly used_pct
+  local used_pct
+  used_pct="$(get_context_percent "${input}")"
+  local -r used_pct
 
-if ((used_pct >= THRESHOLD)); then
-  message="
+  if ((used_pct >= THRESHOLD)); then
+    local -r message="
 ===================================================================
 ⚠️⚠️⚠️ Context at ${used_pct}%. You should consider running /compact. ⚠️⚠️⚠️
 ==================================================================="
-  readonly message
-  jq --null-input --arg msg "${message}" '{systemMessage: $msg}'
-fi
+    jq --null-input --arg msg "${message}" '{systemMessage: $msg}'
+  fi
+}
 
-exit 0
+main "$@"
