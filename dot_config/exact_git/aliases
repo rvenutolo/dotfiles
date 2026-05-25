@@ -1,93 +1,182 @@
 [alias]
 
-  # View abbreviated SHA, description, and history graph of the latest 20 commits
-  l = log --pretty=oneline -n 20 --graph --abbrev-commit
+  # Compact graph log of the last 20 commits.
+  l = log --graph --pretty=oneline --abbrev-commit -n 20
 
-  # View the current working tree status using the short format
-  s = status -s
+  # Short-format working tree status.
+  s = status --short --branch
 
-  # Show the diff between the latest commit and the current state
-  d = !"git diff-index --quiet HEAD -- || clear; git --no-pager diff --patch-with-stat"
+  # Patch+stat diff of working tree vs HEAD. Silent when clean.
+  d = !"git diff-index --quiet HEAD -- || git --no-pager diff --patch-with-stat"
 
-  # `git di $number` shows the diff between the state `$number` revisions ago and the current state
-  di = !"d() { git diff --patch-with-stat HEAD~$1; }; git diff-index --quiet HEAD -- || clear; d"
+  # Diff against HEAD~N (default N=1). Usage: `git di` or `git di 3`.
+  di = !"f() { git --no-pager diff --patch-with-stat \"HEAD~${1:-1}\"; }; f"
 
-  # Pull in remote changes for the current repository and all its submodules
-  p = git pull --recurse-submodules
+  # Pull current branch and recurse into submodules.
+  p = pull --recurse-submodules
 
-  # Clone a repository including all submodules
-  c = clone --recursive
+  # Fetch+prune all remotes, pull current branch, delete local branches
+  # whose upstream is gone (typical post-PR-merge cleanup, incl. squash-merges).
+  sync = "!git fetch --all --prune && git pull --recurse-submodules && \
+    git branch --format='%(refname:short) %(upstream:track)' \
+      | awk '$2 == \"[gone]\" {print $1}' \
+      | xargs -r -n 1 git branch -D"
 
-  # Commit all changes
-  ca = !git add -A && git commit -av
+  # Clone including submodules.
+  c = clone --recurse-submodules
 
-  # Switch to a branch, creating it if necessary
-  go = "!f() { git checkout -b \"$1\" 2> /dev/null || git checkout \"$1\"; }; f"
+  # Stage everything (including deletions) and open verbose commit editor.
+  ca = !git add --all && git commit --all --verbose
 
-  # Show verbose output about tags, branches or remotes
-  tags = tag -l
-  branches = branch -a
-  remotes = remote -v
+  # Switch to BRANCH; create it if it does not exist.
+  go = "!f() { git switch \"$1\" 2>/dev/null || git switch --create \"$1\"; }; f"
 
-  # List aliases
-  aliases = config --get-regexp alias
+  # List all tags / branches / remotes.
+  tags = tag --list
+  branches = branch --all
+  remotes = remote --verbose
 
-  # Amend the currently staged files to the latest commit
-  amend = commit --amend --reuse-message=HEAD
+  # List all configured aliases.
+  aliases = config --get-regexp ^alias\\.
 
-  # Credit an author on the latest commit
-  credit = "!f() { git commit --amend --author \"$1 <$2>\" -C HEAD; }; f"
+  # Amend the last commit, reusing its message unchanged.
+  amend = commit --amend --no-edit
 
-  # Interactive rebase with the given number of latest commits
-  reb = "!r() { git rebase -i HEAD~$1; }; r"
+  # Amend the last commit, opening editor; only includes already-staged paths.
+  edit = commit --amend --only
 
-  # Remove the old tag with this name and tag the latest commit with it.
-  retag = "!r() { git tag -d $1 && git push origin :refs/tags/$1 && git tag $1; }; r"
+  # Re-author the last commit. Usage: `git credit "Name" "email@host"`.
+  credit = "!f() { git commit --amend --author \"$1 <$2>\" --no-edit; }; f"
 
-  # Find branches containing commit
-  fb = "!f() { git branch -a --contains $1; }; f"
+  # Interactive rebase of the last N commits.
+  reb = "!f() { git rebase --interactive \"HEAD~$1\"; }; f"
 
-  # Find tags containing commit
-  ft = "!f() { git describe --always --contains $1; }; f"
+  # Move TAG to HEAD: delete locally, delete on every configured remote, retag.
+  # Tolerates missing remote-side tag.
+  retag = "!f() { \
+    git tag --delete \"$1\" && \
+    for remote in $(git remote); do \
+      git push \"$remote\" \":refs/tags/$1\" || true; \
+    done && \
+    git tag \"$1\"; \
+  }; f"
 
-  # Find commits by source code
+  # Branches containing the given commit.
+  fb = "!f() { git branch --all --contains \"$1\"; }; f"
+
+  # Nearest tag containing the given commit.
+  ft = "!f() { git describe --always --contains \"$1\"; }; f"
+
+  # Find commits that add or remove the given string (pickaxe).
   fc = "!f() { \
-    git log --pretty=format:'%C(yellow)%h  %Cblue%ad  %Creset%s%Cgreen  [%cn] %Cred%d' \
-      --decorate \
-      --date=short \
-      -S$1; \
+    git log \
+      --pretty=format:'%C(yellow)%h  %Cblue%ad  %Creset%s%Cgreen  [%cn] %Cred%d' \
+      --decorate --date=short -S\"$1\"; \
   }; f"
 
-  # Find commits by commit message
+  # Find commits whose message matches the given pattern.
   fm = "!f() { \
-    git log --pretty=format:'%C(yellow)%h  %Cblue%ad  %Creset%s%Cgreen  [%cn] %Cred%d' \
-      --decorate \
-      --date=short \
-      --grep=$1; \
+    git log \
+      --pretty=format:'%C(yellow)%h  %Cblue%ad  %Creset%s%Cgreen  [%cn] %Cred%d' \
+      --decorate --date=short --grep=\"$1\"; \
   }; f"
 
-  # Remove branches that have already been merged with master
-  # a.k.a. ‘delete merged’
-  dm = "!git branch --merged | grep -v '\\*' | xargs -r -n 1 git branch -d"
-
-  # List contributors with number of commits
-  contributors = shortlog --summary --numbered
-
-  # Merge GitHub pull request on top of the current branch or,
-  # if a branch name is specified, on top of the specified branch
-  mpr = "!f() { \
-      declare currentBranch=\"$(git symbolic-ref --short HEAD)\"; \
-      declare branch=\"${2:-$currentBranch}\"; \
-      if [ $(printf \"%s\" \"$1\" | grep '^[0-9]\\+$' > /dev/null; printf $?) -eq 0 ]; then \
-          git fetch origin refs/pull/$1/head:pr/$1 && \
-          git checkout -B $branch && \
-          git rebase $branch pr/$1 && \
-          git checkout -B $branch && \
-          git merge pr/$1 && \
-          git branch -D pr/$1 && \
-          git commit --amend -m \"$(git log -1 --pretty=%B)\n\nCloses #$1.\"; \
-      fi \
+  # Delete local branches already merged into HEAD.
+  # Skips current branch (handles detached HEAD) and protected names.
+  dm = "!f() { \
+    current=$(git symbolic-ref --short HEAD 2>/dev/null || echo ''); \
+    git branch --merged --format='%(refname:short)' \
+      | grep -Ev '^(main|master|develop|trunk)$' \
+      | { [ -n \"$current\" ] && grep -v \"^$current$\" || cat; } \
+      | xargs -r -n 1 git branch --delete; \
   }; f"
 
-  # Show the user email for the current repository.
+  # Contributors ranked by commit count, with email.
+  contributors = shortlog --summary --numbered --email
+
+  # Show the user.email configured for this repo.
   whoami = config user.email
+
+  # Interactive log browser. fzf-multi-select commits; preview shows full diff.
+  # Requires fzf.
+  browse = "!git log --oneline --color=always \
+    --format='%C(auto)%h%d %s %C(black)%C(bold)%cr' \
+    | fzf --ansi --multi --no-sort --reverse \
+        --tiebreak=index \
+        --preview 'git show --color=always {+1}'"
+
+  # --- Undo / fixup ---
+
+  # Unstage given paths (keep working tree changes).
+  unstage = reset HEAD --
+
+  # Undo last commit, keep its changes staged.
+  uncommit = reset --soft HEAD~1
+
+  # Discard unstaged changes for given paths.
+  discard = checkout --
+
+  # Wipe ALL working tree changes. Destructive.
+  nuke = reset --hard HEAD
+
+  # Create a fixup! commit targeting SHA, for use with rebase --autosquash.
+  fixup = "!f() { git commit --fixup=\"$1\"; }; f"
+
+  # --- Inspection ---
+
+  # Show last commit with file stat.
+  last = log -1 HEAD --stat
+
+  # Ranked authors, ignoring merges.
+  who = shortlog --summary --numbered --no-merges
+
+  # Stat-only diff of working tree.
+  stat = diff --stat
+
+  # Diff of staged hunks.
+  staged = diff --cached
+
+  # List files with unresolved merge conflicts.
+  conflicts = diff --name-only --diff-filter=U
+
+  # Print repo root absolute path.
+  root = rev-parse --show-toplevel
+
+  # My commits today.
+  today = "!git log --since=midnight --author=\"$(git config user.email)\" --oneline"
+
+  # --- Branch ops ---
+
+  # Current branch name.
+  current = rev-parse --abbrev-ref HEAD
+
+  # Last 15 touched local branches with relative commit date.
+  recent = for-each-ref --sort=-committerdate --count=15 --format='%(refname:short) %(committerdate:relative)' refs/heads/
+
+  # Set upstream for current branch. Usage: `git track origin/main`.
+  track = branch --set-upstream-to
+
+  # --- Stash ---
+
+  # Stash including untracked files.
+  save = stash push --include-untracked
+
+  # Pop most recent stash.
+  pop = stash pop
+
+  # --- Rebase ---
+
+  cont = rebase --continue
+  skip = rebase --skip
+  abort = rebase --abort
+
+  # Non-interactive autosquash of fixup! commits in the last N commits (default 10).
+  autosquash = "!f() { GIT_SEQUENCE_EDITOR=: git rebase --interactive --autosquash \"HEAD~${1:-10}\"; }; f"
+
+  # --- Remote / push ---
+
+  # Force push, but refuse if upstream moved (safer than --force).
+  pushf = push --force-with-lease
+
+  # Drop stale remote-tracking refs from origin.
+  prune = remote prune origin
