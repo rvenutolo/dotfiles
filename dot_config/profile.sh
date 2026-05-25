@@ -181,7 +181,9 @@ unset -v dir
 for file in \
   "${HOME}/.profile-local" \
   "${HOME}/.profile-private"; do
+  if __is_readable_file "${file}"; then
     . "${file}"
+  fi
 done
 unset -v file
 
