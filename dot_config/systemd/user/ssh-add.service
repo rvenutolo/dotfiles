@@ -1,0 +1,12 @@
+[Unit]
+Description=Add SSH keys to the running ssh-agent at desktop session start
+After=ssh-agent.service graphical-session.target
+Requisite=ssh-agent.service
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/ssh-add-unlock
+
+[Install]
+WantedBy=graphical-session.target
