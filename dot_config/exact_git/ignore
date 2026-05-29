@@ -39,11 +39,11 @@ replay_pid*
 *.iml
 *.ipr
 *.iws
-/.factorypath
-/.settings
 .attach_pid*
 .idea/
 .idea_modules/
+/.factorypath
+/.settings
 atlassian-ide-plugin.xml
 com_crashlytics_export_strings.xml
 crashlytics-build.properties
@@ -91,13 +91,13 @@ target/
 *.orig
 *.patch
 *.tmp
-/build
-/conf
-/input
-/output
-/tmp
+/build/
+/conf/
+/dist/
+/input/
+/output/
+/tmp/
 /TODO
-dist/
 
 ## Nano
 *.save
@@ -115,9 +115,9 @@ result-*
 .npm/
 .nuxt/
 .parcel-cache/
-.pnpm-debug.log*
 .pnp.cjs
 .pnp.js
+.pnpm-debug.log*
 .svelte-kit/
 .turbo/
 .yarn/cache/
