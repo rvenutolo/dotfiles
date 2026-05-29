@@ -1,44 +1,80 @@
 #!/usr/bin/env bash
+
 # Unlock SSH keys via the desktop session's askpass + secret store.
 # Auto-detects the askpass binary so the same script works under KDE
 # (ksshaskpass + KWallet), GNOME (seahorse + gnome-keyring), and any
-# Wayland compositor (Hyprland, Niri, sway) that has either daemon running.
+# Wayland compositor (Hyprland, Niri, sway) that has a compatible daemon
+# running. Invoked by the ssh-add.service systemd user unit at desktop
+# session start, and runnable by hand from a terminal.
 
 set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "error: line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
 
-# No GUI session => nothing to do. Exit clean so the systemd unit doesn't
-# fail on TTY-only logins or servers.
-if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
-    exit 0
-fi
+readonly ASKPASS_CANDIDATES=(
+  'ksshaskpass'
+  '/usr/libexec/seahorse/ssh-askpass'
+  '/usr/lib/seahorse/ssh-askpass'
+  '/usr/libexec/openssh/gnome-ssh-askpass'
+  'lxqt-openssh-askpass'
+  'x11-ssh-askpass'
+  'ssh-askpass'
+)
 
+function log() {
+  printf '[%s] %-5s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$1" "$2" >&2
+}
+function log_info() { log INFO "$*"; }
+function log_err() { log ERROR "$*"; }
+
+# @description Print the first usable askpass binary from ASKPASS_CANDIDATES.
+#   Absolute paths are tested with -x; bare names are resolved via command -v.
+# @noargs
+# @stdout absolute path of an executable askpass binary
+# @exitcode 0 a candidate was found and printed
+# @exitcode 1 no candidate found
 function find_askpass() {
-    local candidate
-    for candidate in \
-        ksshaskpass \
-        /usr/libexec/seahorse/ssh-askpass \
-        /usr/lib/seahorse/ssh-askpass \
-        /usr/libexec/openssh/gnome-ssh-askpass \
-        lxqt-openssh-askpass \
-        x11-ssh-askpass \
-        ssh-askpass; do
-        if [[ "${candidate}" == /* ]]; then
-            [[ -x "${candidate}" ]] && { printf '%s\n' "${candidate}"; return 0; }
-        else
-            command -v "${candidate}" >/dev/null 2>&1 && { command -v "${candidate}"; return 0; }
+  local candidate
+  for candidate in "${ASKPASS_CANDIDATES[@]}"; do
+    case "${candidate}" in
+      /*)
+        if [[ -x "${candidate}" ]]; then
+          printf '%s\n' "${candidate}"
+          return 0
         fi
-    done
-    return 1
+        ;;
+      *)
+        if command -v "${candidate}" > /dev/null 2>&1; then
+          command -v "${candidate}"
+          return 0
+        fi
+        ;;
+    esac
+  done
+  return 1
 }
 
-if ! askpass="$(find_askpass)"; then
-    printf 'ssh-add-unlock: no askpass binary found\n' >&2
+# @description Detect an askpass binary, export the SSH_ASKPASS env vars,
+#   and hand off to ssh-add. No-op (exit 0) when no GUI session is present,
+#   so the same script is safe to run on TTY logins and headless servers.
+# @noargs
+function main() {
+  if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
+    exit 0
+  fi
+
+  local askpass
+  if ! askpass="$(find_askpass)"; then
+    log_err 'no askpass binary found'
     exit 1
-fi
+  fi
 
-export SSH_ASKPASS="${askpass}"
-export SSH_ASKPASS_REQUIRE='prefer'
+  export SSH_ASKPASS="${askpass}"
+  export SSH_ASKPASS_REQUIRE='prefer'
 
-# `ssh-add` with no args loads the default identities. Already-loaded keys
-# are silently skipped, so this is safe to run on every session start.
-exec ssh-add -q
+  log_info "using askpass ${askpass}"
+  # ssh-add has no long-form equivalent for -q  # no long-form equivalent
+  exec ssh-add -q
+}
+
+main "$@"
