@@ -1,20 +1,31 @@
+{{/*
+  chezmoi init renders this template before source-state data files
+  (.chezmoidata.*) are loaded, so .paths / .hostnames / .age are not yet
+  available as top-level template data. Read .chezmoidata.yaml directly
+  here so init and subsequent apply both work from the same canonical
+  source.
+*/ -}}
+{{- $data := include ".chezmoidata.yaml" | fromYaml -}}
+{{- $paths := $data.paths -}}
+{{- $hostnames := $data.hostnames -}}
+{{- $age := $data.age -}}
 encryption = 'age'
 format = 'yaml'
 progress = true
 verbose = false
 
 [age]
-identity = '{{ .chezmoi.homeDir }}/{{ .paths.age_private_key_file }}'
-recipient = '{{ .age.public_key }}'
+identity = '{{ .chezmoi.homeDir }}/{{ $paths.age_private_key_file }}'
+recipient = '{{ $age.public_key }}'
 
 [data]
-is_personal = {{- if (or (eq .chezmoi.hostname .hostnames.personal_desktop) (eq .chezmoi.hostname .hostnames.personal_laptop)) }} true {{ else }} false {{ end }}
-is_work = {{- if (eq .chezmoi.hostname .hostnames.work_laptop) }} true {{ else }} false {{ end }}
-is_desktop = {{- if (eq .chezmoi.hostname .hostnames.personal_desktop) }} true {{ else }} false {{ end }}
-is_laptop = {{- if (or (eq .chezmoi.hostname .hostnames.personal_laptop) (eq .chezmoi.hostname .hostnames.work_laptop)) }} true {{ else }} false {{ end }}
+is_personal = {{- if (or (eq .chezmoi.hostname $hostnames.personal_desktop) (eq .chezmoi.hostname $hostnames.personal_laptop)) }} true {{ else }} false {{ end }}
+is_work = {{- if (eq .chezmoi.hostname $hostnames.work_laptop) }} true {{ else }} false {{ end }}
+is_desktop = {{- if (eq .chezmoi.hostname $hostnames.personal_desktop) }} true {{ else }} false {{ end }}
+is_laptop = {{- if (or (eq .chezmoi.hostname $hostnames.personal_laptop) (eq .chezmoi.hostname $hostnames.work_laptop)) }} true {{ else }} false {{ end }}
 is_wtf = {{- if (eq .chezmoi.hostname "wtf") }} true {{ else }} false {{ end }}
 is_io= {{- if (eq .chezmoi.hostname "io") }} true {{ else }} false {{ end }}
-is_server = {{- if (not (or (eq .chezmoi.hostname .hostnames.personal_desktop) (eq .chezmoi.hostname .hostnames.personal_laptop) (eq .chezmoi.hostname .hostnames.work_laptop))) }} true {{ else }} false {{ end }}
+is_server = {{- if (not (or (eq .chezmoi.hostname $hostnames.personal_desktop) (eq .chezmoi.hostname $hostnames.personal_laptop) (eq .chezmoi.hostname $hostnames.work_laptop))) }} true {{ else }} false {{ end }}
 
 [diff]
 command = 'diff'
