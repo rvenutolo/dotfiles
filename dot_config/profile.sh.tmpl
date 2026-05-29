@@ -99,6 +99,8 @@ export HSTR_CONFIG='hicolor'
 export MAVEN_OPTS='-Xms256m -Xmx1g'
 export NIXPKGS_ALLOW_UNFREE='1'
 export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
+# seahorse + gnome-ssh-askpass ship under libexec (FHS helper convention),
+# which is not on PATH, so they're listed by absolute path.
 for __askpass in ksshaskpass /usr/libexec/seahorse/ssh-askpass /usr/lib/seahorse/ssh-askpass /usr/libexec/openssh/gnome-ssh-askpass lxqt-openssh-askpass x11-ssh-askpass; do
   case "${__askpass}" in
     /*)

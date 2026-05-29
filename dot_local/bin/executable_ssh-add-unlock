@@ -11,6 +11,11 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 trap 'printf "error: line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
 
+# Priority-ordered askpass candidates. Bare names are resolved via
+# command -v; absolute paths are tested with -x. The seahorse and
+# gnome-ssh-askpass helpers ship under libexec (FHS convention for
+# non-user-invoked helpers) which distros do not put on PATH, so they
+# must be referenced by absolute path.
 readonly ASKPASS_CANDIDATES=(
   'ksshaskpass'
   '/usr/libexec/seahorse/ssh-askpass'
