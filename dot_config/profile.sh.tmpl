@@ -1,20 +1,11 @@
 #!/usr/bin/env sh
 
-__executable_exists() {
-  command -v "$1" > /dev/null 2>&1
-}
-__is_readable_file() {
-  [ -r "$1" ]
-}
-__path_remove() {
-  PATH=$(printf '%s\n' "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
-}
-__path_append() {
-  __path_remove "$1" && PATH="$PATH:$1"
-}
-__path_prepend() {
-  __path_remove "$1" && PATH="$1:$PATH"
-}
+# Guard so this file is sourced exactly once per shell process. The guard
+# variable is intentionally NOT exported, so child processes start fresh.
+if [ -n "${_PROFILE_SH_SOURCED:-}" ]; then
+  return
+fi
+_PROFILE_SH_SOURCED=1
 
 umask 022
 
@@ -32,6 +23,12 @@ export XDG_DATA_DIRS="/var/lib/flatpak/exports/share:${XDG_DATA_DIRS}"
 export XDG_DATA_DIRS="${XDG_DATA_HOME}/flatpak/exports/share:${XDG_DATA_DIRS}"
 export XDG_DATA_DIRS="${HOME}/.nix-profile/share:${XDG_DATA_DIRS}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id --user)}"
+
+# PATH manipulation helpers (sourced once XDG_CONFIG_HOME is set; unset
+# at the bottom of this file).
+if [ -r "${XDG_CONFIG_HOME}/path-helpers.sh" ]; then
+  . "${XDG_CONFIG_HOME}/path-helpers.sh"
+fi
 
 # personal env vars
 export XDG_BIN_HOME="${HOME}/{{ .paths.xdg_bin_home }}"
@@ -94,14 +91,31 @@ export WGETRC="${XDG_CONFIG_HOME}/wgetrc"
 
 ## misc
 export DIFFPROG='meld'
-export GPG_TTY="$(tty)"
 export HSTR_CONFIG='hicolor'
 export MAVEN_OPTS='-Xms256m -Xmx1g'
 export NIXPKGS_ALLOW_UNFREE='1'
 export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
+export SBT_OPTS="-Dsbt.global.base=${XDG_DATA_HOME}/sbt/1.0 -Dsbt.boot.directory=${XDG_CACHE_HOME}/sbt/boot -Dsbt.repository.config=${XDG_CACHE_HOME}/sbt/repositories -Dsbt.ivy.home=${XDG_CACHE_HOME}/ivy2"
+export STACK_XDG='1'
+export SYSTEMD_PAGER=''
+
+## GPG TTY
+# `tty` returns "not a tty" in non-interactive shells, which would set a
+# bogus GPG_TTY. Guard so we only export it in interactive shells.
+case $- in
+  *i*) export GPG_TTY="$(tty)" ;;
+esac
+
+## SSH_ASKPASS discovery.
 # seahorse + gnome-ssh-askpass ship under libexec (FHS helper convention),
 # which is not on PATH, so they're listed by absolute path.
-for __askpass in ksshaskpass /usr/libexec/seahorse/ssh-askpass /usr/lib/seahorse/ssh-askpass /usr/libexec/openssh/gnome-ssh-askpass lxqt-openssh-askpass x11-ssh-askpass; do
+for __askpass in \
+  'ksshaskpass' \
+  '/usr/libexec/seahorse/ssh-askpass' \
+  '/usr/lib/seahorse/ssh-askpass' \
+  '/usr/libexec/openssh/gnome-ssh-askpass' \
+  'lxqt-openssh-askpass' \
+  'x11-ssh-askpass'; do
   case "${__askpass}" in
     /*)
       if [ -x "${__askpass}" ]; then
@@ -110,7 +124,7 @@ for __askpass in ksshaskpass /usr/libexec/seahorse/ssh-askpass /usr/lib/seahorse
       fi
       ;;
     *)
-      if __executable_exists "${__askpass}"; then
+      if command -v "${__askpass}" > /dev/null 2>&1; then
         SSH_ASKPASS="$(command -v "${__askpass}")"
         export SSH_ASKPASS
         break
@@ -119,31 +133,30 @@ for __askpass in ksshaskpass /usr/libexec/seahorse/ssh-askpass /usr/lib/seahorse
   esac
 done
 unset __askpass
-[ -n "${SSH_ASKPASS:-}" ] && export SSH_ASKPASS_REQUIRE='prefer'
-export SBT_OPTS="-Dsbt.global.base=${XDG_DATA_HOME}/sbt/1.0 -Dsbt.boot.directory=${XDG_CACHE_HOME}/sbt/boot -Dsbt.repository.config=${XDG_CACHE_HOME}/sbt/repositories -Dsbt.ivy.home=${XDG_CACHE_HOME}/ivy2"
-export STACK_XDG='1'
-export SYSTEMD_PAGER=''
+if [ -n "${SSH_ASKPASS:-}" ]; then
+  export SSH_ASKPASS_REQUIRE='prefer'
+fi
 
 ## editor/visual
-if __executable_exists 'micro'; then
+if command -v 'micro' > /dev/null 2>&1; then
   export EDITOR='micro'
-elif __executable_exists 'nano'; then
+elif command -v 'nano' > /dev/null 2>&1; then
   export EDITOR='nano'
-elif __executable_exists 'nvim'; then
+elif command -v 'nvim' > /dev/null 2>&1; then
   export EDITOR='nvim'
 else
   export EDITOR='vim'
 fi
-if __executable_exists 'lite-xl'; then
+if command -v 'lite-xl' > /dev/null 2>&1; then
   export VISUAL='lite-xl'
-elif __executable_exists 'kate'; then
+elif command -v 'kate' > /dev/null 2>&1; then
   export VISUAL='kate'
 else
   export VISUAL="${EDITOR}"
 fi
 
 # pager
-if __executable_exists 'moor'; then
+if command -v 'moor' > /dev/null 2>&1; then
   export PAGER='moor'
 else
   export PAGER='less --ignore-case'
@@ -174,12 +187,6 @@ export LESS_TERMCAP_ue
 LESS_TERMCAP_us=$(tput -T ansi smul)  # Begin underline
 export LESS_TERMCAP_us
 
-## tailscale
-if __executable_exists 'tailscale' && tailscale status > '/dev/null' ; then
-  export TAILNET_IP="$(tailscale ip -4)"
-  export TAILNET_CIDR='100.64.0.0/10'
-fi
-
 ## this addresses when ssh-ing to a box that doesn't have terminfo for whatever TERM currently is
 for TERM in "${TERM}" 'xterm-256color' 'xterm-16color' 'xterm-color' 'xterm'; do
   if infocmp -0 > /dev/null 2>&1; then
@@ -198,17 +205,41 @@ for dir in \
   '/usr/bin' \
   '/sbin' \
   '/bin'; do
-  __path_append "${dir}"
+  path_append "${dir}"
 done
 unset -v dir
 
+# nix profile.d files (POSIX sh; set PATH and other env)
 for file in \
-  "${HOME}/.profile-local" \
-  "${HOME}/.profile-private"; do
-  if __is_readable_file "${file}"; then
+  "${NIX_USER_PROFILE}/etc/profile.d/nix.sh" \
+  "${NIX_USER_PROFILE}/etc/profile.d/hm-session-vars.sh"; do
+  if [ -r "${file}" ]; then
     . "${file}"
   fi
 done
 unset -v file
 
-unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove
+# scripts dir PATH prepends (put user scripts at front of PATH)
+for dir in \
+  "${SCRIPTS_DIR}/other" \
+  "${SCRIPTS_DIR}/main"; do
+  path_prepend "${dir}"
+done
+unset -v dir
+
+## tailscale
+if command -v 'tailscale' > /dev/null 2>&1 && tailscale status > '/dev/null'; then
+  export TAILNET_IP="$(tailscale ip -4)"
+  export TAILNET_CIDR='100.64.0.0/10'
+fi
+
+for file in \
+  "${HOME}/.profile-local" \
+  "${HOME}/.profile-private"; do
+  if [ -r "${file}" ]; then
+    . "${file}"
+  fi
+done
+unset -v file
+
+path_helpers_unset

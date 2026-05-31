@@ -14,7 +14,7 @@ function mkcd() {
 }
 
 function mktempcd() {
-  cd "$(mktemp --directory)"
+  cd "$(mktemp --directory)" || return 1
 }
 
 function cl() {
