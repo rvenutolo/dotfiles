@@ -96,6 +96,15 @@ for file in \
 done
 unset -v file
 
+# Re-source SDKMAN init with completion enabled. non-interactive.bash
+# sourced it with sdkman_auto_complete=false to skip the `complete` call
+# (which errors in non-interactive shells). Re-sourcing here, with the
+# default (true), adds the `sdk` completion. PATH and the `sdk` function
+# are idempotent under a second source.
+if __is_readable_file "${SDKMAN_DIR}/bin/sdkman-init.sh"; then
+  source "${SDKMAN_DIR}/bin/sdkman-init.sh"
+fi
+
 # completions to source
 for file in \
   '/usr/share/bash-completion/bash_completion' \

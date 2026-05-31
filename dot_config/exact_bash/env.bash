@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
-# Sourced from bashrc.bash in interactive shells only. Bash-specific env
-# setup: env vars, PATH tweaks, and tool init that only changes env state
-# (no prompt, no completion, no UX). Helper functions are defined here
-# and unset at the end of interactive.bash.
+# Sourced from bashrc.bash in interactive shells only (after
+# non-interactive.bash). Interactive-only env: GPG_TTY (needs a tty),
+# SSH_ASKPASS discovery (only useful where the shell can prompt), and
+# the Tailscale probe (network call cost). Helper functions defined here
+# are used by this file and by interactive.bash; interactive.bash unsets
+# them at the end.
 
 # helper functions used in this file and in interactive.bash
 function __executable_exists() {
@@ -21,25 +23,6 @@ function __path_append() {
 function __path_prepend() {
   __path_remove "$1" && PATH="$1:$PATH"
 }
-
-# files that set env vars (like PATH)
-for file in \
-  "${NIX_USER_PROFILE}/etc/profile.d/nix.sh" \
-  "${NIX_USER_PROFILE}/etc/profile.d/hm-session-vars.sh" \
-  "${SDKMAN_DIR}/bin/sdkman-init.sh"; do
-  if __is_readable_file "${file}"; then
-    source "${file}"
-  fi
-done
-unset -v file
-
-# scripts dir PATH prepends
-for dir in \
-  "${SCRIPTS_DIR}/other" \
-  "${SCRIPTS_DIR}/main"; do
-  __path_prepend "${dir}"
-done
-unset -v dir
 
 # GPG TTY (interactive shells have a real tty here)
 export GPG_TTY="$(tty)"
