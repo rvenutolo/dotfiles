@@ -1,9 +1,25 @@
 #!/usr/bin/env bash
 
-# Sourced from bashrc.bash in interactive shells only (after env.bash).
-# Bash UX: shopt, history, completions, prompt, aliases. Uses the
-# __executable_exists / __is_readable_file / __path_* helpers defined in
-# env.bash; unsets them at the end of this file.
+# Sourced from bashrc.bash in interactive shells only. Bash UX: shopt,
+# history, completions, prompt, aliases. Helper functions are defined at
+# the top of this file and unset at the bottom.
+
+# helper functions used below
+function __executable_exists() {
+  type -aPf "$1" > /dev/null 2>&1
+}
+function __is_readable_file() {
+  [[ -r "$1" ]]
+}
+function __path_remove() {
+  PATH=$(echo -n "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
+}
+function __path_append() {
+  __path_remove "$1" && PATH="$PATH:$1"
+}
+function __path_prepend() {
+  __path_remove "$1" && PATH="$1:$PATH"
+}
 
 # system bash config files to source
 for file in '/etc/bash.bashrc' '/etc/bashrc'; do
@@ -154,5 +170,5 @@ __executable_exists 'direnv' && eval "$(direnv hook bash)"
 # put this last as starship_preexec() will run before every command after this
 __executable_exists 'starship' && eval "$(starship init bash)"
 
-# clean up helper functions (defined in env.bash)
+# clean up helper functions
 unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove

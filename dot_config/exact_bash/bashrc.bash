@@ -27,9 +27,6 @@ case $- in
 esac
 
 # Sourced only in interactive shells.
-if [[ -r "${XDG_CONFIG_HOME}/bash/env.bash" ]]; then
-  source "${XDG_CONFIG_HOME}/bash/env.bash"
-fi
 if [[ -r "${XDG_CONFIG_HOME}/bash/interactive.bash" ]]; then
   source "${XDG_CONFIG_HOME}/bash/interactive.bash"
 fi
