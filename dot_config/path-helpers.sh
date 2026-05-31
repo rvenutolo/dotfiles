@@ -5,9 +5,11 @@
 # use a `path_` prefix as a namespace; `::` would be cleaner but is not
 # POSIX-safe (dash rejects it).
 #
-# Callers are responsible for unsetting these functions when done if they
-# do not want them to remain defined in the shell environment, e.g.
-#   unset -f path_remove path_append path_prepend
+# Usage:
+#   . "${XDG_CONFIG_HOME}/path-helpers.sh"
+#   path_append "/some/dir"
+#   path_prepend "/another/dir"
+#   path_helpers_unset    # removes the helpers from the shell environment
 
 path_remove() {
   PATH=$(printf '%s' "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
@@ -17,4 +19,7 @@ path_append() {
 }
 path_prepend() {
   path_remove "$1" && PATH="$1:$PATH"
+}
+path_helpers_unset() {
+  unset -f path_remove path_append path_prepend path_helpers_unset
 }

@@ -160,4 +160,4 @@ command -v 'direnv' > /dev/null 2>&1 && eval "$(direnv hook bash)"
 command -v 'starship' > /dev/null 2>&1 && eval "$(starship init bash)"
 
 # clean up helper functions
-unset -f path_append path_prepend path_remove
+path_helpers_unset
