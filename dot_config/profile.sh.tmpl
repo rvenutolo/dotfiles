@@ -7,12 +7,6 @@ if [ -n "${_PROFILE_SH_SOURCED:-}" ]; then
 fi
 _PROFILE_SH_SOURCED=1
 
-__executable_exists() {
-  command -v "$1" > /dev/null 2>&1
-}
-__is_readable_file() {
-  [ -r "$1" ]
-}
 __path_remove() {
   PATH=$(printf '%s\n' "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
 }
@@ -134,7 +128,7 @@ for __askpass in \
       fi
       ;;
     *)
-      if __executable_exists "${__askpass}"; then
+      if command -v "${__askpass}" > /dev/null 2>&1; then
         SSH_ASKPASS="$(command -v "${__askpass}")"
         export SSH_ASKPASS
         break
@@ -148,25 +142,25 @@ if [ -n "${SSH_ASKPASS:-}" ]; then
 fi
 
 ## editor/visual
-if __executable_exists 'micro'; then
+if command -v 'micro' > /dev/null 2>&1; then
   export EDITOR='micro'
-elif __executable_exists 'nano'; then
+elif command -v 'nano' > /dev/null 2>&1; then
   export EDITOR='nano'
-elif __executable_exists 'nvim'; then
+elif command -v 'nvim' > /dev/null 2>&1; then
   export EDITOR='nvim'
 else
   export EDITOR='vim'
 fi
-if __executable_exists 'lite-xl'; then
+if command -v 'lite-xl' > /dev/null 2>&1; then
   export VISUAL='lite-xl'
-elif __executable_exists 'kate'; then
+elif command -v 'kate' > /dev/null 2>&1; then
   export VISUAL='kate'
 else
   export VISUAL="${EDITOR}"
 fi
 
 # pager
-if __executable_exists 'moor'; then
+if command -v 'moor' > /dev/null 2>&1; then
   export PAGER='moor'
 else
   export PAGER='less --ignore-case'
@@ -223,7 +217,7 @@ unset -v dir
 for file in \
   "${NIX_USER_PROFILE}/etc/profile.d/nix.sh" \
   "${NIX_USER_PROFILE}/etc/profile.d/hm-session-vars.sh"; do
-  if __is_readable_file "${file}"; then
+  if [ -r "${file}" ]; then
     . "${file}"
   fi
 done
@@ -238,7 +232,7 @@ done
 unset -v dir
 
 ## tailscale
-if __executable_exists 'tailscale' && tailscale status > '/dev/null'; then
+if command -v 'tailscale' > /dev/null 2>&1 && tailscale status > '/dev/null'; then
   export TAILNET_IP="$(tailscale ip -4)"
   export TAILNET_CIDR='100.64.0.0/10'
 fi
@@ -246,10 +240,10 @@ fi
 for file in \
   "${HOME}/.profile-local" \
   "${HOME}/.profile-private"; do
-  if __is_readable_file "${file}"; then
+  if [ -r "${file}" ]; then
     . "${file}"
   fi
 done
 unset -v file
 
-unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove
+unset -f __path_append __path_prepend __path_remove

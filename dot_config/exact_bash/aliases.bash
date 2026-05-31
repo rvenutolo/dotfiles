@@ -33,7 +33,7 @@ alias pa='cl ${PACKAGES_DIR}'
 alias bd='cd "$OLDPWD"'
 
 # ls
-if __executable_exists 'exa'; then
+if command -v 'exa' > /dev/null 2>&1; then
   alias exa='exa --classify --group-directories-first --icons --header --time-style=long-iso --color-scale --git'
   alias ls='exa'
   alias l='exa'
@@ -118,13 +118,13 @@ alias k='kate'
 alias m='micro'
 alias n='nano'
 alias lx='lite-xl'
-if __executable_exists 'nvim'; then
+if command -v 'nvim' > /dev/null 2>&1; then
   alias vim='nvim'
 fi
 alias v='vim'
 
 # nix home-manager
-if __executable_exists 'home-manager'; then
+if command -v 'home-manager' > /dev/null 2>&1; then
   alias hm='home-manager'
   alias hmm='home-manager-maintenance'
   alias hmd='cd "${HOME_MANAGER_DIR}"'
@@ -136,7 +136,7 @@ if __executable_exists 'home-manager'; then
 fi
 
 # docker
-if __executable_exists 'docker'; then
+if command -v 'docker' > /dev/null 2>&1; then
   alias dc='docker compose'
   alias dcu='docker-compose-up'
   alias dcd='docker-compose-down'

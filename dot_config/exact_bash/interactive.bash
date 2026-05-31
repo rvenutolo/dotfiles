@@ -5,12 +5,6 @@
 # the top of this file and unset at the bottom.
 
 # helper functions used below
-function __executable_exists() {
-  type -aPf "$1" > /dev/null 2>&1
-}
-function __is_readable_file() {
-  [[ -r "$1" ]]
-}
 function __path_remove() {
   PATH=$(echo -n "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
 }
@@ -106,7 +100,7 @@ for file in \
   '/usr/share/doc/pkgfile/command-not-found.bash' \
   '/usr/share/fzf/key-bindings.bash' \
   "${XDG_CONFIG_HOME}/broot/launcher/bash/br"; do
-  if __is_readable_file "${file}"; then
+  if [[ -r "${file}" ]]; then
     source "${file}"
   fi
 done
@@ -117,7 +111,7 @@ unset -v file
 # (which errors in non-interactive shells). Re-sourcing here, with the
 # default (true), adds the `sdk` completion. PATH and the `sdk` function
 # are idempotent under a second source.
-if __is_readable_file "${SDKMAN_DIR}/bin/sdkman-init.sh"; then
+if [[ -r "${SDKMAN_DIR}/bin/sdkman-init.sh" ]]; then
   source "${SDKMAN_DIR}/bin/sdkman-init.sh"
 fi
 
@@ -132,7 +126,7 @@ for file in \
   '/etc/bash_completion' \
   "${SDKMAN_DIR}/candidates/mvnd/current/bin/mvnd-bash-completion.bash" \
   "${SDKMAN_DIR}/candidates/springboot/current/shell-completion/bash/spring"; do
-  if __is_readable_file "${file}"; then
+  if [[ -r "${file}" ]]; then
     source "${file}"
   fi
 done
@@ -143,32 +137,32 @@ for file in \
   "${XDG_CONFIG_HOME}/bash/functions.bash" \
   "${XDG_CONFIG_HOME}/bash/aliases.bash" \
   "${XDG_CONFIG_HOME}/bash/local.bash"; do
-  if __is_readable_file "${file}"; then
+  if [[ -r "${file}" ]]; then
     source "${file}"
   fi
 done
 unset -v file
 
 # misc init stuff
-__is_readable_file "${XDG_CONFIG_HOME}/dircolors" && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
-__executable_exists 'aws_completer' && complete -C 'aws_completer' aws
-__executable_exists 'appman' && complete -W "$(cat "${XDG_DATA_HOME}/appman/appman/list" 2> /dev/null)" appman
-__executable_exists 'carapace' && source <(carapace _carapace)
-__executable_exists 'batpipe' && eval "$(batpipe)"
-__executable_exists 'kubectl' && source <(kubectl completion bash)
-__executable_exists 'zoxide' && export _ZO_DOCTOR='0' && eval "$(zoxide init bash)"
+[[ -r "${XDG_CONFIG_HOME}/dircolors" ]] && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
+command -v 'aws_completer' > /dev/null 2>&1 && complete -C 'aws_completer' aws
+command -v 'appman' > /dev/null 2>&1 && complete -W "$(cat "${XDG_DATA_HOME}/appman/appman/list" 2> /dev/null)" appman
+command -v 'carapace' > /dev/null 2>&1 && source <(carapace _carapace)
+command -v 'batpipe' > /dev/null 2>&1 && eval "$(batpipe)"
+command -v 'kubectl' > /dev/null 2>&1 && source <(kubectl completion bash)
+command -v 'zoxide' > /dev/null 2>&1 && export _ZO_DOCTOR='0' && eval "$(zoxide init bash)"
 
 # add completions for aliases
 # sourced here, rather than earlier, to make sure all aliases and bash completions have been sourced
-if __is_readable_file "${XDG_CONFIG_HOME}/bash/complete_alias.bash"; then
+if [[ -r "${XDG_CONFIG_HOME}/bash/complete_alias.bash" ]]; then
   source "${XDG_CONFIG_HOME}/bash/complete_alias.bash"
   complete -F _complete_alias "${!BASH_ALIASES[@]}"
 fi
 
-__executable_exists 'direnv' && eval "$(direnv hook bash)"
+command -v 'direnv' > /dev/null 2>&1 && eval "$(direnv hook bash)"
 
 # put this last as starship_preexec() will run before every command after this
-__executable_exists 'starship' && eval "$(starship init bash)"
+command -v 'starship' > /dev/null 2>&1 && eval "$(starship init bash)"
 
 # clean up helper functions
-unset -f __executable_exists __is_readable_file __path_append __path_prepend __path_remove
+unset -f __path_append __path_prepend __path_remove
