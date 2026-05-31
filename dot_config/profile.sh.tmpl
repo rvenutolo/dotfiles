@@ -7,16 +7,6 @@ if [ -n "${_PROFILE_SH_SOURCED:-}" ]; then
 fi
 _PROFILE_SH_SOURCED=1
 
-__path_remove() {
-  PATH=$(printf '%s\n' "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
-}
-__path_append() {
-  __path_remove "$1" && PATH="$PATH:$1"
-}
-__path_prepend() {
-  __path_remove "$1" && PATH="$1:$PATH"
-}
-
 umask 022
 
 # NOTE: This file is rendered from `.chezmoidata.yaml` by chezmoi. Edit
@@ -33,6 +23,12 @@ export XDG_DATA_DIRS="/var/lib/flatpak/exports/share:${XDG_DATA_DIRS}"
 export XDG_DATA_DIRS="${XDG_DATA_HOME}/flatpak/exports/share:${XDG_DATA_DIRS}"
 export XDG_DATA_DIRS="${HOME}/.nix-profile/share:${XDG_DATA_DIRS}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id --user)}"
+
+# PATH manipulation helpers (sourced once XDG_CONFIG_HOME is set; unset
+# at the bottom of this file).
+if [ -r "${XDG_CONFIG_HOME}/path-helpers.sh" ]; then
+  . "${XDG_CONFIG_HOME}/path-helpers.sh"
+fi
 
 # personal env vars
 export XDG_BIN_HOME="${HOME}/{{ .paths.xdg_bin_home }}"
@@ -209,7 +205,7 @@ for dir in \
   '/usr/bin' \
   '/sbin' \
   '/bin'; do
-  __path_append "${dir}"
+  path_append "${dir}"
 done
 unset -v dir
 
@@ -227,7 +223,7 @@ unset -v file
 for dir in \
   "${SCRIPTS_DIR}/other" \
   "${SCRIPTS_DIR}/main"; do
-  __path_prepend "${dir}"
+  path_prepend "${dir}"
 done
 unset -v dir
 
@@ -246,4 +242,4 @@ for file in \
 done
 unset -v file
 
-unset -f __path_append __path_prepend __path_remove
+unset -f path_append path_prepend path_remove

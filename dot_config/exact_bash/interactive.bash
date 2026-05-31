@@ -4,16 +4,11 @@
 # history, completions, prompt, aliases. Helper functions are defined at
 # the top of this file and unset at the bottom.
 
-# helper functions used below
-function __path_remove() {
-  PATH=$(echo -n "$PATH" | awk -v RS=: -v ORS=: '$0 != "'"$1"'"' | sed 's/:$//')
-}
-function __path_append() {
-  __path_remove "$1" && PATH="$PATH:$1"
-}
-function __path_prepend() {
-  __path_remove "$1" && PATH="$1:$PATH"
-}
+# PATH manipulation helpers (sourced once; unset at the bottom of this
+# file).
+if [[ -r "${XDG_CONFIG_HOME}/path-helpers.sh" ]]; then
+  source "${XDG_CONFIG_HOME}/path-helpers.sh"
+fi
 
 # system bash config files to source
 for file in '/etc/bash.bashrc' '/etc/bashrc'; do
@@ -165,4 +160,4 @@ command -v 'direnv' > /dev/null 2>&1 && eval "$(direnv hook bash)"
 command -v 'starship' > /dev/null 2>&1 && eval "$(starship init bash)"
 
 # clean up helper functions
-unset -f __path_append __path_prepend __path_remove
+unset -f path_append path_prepend path_remove
