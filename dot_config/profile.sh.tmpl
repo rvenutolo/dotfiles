@@ -2,7 +2,9 @@
 
 # Guard so this file is sourced exactly once per shell process. The guard
 # variable is intentionally NOT exported, so child processes start fresh.
-[ -n "${_PROFILE_SH_SOURCED:-}" ] && return
+if [ -n "${_PROFILE_SH_SOURCED:-}" ]; then
+  return
+fi
 _PROFILE_SH_SOURCED=1
 
 __executable_exists() {
@@ -117,7 +119,13 @@ esac
 ## SSH_ASKPASS discovery.
 # seahorse + gnome-ssh-askpass ship under libexec (FHS helper convention),
 # which is not on PATH, so they're listed by absolute path.
-for __askpass in ksshaskpass /usr/libexec/seahorse/ssh-askpass /usr/lib/seahorse/ssh-askpass /usr/libexec/openssh/gnome-ssh-askpass lxqt-openssh-askpass x11-ssh-askpass; do
+for __askpass in \
+  'ksshaskpass' \
+  '/usr/libexec/seahorse/ssh-askpass' \
+  '/usr/lib/seahorse/ssh-askpass' \
+  '/usr/libexec/openssh/gnome-ssh-askpass' \
+  'lxqt-openssh-askpass' \
+  'x11-ssh-askpass'; do
   case "${__askpass}" in
     /*)
       if [ -x "${__askpass}" ]; then
@@ -135,7 +143,9 @@ for __askpass in ksshaskpass /usr/libexec/seahorse/ssh-askpass /usr/lib/seahorse
   esac
 done
 unset __askpass
-[ -n "${SSH_ASKPASS:-}" ] && export SSH_ASKPASS_REQUIRE='prefer'
+if [ -n "${SSH_ASKPASS:-}" ]; then
+  export SSH_ASKPASS_REQUIRE='prefer'
+fi
 
 ## editor/visual
 if __executable_exists 'micro'; then
