@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Helix
+GenericName=Text Editor
+Comment=Post-modern modal text editor
+Exec=hx %F
+Terminal=true
+Categories=Utility;TextEditor;
+MimeType=text/plain;
+Keywords=editor;text;helix;modal;
+NoDisplay=false

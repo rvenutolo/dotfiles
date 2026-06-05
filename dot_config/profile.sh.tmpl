@@ -138,22 +138,39 @@ if [ -n "${SSH_ASKPASS:-}" ]; then
 fi
 
 ## editor/visual
+__flatpak_installed() {
+  command -v 'flatpak' > /dev/null 2>&1 && flatpak info "$1" > /dev/null 2>&1
+}
+__real_cmd() {
+  ( path_remove "${SCRIPTS_DIR}/wrapper"; command -v "$1" )
+}
 if command -v 'micro' > /dev/null 2>&1; then
   export EDITOR='micro'
 elif command -v 'nano' > /dev/null 2>&1; then
   export EDITOR='nano'
+elif command -v 'hx' > /dev/null 2>&1; then
+  export EDITOR='hx'
 elif command -v 'nvim' > /dev/null 2>&1; then
   export EDITOR='nvim'
-else
+elif command -v 'vim' > /dev/null 2>&1; then
   export EDITOR='vim'
+else
+  export EDITOR='vi'
 fi
-if command -v 'lite-xl' > /dev/null 2>&1; then
-  export VISUAL='lite-xl'
-elif command -v 'kate' > /dev/null 2>&1; then
-  export VISUAL='kate'
+if __flatpak_installed 'dev.zed.Zed'; then
+  export VISUAL='flatpak run dev.zed.Zed --wait'
+elif __real_cmd 'zed' > /dev/null; then
+  export VISUAL="$(__real_cmd 'zed') --wait"
+elif __real_cmd 'lite-xl' > /dev/null; then
+  export VISUAL="$(__real_cmd 'lite-xl')"
+elif __flatpak_installed 'org.kde.kate'; then
+  export VISUAL='flatpak run org.kde.kate --block'
+elif __real_cmd 'kate' > /dev/null; then
+  export VISUAL="$(__real_cmd 'kate') --block"
 else
   export VISUAL="${EDITOR}"
 fi
+unset -f __flatpak_installed __real_cmd
 
 # pager
 if command -v 'moor' > /dev/null 2>&1; then
@@ -222,7 +239,8 @@ unset -v file
 # scripts dir PATH prepends (put user scripts at front of PATH)
 for dir in \
   "${SCRIPTS_DIR}/other" \
-  "${SCRIPTS_DIR}/main"; do
+  "${SCRIPTS_DIR}/main" \
+  "${SCRIPTS_DIR}/wrapper"; do
   path_prepend "${dir}"
 done
 unset -v dir

@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'echo "error: line ${LINENO} (exit $?): ${BASH_COMMAND}" >&2' ERR
+
+# Set $VISUAL's underlying GUI app as default handler for text/code MIME types.
+# Re-runs when this script's content (including the MIME list) changes.
+#
+# $VISUAL is resolved by sourcing profile.sh in a subshell so the rest of
+# this script's environment is not polluted by profile.sh side effects.
+
+readonly PROFILE_SH="${HOME}/.config/profile.sh"
+
+# MIME types to route to the chosen GUI editor.
+# Deliberately excludes text/html and application/json (browser handles those).
+readonly MIMES=(
+  'application/javascript'
+  'application/toml'
+  'application/x-perl'
+  'application/x-php'
+  'application/x-ruby'
+  'application/x-shellscript'
+  'application/x-yaml'
+  'application/xml'
+  'application/yaml'
+  'text/css'
+  'text/csv'
+  'text/javascript'
+  'text/markdown'
+  'text/plain'
+  'text/tab-separated-values'
+  'text/x-c'
+  'text/x-c++hdr'
+  'text/x-c++src'
+  'text/x-chdr'
+  'text/x-cmake'
+  'text/x-csrc'
+  'text/x-diff'
+  'text/x-dockerfile'
+  'text/x-go'
+  'text/x-java'
+  'text/x-java-source'
+  'text/x-log'
+  'text/x-makefile'
+  'text/x-patch'
+  'text/x-python'
+  'text/x-ruby'
+  'text/x-rust'
+  'text/x-shellscript'
+  'text/x-sql'
+)
+
+# XDG application search paths (mirrors xdg-mime's own lookup order).
+readonly XDG_APP_DIRS=(
+  "${HOME}/.local/share/applications"
+  "${HOME}/.local/share/flatpak/exports/share/applications"
+  '/var/lib/flatpak/exports/share/applications'
+  '/usr/share/applications'
+  "${HOME}/.nix-profile/share/applications"
+)
+
+# @description Log a message to stderr with a level prefix.
+# @arg $1 level Severity label (INFO, WARN, ERROR).
+# @arg $2 msg Message body.
+function log() {
+  local -r level="$1"
+  local -r msg="$2"
+  printf '[%s] %-5s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "${level}" "${msg}" >&2
+}
+function log::info() { log 'INFO' "$*"; }
+function log::warn() { log 'WARN' "$*"; }
+function log::err() { log 'ERROR' "$*"; }
+
+# @description Read $VISUAL by sourcing profile.sh inside a subshell.
+# @stdout The value of $VISUAL (possibly empty).
+function read_visual() {
+  (
+    # shellcheck source=/dev/null
+    source "${PROFILE_SH}" > /dev/null 2>&1
+    printf '%s\n' "${VISUAL:-}"
+  )
+}
+
+# @description Map a $VISUAL value to its .desktop file id.
+# Recognizes "flatpak run <APP_ID> [args...]" and a fixed table of editor
+# binaries. Prints the desktop file name on stdout, or nothing on no match.
+# @arg $1 visual The raw $VISUAL string.
+# @stdout Desktop file id (e.g. dev.zed.Zed.desktop) or empty string.
+function desktop_for_visual() {
+  local -r visual="$1"
+  local bin
+  if [[ "${visual}" == 'flatpak run '* ]]; then
+    # "flatpak run <APP_ID> ..." — strip the prefix, take the first remaining word.
+    local rest="${visual#flatpak run }"
+    printf '%s.desktop\n' "${rest%% *}"
+    return
+  fi
+  bin="${visual%% *}" # strip args
+  bin="${bin##*/}"    # strip path
+  case "${bin}" in
+    'zed') printf 'dev.zed.Zed.desktop\n' ;;
+    'kate') printf 'org.kde.kate.desktop\n' ;;
+    'lite-xl') printf 'org.lite_xl.lite_xl.desktop\n' ;;
+    'code') printf 'com.visualstudio.code.desktop\n' ;;
+    'codium') printf 'com.vscodium.codium.desktop\n' ;;
+    'lapce') printf 'dev.lapce.lapce.desktop\n' ;;
+    'micro') printf 'micro.desktop\n' ;;
+    'vim') printf 'vim.desktop\n' ;;
+    'nano') printf 'nano.desktop\n' ;;
+    'nvim') printf 'nvim.desktop\n' ;;
+    'hx') printf 'hx.desktop\n' ;;
+    *) printf '' ;;
+  esac
+}
+
+# @description Check whether a .desktop file exists in any XDG application dir.
+# @arg $1 desktop Desktop file id (basename, e.g. dev.zed.Zed.desktop).
+# @exitcode 0 if found, 1 if not.
+function desktop_exists() {
+  local -r desktop="$1"
+  local dir
+  for dir in "${XDG_APP_DIRS[@]}"; do
+    [[ -f "${dir}/${desktop}" ]] && return 0
+  done
+  return 1
+}
+
+function main() {
+  if [[ ! -r "${PROFILE_SH}" ]]; then
+    log::warn "${PROFILE_SH} not readable; skipping default-editor setup"
+    exit 0
+  fi
+  if ! command -v 'xdg-mime' > /dev/null 2>&1; then
+    log::warn 'xdg-mime not installed; skipping default-editor setup'
+    exit 0
+  fi
+
+  local visual
+  visual="$(read_visual)"
+  if [[ -z "${visual}" ]]; then
+    log::warn 'VISUAL is unset after sourcing profile.sh; skipping'
+    exit 0
+  fi
+
+  local desktop
+  desktop="$(desktop_for_visual "${visual}")"
+  if [[ -z "${desktop}" ]]; then
+    local bin="${visual%% *}"
+    bin="${bin##*/}"
+    log::warn "VISUAL='${visual}' (binary '${bin}') has no known .desktop mapping; skipping"
+    exit 0
+  fi
+
+  if ! desktop_exists "${desktop}"; then
+    log::warn "${desktop} not found in XDG application paths; skipping"
+    exit 0
+  fi
+
+  xdg-mime default "${desktop}" "${MIMES[@]}"
+  log::info "Set ${desktop} as default for ${#MIMES[@]} MIME types"
+}
+
+main "$@"

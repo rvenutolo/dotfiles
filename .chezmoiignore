@@ -2,3 +2,13 @@ CLAUDE.md
 README.md
 TODO
 age.key.ENCRYPTED
+{{- /* Skip terminal-editor .desktop files when the binary isn't installed. */}}
+{{- if not (lookPath "hx") }}
+dot_local/share/applications/hx.desktop
+{{- end }}
+{{- if not (lookPath "nano") }}
+dot_local/share/applications/nano.desktop
+{{- end }}
+{{- if not (lookPath "nvim") }}
+dot_local/share/applications/nvim.desktop
+{{- end }}
