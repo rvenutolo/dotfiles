@@ -138,6 +138,10 @@ for file in \
 done
 unset -v file
 
+# Wrapper scripts only on PATH for interactive shells, so non-interactive
+# shells and scripts call the real binaries directly.
+path_prepend "${SCRIPTS_DIR}/wrapper"
+
 # misc init stuff
 [[ -r "${XDG_CONFIG_HOME}/dircolors" ]] && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
 command -v 'aws_completer' > /dev/null 2>&1 && complete -C 'aws_completer' aws

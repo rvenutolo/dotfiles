@@ -239,8 +239,7 @@ unset -v file
 # scripts dir PATH prepends (put user scripts at front of PATH)
 for dir in \
   "${SCRIPTS_DIR}/other" \
-  "${SCRIPTS_DIR}/main" \
-  "${SCRIPTS_DIR}/wrapper"; do
+  "${SCRIPTS_DIR}/main"; do
   path_prepend "${dir}"
 done
 unset -v dir
