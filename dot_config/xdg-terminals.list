@@ -1,0 +1,31 @@
+# Ghostty
+ghostty-AM.desktop
+Ghostty-AM.desktop
+com.mitchellh.ghostty.desktop
+com.mitchellh.Ghostty.desktop
+ghostty.desktop
+Ghostty.desktop
+
+# Kitty
+kitty-AM.desktop
+Kitty-AM.desktop
+org.kovidgoyal.kitty.desktop
+org.kovidgoyal.Kitty.desktop
+kitty.desktop
+Kitty.desktop
+
+# WezTerm
+wezterm-AM.desktop
+WezTerm-AM.desktop
+org.wezfurlong.wezterm.desktop
+org.wezfurlong.WezTerm.desktop
+wezterm.desktop
+WezTerm.desktop
+
+# Alacritty
+alacritty-AM.desktop
+Alacritty-AM.desktop
+org.alacritty.alacritty.desktop
+org.alacritty.Alacritty.desktop
+alacritty.desktop
+Alacritty.desktop
