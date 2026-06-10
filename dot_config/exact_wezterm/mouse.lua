@@ -3,18 +3,12 @@ local act = wezterm.action
 
 return {
   bindings = {
-    --{
-    --  -- override default copy behavior with a no-op
-    --  event = { Up = { streak = 1, button = "Left" } },
-    --  mods = "NONE",
-    --  action = act.Nop,
-    --},
-    --{
-    --  -- disable down event to avoid unexpected behavior
-    --  event = { Down = { streak = 1, button = "Left" } },
-    --  mods = "CTRL",
-    --  action = act.Nop,
-    --},
+    {
+      -- copy selection to both system clipboard and primary selection on release
+      event = { Up = { streak = 1, button = "Left" } },
+      mods = "NONE",
+      action = act.CompleteSelection("ClipboardAndPrimarySelection"),
+    },
     {
       -- CTRL-click to open hyperlinks
       event = { Up = { streak = 1, button = "Left" } },

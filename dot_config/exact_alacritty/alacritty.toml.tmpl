@@ -6,19 +6,16 @@ draw_bold_text_with_bright_colors = true
 [cursor.style]
 blinking = "On"
 
-[env]
-TERM = "xterm-256color"
-
 [keyboard]
 bindings = [
-{ key = "N", mods = "Control", action = "CreateNewWindow" }
+{ key = "N", mods = "Control|Shift", action = "CreateNewWindow" }
 ]
 
 [scrolling]
 multiplier = 10
 
 [selection]
-save_to_clipboard = false
+save_to_clipboard = true
 
 [window.dimensions]
 columns = 120

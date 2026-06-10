@@ -48,4 +48,11 @@ config.warn_about_missing_glyphs = false
 
 config.window_close_confirmation = "NeverPrompt"
 
+config.window_padding = {
+  left = 6,
+  right = 6,
+  top = 6,
+  bottom = 6,
+}
+
 return config

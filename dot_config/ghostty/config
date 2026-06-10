@@ -28,12 +28,12 @@ gtk-tabs-location = top
 gtk-titlebar = true
 gtk-single-instance = true
 
-# Scrollback
-scrollback-limit = 10000000
+# Scrollback (bytes; ~10000 lines at avg 100 bytes/line)
+scrollback-limit = 1000000
 
 # Mouse / selection
 mouse-hide-while-typing = true
-copy-on-select = false
+copy-on-select = clipboard
 clipboard-trim-trailing-spaces = true
 
 # Shell integration
