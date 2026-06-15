@@ -33,6 +33,7 @@ scrollback-limit = 1000000
 
 # Mouse / selection
 mouse-hide-while-typing = true
+link-url = true
 copy-on-select = clipboard
 clipboard-trim-trailing-spaces = true
 
