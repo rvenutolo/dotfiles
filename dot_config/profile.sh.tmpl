@@ -37,7 +37,7 @@ export PERSONAL_LAPTOP_HOSTNAME='{{ .hostnames.personal_laptop }}'
 export WORK_LAPTOP_HOSTNAME='{{ .hostnames.work_laptop }}'
 export PERSONAL_PROJECTS_DIR="${HOME}/{{ .paths.personal_projects_dir }}"
 export WORK_PROJECTS_DIR="${HOME}/{{ .paths.work_projects_dir }}"
-export SCRIPTS_DIR="${HOME}/{{ .paths.scripts_dir }}"
+export SCRIPTS_DIR="${HOME}/{{ .paths.scripts_dir }}/scripts"
 export DOTFILES_DIR="${HOME}/{{ .paths.dotfiles_dir }}"
 export PACKAGES_DIR="${HOME}/{{ .paths.packages_dir }}"
 export NIX_USER_PROFILE="${HOME}/{{ .paths.nix_user_profile }}"
@@ -142,7 +142,13 @@ __flatpak_installed() {
   command -v 'flatpak' > /dev/null 2>&1 && flatpak info "$1" > /dev/null 2>&1
 }
 __real_cmd() {
-  ( path_remove "${SCRIPTS_DIR}/wrapper"; command -v "$1" )
+  (
+    path_remove "${SCRIPTS_DIR}/interactive"
+    path_remove "${SCRIPTS_DIR}/misc"
+    path_remove "${SCRIPTS_DIR}/non-interactive"
+    path_remove "${SCRIPTS_DIR}/other"
+    command -v "$1"
+  )
 }
 if command -v 'micro' > /dev/null 2>&1; then
   export EDITOR='micro'
@@ -236,10 +242,12 @@ for file in \
 done
 unset -v file
 
-# scripts dir PATH prepends (put user scripts at front of PATH)
+# scripts dir PATH prepends (put user scripts at front of PATH).
+# non-interactive + other are always on PATH (safe for cron/topgrade/etc.);
+# interactive scripts are added in interactive.bash instead.
 for dir in \
   "${SCRIPTS_DIR}/other" \
-  "${SCRIPTS_DIR}/main"; do
+  "${SCRIPTS_DIR}/non-interactive"; do
   path_prepend "${dir}"
 done
 unset -v dir
