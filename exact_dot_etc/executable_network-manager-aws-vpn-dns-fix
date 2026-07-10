@@ -1,41 +1,91 @@
 #!/usr/bin/env bash
 # /etc/NetworkManager/dispatcher.d/99-vpn-dns-fix
 #
-# When the AWS VPN tun0 interface comes up, add ~amazonaws.com as a
-# routing domain so that CNAME chases from *.deint.net to
-# *.amazonaws.com stay on the VPN resolver (10.131.0.2) instead of
-# falling through to the default-route resolver, which on some
-# networks (notably AT&T residential gateways) strips A records
-# pointing into RFC 1918 space and breaks resolution.
+# When the AWS VPN tun0 interface comes up, add ~amazonaws.com as a routing
+# domain so CNAME chases from *.deint.net to *.amazonaws.com stay on the VPN
+# resolver (10.131.0.2) instead of falling through to the default-route
+# resolver, which on some networks (AT&T residential gateways) strips A records
+# pointing into RFC 1918 space.
 
-set -euo pipefail
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'echo "error: line ${LINENO} (exit $?): ${BASH_COMMAND}" >&2' ERR
 
-readonly interface="$1"
-readonly action="$2"
+readonly WANT='~amazonaws.com'
+# A domain the AWS client always pushes; used as the race-guard sentinel.
+readonly SENTINEL='digitalenvoy.net'
+# Up to ~5s of polling at 0.1s intervals.
+readonly MAX_ATTEMPTS=50
 
-if [[ "${interface}" != 'tun0' ]]; then
-  exit 0
-fi
+# @description Header-free read of tun0's current routing domains.
+#   awk -F': ' only emits the post-colon field, so the "Link N (tun0):" header
+#   can never leak in as a bogus domain. An empty list yields zero domains, not
+#   header text.
+# @noargs
+# @stdout One routing domain per line.
+function read_domains() {
+  resolvectl domain tun0 \
+    | awk -F': ' 'NF > 1 { print $2 }' \
+    | tr ' ' '\n' \
+    | grep --invert-match '^$' || true
+}
 
-case "${action}" in
-    up|vpn-up) ;;
-    *) exit 0 ;;
-esac
+# @description NetworkManager dispatcher entry point.
+# @arg $1 interface name NetworkManager brings up/down
+# @arg $2 action the dispatcher event (e.g. up, vpn-up)
+function main() {
+  local -r interface="$1"
+  local -r action="$2"
 
-# Read existing domains for tun0 and append ~amazonaws.com if not
-# already present. `resolvectl domain <iface> ...` REPLACES the full
-# list, so we have to preserve what the VPN client set.
-existing="$(resolvectl domain tun0 | sed --regexp-extended 's/^Link [0-9]+ \(tun0\): //')"
-readonly existing
+  if [[ "${interface}" != 'tun0' ]]; then
+    exit 0
+  fi
 
-# Word-split into an array so we can match and re-pass cleanly.
-read -ra domains <<< "${existing}"
+  case "${action}" in
+    up | vpn-up)
+      ;;
+    *)
+      exit 0
+      ;;
+  esac
 
-for domain in "${domains[@]}"; do
-    if [[ "${domain}" == '~amazonaws.com' ]]; then
+  if ! command -v resolvectl > /dev/null 2>&1; then
+    echo 'resolvectl not found' >&2
+    exit 1
+  fi
+
+  # Race guard: the AWS --up script sets tun0 domains asynchronously. Wait until
+  # the sentinel appears before we touch the list, so a read-modify-write can
+  # never lose the AWS-pushed domains.
+  local -a domains=()
+  local attempt=1
+  local domain
+  while ((attempt <= MAX_ATTEMPTS)); do
+    mapfile -t domains < <(read_domains)
+    for domain in "${domains[@]}"; do
+      if [[ "${domain}" == "${SENTINEL}" ]]; then
+        break 2
+      fi
+    done
+    sleep 0.1
+    attempt=$((attempt + 1))
+  done
+
+  # Idempotent: already applied.
+  for domain in "${domains[@]}"; do
+    if [[ "${domain}" == "${WANT}" ]]; then
       exit 0
     fi
-done
+  done
 
-resolvectl domain tun0 "${domains[@]}" '~amazonaws.com'
-resolvectl flush-caches
+  # Fail-safe: never write if we didn't see real domains — better to leave the
+  # AWS-pushed list intact than to clobber it.
+  if [[ "${#domains[@]}" -eq 0 ]]; then
+    exit 0
+  fi
+
+  resolvectl domain tun0 "${domains[@]}" "${WANT}"
+  resolvectl flush-caches
+}
+
+main "$@"
