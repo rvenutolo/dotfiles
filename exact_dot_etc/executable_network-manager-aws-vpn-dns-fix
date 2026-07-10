@@ -18,14 +18,17 @@ readonly SENTINEL='digitalenvoy.net'
 readonly MAX_ATTEMPTS=50
 
 # @description Header-free read of tun0's current routing domains.
-#   awk -F': ' only emits the post-colon field, so the "Link N (tun0):" header
-#   can never leak in as a bogus domain. An empty list yields zero domains, not
-#   header text.
+#   'resolvectl domain tun0' hard-wraps long domain lists across multiple
+#   physical lines (at ~72 columns, even when piped), so a per-line parse would
+#   silently drop every domain past the wrap. Fold the output back into a single
+#   line first, then strip the "Link N (tun0): " header. This can never leak the
+#   header in as a bogus domain, and an empty list yields zero domains.
 # @noargs
 # @stdout One routing domain per line.
 function read_domains() {
   resolvectl domain tun0 \
-    | awk -F': ' 'NF > 1 { print $2 }' \
+    | tr '\n' ' ' \
+    | sed --regexp-extended 's/^Link [0-9]+ \([^)]*\): //' \
     | tr ' ' '\n' \
     | grep --invert-match '^$' || true
 }
