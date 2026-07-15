@@ -222,3 +222,14 @@ zig-out/
 !.vscode/launch.json
 !.vscode/settings.json
 !.vscode/tasks.json
+
+### RE-IGNORE RULES
+
+## Claude Code skill scratch
+**/.claude/skills/**/*-workspace/
+**/.claude/skills/**/.claude/
+**/.claude/skills/**/scratch/
+**/.claude/skills/**/results/
+**/.claude/skills/**/*.log
+**/.claude/skills/**/*.tmp
+**/.claude/skills/**/*.bak
