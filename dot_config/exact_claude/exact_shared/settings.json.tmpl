@@ -58,21 +58,6 @@
         ],
         "matcher": "Task"
       }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "command": "bash \"${CLAUDE_CONFIG_DIR}/hooks/bedtime-check.sh\"",
-            "type": "command"
-          },
-          {
-            "command": "bash \"${CLAUDE_CONFIG_DIR}/hooks/context-warn.sh\"",
-            "type": "command"
-          }
-        ],
-        "matcher": ""
-      }
     ]
   },
   "includeGitInstructions": true,
