@@ -47,19 +47,6 @@
       }
     }
   },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "bash \"${CLAUDE_CONFIG_DIR}/hooks/check-usage-before-spawn.sh\"",
-            "type": "command"
-          }
-        ],
-        "matcher": "Task"
-      }
-    ]
-  },
   "includeGitInstructions": true,
   "model": "opus[1m]",
   "permissions": {
