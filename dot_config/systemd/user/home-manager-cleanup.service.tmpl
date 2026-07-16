@@ -4,4 +4,3 @@ Description=Delete old home-manager generations
 [Service]
 Type=oneshot
 ExecStart={{ .chezmoi.homeDir }}/{{ .paths.nix_user_profile }}/bin/nix-collect-garbage --delete-older-than 10d
-ExecStart={{ .chezmoi.homeDir }}/{{ .paths.nix_user_profile }}/bin/nix-store --optimise
