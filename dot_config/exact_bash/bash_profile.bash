@@ -9,11 +9,14 @@
 # session), scripts, or `ssh host '<cmd>'` invocations.
 
 if [[ -r "${HOME}/.profile" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${HOME}/.profile"
 fi
 if [[ -r "${HOME}/.bashrc" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${HOME}/.bashrc"
 fi
 if [[ -r "${XDG_CONFIG_HOME}/bash/login.bash" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${XDG_CONFIG_HOME}/bash/login.bash"
 fi

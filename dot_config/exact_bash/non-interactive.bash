@@ -15,8 +15,10 @@
 # is gone and the real builtin is in effect.
 # shellcheck disable=SC2034  # consumed by sdkman-init.sh below
 sdkman_auto_complete=false
-complete() { :; }
+# shellcheck disable=SC2329  # invoked indirectly: sdkman-init.sh calls `complete`
+function complete() { :; }
 if [[ -r "${SDKMAN_DIR}/bin/sdkman-init.sh" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${SDKMAN_DIR}/bin/sdkman-init.sh"
 fi
 unset -f complete

@@ -32,30 +32,30 @@ function functions() {
       shopt -s extdebug
       declare -F "${func}"
     ) | awk '{ print $1, $3":"$2 }'
-  done |
-    sed "s#${HOME}#~#g" |
-    column --table --table-columns 'FUNCTION,SOURCE' --table-truncate 1
+  done \
+    | sed "s#${HOME}#~#g" \
+    | column --table --table-columns 'FUNCTION,SOURCE' --table-truncate 1
 }
 
 function aliases() {
   PS4='+$BASH_SOURCE ' BASH_XTRACEFD=7 bash -xic ':' 7> >(
-    grep --perl-regexp '^\++\S+ alias ' |
-      sed 's/^\+*//' |
-      sed --regexp-extended "s#([^\])'#\1#g" |
-      awk -F' alias ' -v OFS='‽' '{ print $2, $1 }' |
-      LC_COLLATE=C sort
-  ) |
-    sed "s#${HOME}#~#g" |
-    column --separator '‽' --table --table-columns 'ALIAS,SOURCE' --table-columns-limit 2 --table-truncate 1
+    grep --perl-regexp '^\++\S+ alias ' \
+      | sed 's/^\+*//' \
+      | sed --regexp-extended "s#([^\])'#\1#g" \
+      | awk -F' alias ' -v OFS='‽' '{ print $2, $1 }' \
+      | LC_COLLATE=C sort
+  ) \
+    | sed "s#${HOME}#~#g" \
+    | column --separator '‽' --table --table-columns 'ALIAS,SOURCE' --table-columns-limit 2 --table-truncate 1
 }
 
 function history-commands() {
-  HISTTIMEFORMAT="" history |
-    awk '{CMD[$2]++;count++;}END { for (a in CMD)print CMD[a] " " CMD[a]/count*100 "% " a;}' |
-    grep -v "./" |
-    column -c3 -s " " -t |
-    sort -nr |
-    nl
+  HISTTIMEFORMAT="" history \
+    | awk '{CMD[$2]++;count++;}END { for (a in CMD)print CMD[a] " " CMD[a]/count*100 "% " a;}' \
+    | grep -v "./" \
+    | column -c3 -s " " -t \
+    | sort -nr \
+    | nl
 }
 
 function ipv4_to_num() {

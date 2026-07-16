@@ -8,6 +8,8 @@
 #      but plans/specs/scratch/reports belong under .claude/ per CLAUDE.md.
 
 set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'echo "block-docs-writes: error at line ${LINENO} (exit $?): ${BASH_COMMAND}" >&2' ERR
 
 input="$(cat)"
 
@@ -16,7 +18,7 @@ if [[ -z "${file_path}" ]]; then
   exit 0
 fi
 
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+repo_root="$(git rev-parse --show-toplevel 2> /dev/null || true)"
 if [[ -z "${repo_root}" ]]; then
   exit 0
 fi

@@ -7,12 +7,14 @@
 # PATH manipulation helpers (sourced once; unset at the bottom of this
 # file).
 if [[ -r "${XDG_CONFIG_HOME}/path-helpers.sh" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${XDG_CONFIG_HOME}/path-helpers.sh"
 fi
 
 # system bash config files to source
 for file in '/etc/bash.bashrc' '/etc/bashrc'; do
   if [[ -r "${file}" ]]; then
+    # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
     source "${file}"
   fi
 done
@@ -96,6 +98,7 @@ for file in \
   '/usr/share/fzf/key-bindings.bash' \
   "${XDG_CONFIG_HOME}/broot/launcher/bash/br"; do
   if [[ -r "${file}" ]]; then
+    # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
     source "${file}"
   fi
 done
@@ -107,6 +110,7 @@ unset -v file
 # default (true), adds the `sdk` completion. PATH and the `sdk` function
 # are idempotent under a second source.
 if [[ -r "${SDKMAN_DIR}/bin/sdkman-init.sh" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${SDKMAN_DIR}/bin/sdkman-init.sh"
 fi
 
@@ -122,6 +126,7 @@ for file in \
   "${SDKMAN_DIR}/candidates/mvnd/current/bin/mvnd-bash-completion.bash" \
   "${SDKMAN_DIR}/candidates/springboot/current/shell-completion/bash/spring"; do
   if [[ -r "${file}" ]]; then
+    # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
     source "${file}"
   fi
 done
@@ -133,6 +138,7 @@ for file in \
   "${XDG_CONFIG_HOME}/bash/aliases.bash" \
   "${XDG_CONFIG_HOME}/bash/local.bash"; do
   if [[ -r "${file}" ]]; then
+    # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
     source "${file}"
   fi
 done
@@ -144,14 +150,17 @@ path_prepend "${SCRIPTS_DIR}/interactive"
 [[ -r "${XDG_CONFIG_HOME}/dircolors" ]] && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
 command -v 'aws_completer' > /dev/null 2>&1 && complete -C 'aws_completer' aws
 command -v 'appman' > /dev/null 2>&1 && complete -W "$(cat "${XDG_DATA_HOME}/appman/appman/list" 2> /dev/null)" appman
+# shellcheck disable=SC1090  # completions generated at runtime; no file to follow
 command -v 'carapace' > /dev/null 2>&1 && source <(carapace _carapace)
 command -v 'batpipe' > /dev/null 2>&1 && eval "$(batpipe)"
+# shellcheck disable=SC1090  # completions generated at runtime; no file to follow
 command -v 'kubectl' > /dev/null 2>&1 && source <(kubectl completion bash)
 command -v 'zoxide' > /dev/null 2>&1 && export _ZO_DOCTOR='0' && eval "$(zoxide init bash)"
 
 # add completions for aliases
 # sourced here, rather than earlier, to make sure all aliases and bash completions have been sourced
 if [[ -r "${XDG_CONFIG_HOME}/bash/complete_alias.bash" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${XDG_CONFIG_HOME}/bash/complete_alias.bash"
   complete -F _complete_alias "${!BASH_ALIASES[@]}"
 fi

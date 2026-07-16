@@ -10,9 +10,11 @@
 
 # Sourced in all bash shells (interactive and non-interactive).
 if [[ -r "${HOME}/.profile" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${HOME}/.profile"
 fi
 if [[ -r "${XDG_CONFIG_HOME}/bash/non-interactive.bash" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${XDG_CONFIG_HOME}/bash/non-interactive.bash"
 fi
 
@@ -28,5 +30,6 @@ esac
 
 # Sourced only in interactive shells.
 if [[ -r "${XDG_CONFIG_HOME}/bash/interactive.bash" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
   source "${XDG_CONFIG_HOME}/bash/interactive.bash"
 fi
