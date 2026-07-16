@@ -1,54 +1,13 @@
+{{- /* Top-level key order deliberately matches Claude Code's canonical write order (NOT alphabetical, exempt from the global CLAUDE.md settings.json rule). Claude Code rewrites this file in its own order on every settings change; an alphabetical template makes `chezmoi apply` permanently prompt on a reorder-only diff. Do not re-sort. */ -}}
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "autoUpdatesChannel": "latest",
   "cleanupPeriodDays": 365,
-  "effortLevel": "medium",
-  "enabledPlugins": {
-    "andrej-karpathy-skills@karpathy-skills": true,
-    "caveman@caveman": true,
-    "claude-code-setup@claude-plugins-official": true,
-    "claude-hud@claude-hud": true,
-    "claude-md-management@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true,
-    "explanatory-output-style@claude-plugins-official": false,
-    "feature-dev@claude-plugins-official": true,
-    "hookify@claude-plugins-official": true,
-    "jdtls-lsp@claude-plugins-official": true,
-    "pr-review-toolkit@claude-plugins-official": true,
-    "ralph-loop@claude-plugins-official": true,
-    "remember@claude-plugins-official": true,
-    "security-guidance@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true
-  },
   "env": {
     "BASH_DEFAULT_TIMEOUT_MS": "120000",
     "BASH_ENV": "{{- .chezmoi.homeDir }}/.bashrc",
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "16384"
   },
-  "extraKnownMarketplaces": {
-    "caveman": {
-      "source": {
-        "repo": "JuliusBrussee/caveman",
-        "source": "github"
-      }
-    },
-    "claude-hud": {
-      "source": {
-        "repo": "jarrodwatts/claude-hud",
-        "source": "github"
-      }
-    },
-    "karpathy-skills": {
-      "source": {
-        "repo": "forrestchang/andrej-karpathy-skills",
-        "source": "github"
-      }
-    }
-  },
   "includeGitInstructions": true,
-  "model": "opus[1m]",
   "permissions": {
     "allow": [
       "Bash(./mvnw *)",
@@ -518,7 +477,6 @@
       "WebFetch(domain:zookeeper.apache.org)",
       "WebSearch"
     ],
-    "defaultMode": "acceptEdits",
     "deny": [
       "Bash(cfdisk *)",
       "Bash(dd *)",
@@ -573,12 +531,55 @@
       "Read(~/.local/share/gnupg/*)",
       "Read(~/.netrc)",
       "Read(~/.ssh/*)"
-    ]
+    ],
+    "defaultMode": "acceptEdits"
   },
-  "projectDocPath": "CLAUDE.md",
-  "skipDangerousModePermissionPrompt": true,
+  "model": "opus[1m]",
   "statusLine": {
-    "command": "bash \"${CLAUDE_CONFIG_DIR}/claude-hud.sh\"",
-    "type": "command"
-  }
+    "type": "command",
+    "command": "bash \"${CLAUDE_CONFIG_DIR}/claude-hud.sh\""
+  },
+  "enabledPlugins": {
+    "andrej-karpathy-skills@karpathy-skills": true,
+    "caveman@caveman": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "claude-hud@claude-hud": true,
+    "claude-md-management@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": false,
+    "feature-dev@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true,
+    "jdtls-lsp@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": true,
+    "remember@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    },
+    "claude-hud": {
+      "source": {
+        "source": "github",
+        "repo": "jarrodwatts/claude-hud"
+      }
+    },
+    "karpathy-skills": {
+      "source": {
+        "source": "github",
+        "repo": "forrestchang/andrej-karpathy-skills"
+      }
+    }
+  },
+  "effortLevel": "medium",
+  "autoUpdatesChannel": "latest",
+  "skipDangerousModePermissionPrompt": true,
+  "projectDocPath": "CLAUDE.md"
 }

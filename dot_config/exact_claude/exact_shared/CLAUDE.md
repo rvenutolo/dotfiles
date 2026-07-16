@@ -114,3 +114,4 @@
 
 ## settings.json
 - When reading or writing any `settings.json` file (e.g., `.claude/settings.json`, `~/.claude/settings.json`), always keep all JSON keys sorted alphabetically at every nesting level. This applies both when creating the file from scratch and when modifying existing content — never leave keys in an unsorted order.
+- **Exception:** the chezmoi-managed shared Claude settings file (`~/.config/claude/shared/settings.json`, source `dot_config/exact_claude/exact_shared/settings.json.tmpl`). Its top-level keys must stay in Claude Code's own canonical write order, NOT alphabetical — Claude Code rewrites the file in that order, and an alphabetically sorted template makes `chezmoi apply` permanently prompt on a reorder-only diff. Never re-sort that file.
