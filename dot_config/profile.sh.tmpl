@@ -233,10 +233,11 @@ done
 unset -v dir
 
 # nix profile.d files (POSIX sh; set PATH and other env).
-# nix.sh is single-user; nix-daemon.sh is multi-user (Determinate). Both are
+# /etc/profile.d/nix.sh is the multi-user (daemon) script Determinate installs;
+# ${NIX_USER_PROFILE}/etc/profile.d/nix.sh is the single-user one. Both are
 # guarded, so whichever exists on this host is sourced.
 for file in \
-  '/etc/profile.d/nix-daemon.sh' \
+  '/etc/profile.d/nix.sh' \
   "${NIX_USER_PROFILE}/etc/profile.d/nix.sh" \
   "${NIX_USER_PROFILE}/etc/profile.d/hm-session-vars.sh"; do
   if [ -r "${file}" ]; then
