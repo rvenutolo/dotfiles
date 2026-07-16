@@ -5,7 +5,7 @@
 # ~/.config/nix/nix.conf under multi-user.
 # Trust this user so the flake's nixConfig (cachix substituter) and per-user
 # nix.conf settings are honored instead of ignored as "restricted".
-extra-trusted-users = rvenutolo
+extra-trusted-users = {{ .chezmoi.username }}
 keep-outputs = true
 keep-derivations = true
 download-buffer-size = 524288000
