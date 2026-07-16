@@ -5,7 +5,10 @@ IFS=$'\n\t'
 trap 'echo "error: line ${LINENO} (exit $?): ${BASH_COMMAND}" >&2' ERR
 
 # Set $VISUAL's underlying GUI app as default handler for text/code MIME types.
-# Re-runs when this script's content (including the MIME list) changes.
+# Runs on every apply (run_ prefix, not run_onchange_): $VISUAL is read at
+# runtime from profile.sh, so a content-hash trigger on this script would miss
+# editor changes. xdg-mime default is idempotent and fast, so the cost is
+# trivial.
 #
 # $VISUAL is resolved by sourcing profile.sh in a subshell so the rest of
 # this script's environment is not polluted by profile.sh side effects.
