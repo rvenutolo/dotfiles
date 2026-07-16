@@ -19,8 +19,7 @@ readonly TARGETS=(
   'tcpdump cap_net_raw,cap_net_admin+eip'
   'traceroute cap_net_raw+eip'
 )
-readonly TARGET_USER='{{ .chezmoi.username }}'
-readonly PROFILE_BIN="/home/${TARGET_USER}/.nix-profile/bin"
+readonly PROFILE_BIN="{{ .chezmoi.homeDir }}/.nix-profile/bin"
 readonly WRAPPER_DIR='/usr/local/lib/netcaps'
 readonly SETCAP='/usr/sbin/setcap'
 
