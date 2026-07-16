@@ -12,8 +12,32 @@
       linkDesktopApplications = {
         after = ["writeBoundary" "createXdgUserDirectories" ];
         before = [];
-        # make .desktop files executable for KDE
-        data = "find {{ .chezmoi.homeDir }}/{{ .paths.nix_user_profile }}/share/applications/ -iname '*.desktop' | xargs --no-run-if-empty --max-args=1 readlink | xargs --no-run-if-empty chmod +x";
+        # KDE wants .desktop files executable, but under multi-user nix the store
+        # is root-owned and immutable, so we cannot chmod the profile copies.
+        # Instead copy them into the user-writable XDG applications dir with +x.
+        # Same desktop IDs shadow the profile entries (no duplicate menu items).
+        # A manifest tracks our copies so entries for removed packages are pruned.
+        data = ''
+          set -eu
+          src="{{ .chezmoi.homeDir }}/{{ .paths.nix_user_profile }}/share/applications"
+          dst="$HOME/.local/share/applications"
+          manifest="$dst/.nix-desktop-manifest"
+          mkdir -p "$dst"
+          if [ -f "$manifest" ]; then
+            while IFS= read -r entry; do
+              [ -n "$entry" ] && rm -f "$dst/$entry"
+            done < "$manifest"
+          fi
+          : > "$manifest"
+          if [ -d "$src" ]; then
+            for path in "$src"/*.desktop; do
+              [ -e "$path" ] || continue
+              name="$(basename "$path")"
+              install -m 0755 "$(readlink -f "$path")" "$dst/$name"
+              printf '%s\n' "$name" >> "$manifest"
+            done
+          fi
+        '';
       };
     };
   };
