@@ -1,3 +1,47 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "modify_settings.json: error at line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
+
+# chezmoi modify_ script for ~/.config/claude/shared/settings.json.
+#
+# Claude Code writes to this file at runtime (/effort, /fast, plugin toggles,
+# model changes), so chezmoi cannot own it outright. A plain template would
+# revert every in-app change on the next apply, and would rewrite the key order
+# Claude Code appends to, leaving `chezmoi diff` permanently dirty with cosmetic
+# churn that hides real drift.
+#
+# This script receives the CURRENT target on stdin and writes the result to
+# stdout. ENFORCED_JSON is the whole contract: chezmoi is authoritative, exactly
+# as the old template was. Every key in the blob is reset to the managed value,
+# and every key NOT in the blob is dropped, so settings.json is identical on
+# every host.
+#
+# A dropped key is reported on stderr and shows up in `chezmoi diff` as a
+# removal. If Claude Code starts writing a new setting, that diff recurs on
+# every apply until the key is either added to the blob (to manage it) or Claude
+# Code stops writing it. The recurrence is the point: a new setting must not
+# slip in unnoticed.
+#
+# jq is used rather than chezmoi's `setValueAtPath` / `toPrettyJson` idiom
+# because that round-trips through a Go map and re-sorts keys alphabetically,
+# reintroducing the ordering churn this script exists to remove. jq preserves
+# the input's key order and appends new keys at the end, matching Claude Code's
+# own behavior, which makes the merge idempotent and `chezmoi diff` clean.
+#
+# jq is installed by .chezmoiscripts/run_once_before_00-install-packages.sh, so
+# it is present before this script first runs on a new host.
+#
+# Failure policy: this script's stdout BECOMES the file, so emitting nothing
+# would truncate settings.json. Every failure path exits non-zero to make
+# chezmoi abort and leave the existing file untouched.
+#
+# Keys within the blob are sorted alphabetically per the house convention. The
+# key order of the emitted file is Claude Code's, deliberately: see above.
+
+# shellcheck disable=SC2016  # JSON literal; ${CLAUDE_CONFIG_DIR} must reach the file unexpanded
+readonly ENFORCED_JSON='
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "autoUpdatesChannel": "latest",
@@ -582,3 +626,83 @@
     "type": "command"
   }
 }
+'
+
+# The merge, in two steps:
+#
+#   with_entries(select(...))  drops every key the blob does not declare, which
+#                              is what makes chezmoi authoritative over the whole
+#                              file. Surviving keys keep their original position.
+#   + $enforced                forces the managed values. jq's + is shallow and
+#                              right-biased, so nested objects (enabledPlugins,
+#                              permissions, env) are replaced outright: a plugin
+#                              enabled in-app does not survive. jq's * would
+#                              deep-merge and leak that ownership, so it is
+#                              deliberately not used. + also appends any managed
+#                              key the live file lacks.
+#
+# Emitting $enforced alone would be simpler but wrong: it would impose the blob's
+# alphabetical key order, which Claude Code then rewrites into its own on the
+# next in-app change, leaving `chezmoi diff` permanently dirty. Building on the
+# live file's order instead makes a reorder-only drift a no-op, so the only
+# diffs left are substantive ones.
+#
+# shellcheck disable=SC2016  # jq program text; $enforced is a jq variable, not shell
+readonly MERGE_PROGRAM='
+  with_entries(select(.key | in($enforced)))
+  + $enforced
+'
+
+# shellcheck disable=SC2016  # jq program text; $enforced is a jq variable, not shell
+readonly UNMANAGED_KEYS_PROGRAM='keys_unsorted[] | select(in($enforced) | not)'
+
+# @description Print an error to stderr and exit non-zero, so chezmoi aborts
+# rather than writing this script's (empty) stdout over the target.
+# @arg $1 msg Message body.
+# @stderr The message, prefixed with the script name.
+# @exitcode 1 Always.
+function die() {
+  local -r msg="$1"
+  printf 'modify_settings.json: %s\n' "${msg}" >&2
+  exit 1
+}
+
+# @description Read the current target from stdin, force the managed keys over
+# it, and emit the result.
+# @noargs
+# @stdout The merged settings.json contents.
+function main() {
+  command -v 'jq' > /dev/null 2>&1 || die 'jq not found on PATH; refusing to rewrite settings.json'
+
+  local current
+  current="$(cat)"
+
+  # An absent target yields empty stdin; treat it as an empty object so the
+  # enforced keys still produce a complete file on a fresh host.
+  if [[ -z "${current//[[:space:]]/}" ]]; then
+    current='{}'
+  elif ! jq empty <<< "${current}" > /dev/null 2>&1; then
+    die 'existing settings.json is not valid JSON; refusing to overwrite it'
+  fi
+
+  # Name the keys being dropped. The diff shows the removal too, but only when
+  # the file is actually applied; this fires on diff/status/verify as well.
+  local unmanaged
+  unmanaged="$(jq --raw-output --argjson enforced "${ENFORCED_JSON}" \
+    "${UNMANAGED_KEYS_PROGRAM}" <<< "${current}" | paste --serial --delimiters=' ')"
+  if [[ -n "${unmanaged}" ]]; then
+    printf 'modify_settings.json: dropping unmanaged key(s): %s\n' "${unmanaged}" >&2
+    printf 'modify_settings.json: add to ENFORCED_JSON in %s to keep\n' \
+      'dot_config/exact_claude/exact_shared/modify_settings.json.tmpl' >&2
+  fi
+
+  local result
+  result="$(jq --argjson enforced "${ENFORCED_JSON}" "${MERGE_PROGRAM}" <<< "${current}")"
+
+  [[ -n "${result//[[:space:]]/}" ]] || die 'merge produced empty output'
+  jq empty <<< "${result}" > /dev/null 2>&1 || die 'merge produced invalid JSON'
+
+  printf '%s\n' "${result}"
+}
+
+main "$@"
