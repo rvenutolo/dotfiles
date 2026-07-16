@@ -1,9 +1,0 @@
-[Unit]
-Description=Watch nix profile for changes to re-apply capabilities
-
-[Path]
-PathChanged=/nix/var/nix/profiles/per-user/%u/profile
-Unit=nix-setcap.service
-
-[Install]
-WantedBy=default.target

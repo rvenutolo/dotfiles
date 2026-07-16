@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+# Apply Linux capabilities to nix-installed network tools WITHOUT mutating the
+# nix store. For each target, copy the resolved store binary into a non-store
+# wrapper dir, then setcap the COPY. The wrapper dir is prepended to PATH so the
+# capped copy shadows the store binary. Runs as root from a systemd system path
+# unit watching the nix profile; no sudo required.
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "error: line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
+
+# Format: "<binary-name-in-PATH> <caps-string>"
+readonly TARGETS=(
+  'bandwhich cap_net_raw,cap_net_admin+eip'
+  'iftop cap_net_raw+eip'
+  'mtr-packet cap_net_raw+eip'
+  'nmap cap_net_raw,cap_net_admin,cap_net_bind_service+eip'
+  'tcpdump cap_net_raw,cap_net_admin+eip'
+  'traceroute cap_net_raw+eip'
+)
+readonly PROFILE_BIN="{{ .chezmoi.homeDir }}/.nix-profile/bin"
+readonly WRAPPER_DIR='/usr/local/lib/netcaps'
+readonly SETCAP='/usr/sbin/setcap'
+
+function log() {
+  printf '[%s] %-5s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$1" "$2" >&2
+}
+function log_info() { log INFO "$*"; }
+function log_warn() { log WARN "$*"; }
+function log_err() { log ERROR "$*"; }
+
+# @description Copy one target's resolved store binary into the wrapper dir and
+#   setcap the copy. Skips missing tools, non-ELF targets (caps are ignored on
+#   scripts), and already-current wrappers (idempotent across path-unit fires).
+# @arg $1 name binary basename inside the user's nix profile
+# @arg $2 caps capabilities string in setcap(8) syntax
+function apply_caps() {
+  local -r name="$1"
+  local -r caps="$2"
+  local -r link="${PROFILE_BIN}/${name}"
+  local -r wrapper="${WRAPPER_DIR}/${name}"
+  local -r stamp="${WRAPPER_DIR}/.${name}.src"
+
+  if [[ ! -e "${link}" ]]; then
+    log_info "skip ${name} (not installed)"
+    return 0
+  fi
+
+  local target
+  target="$(readlink --canonicalize "${link}")"
+  if [[ ! -f "${target}" ]]; then
+    log_warn "skip ${name} (target ${target} missing)"
+    return 0
+  fi
+
+  # File capabilities are silently ignored on interpreted scripts; only ELF
+  # binaries can carry them. Warn+skip anything whose magic is not 0x7f ELF.
+  local magic
+  magic="$(od --address-radix=n --format=x1 --read-bytes=4 "${target}" | tr --delete ' ')"
+  if [[ "${magic}" != '7f454c46' ]]; then
+    log_warn "skip ${name} (${target} is not an ELF binary; caps would be ignored)"
+    return 0
+  fi
+
+  # Idempotency: skip if the copy already tracks this exact store path and
+  # already carries the desired caps. setcap -v validates the file's actual
+  # capability set against the same +eip syntax, so it is immune to getcap's
+  # =eip display normalization (a string-compare on getcap output never matches).
+  if [[ -f "${stamp}" && -f "${wrapper}" && "$(cat "${stamp}")" == "${target}" ]] \
+    && "${SETCAP}" -v "${caps}" "${wrapper}" > /dev/null 2>&1; then
+    log_info "${name} up to date"
+    return 0
+  fi
+
+  log_info "wrapping ${name}: ${target} -> ${wrapper} (${caps})"
+  install --mode=0755 --no-target-directory "${target}" "${wrapper}"
+  "${SETCAP}" "${caps}" "${wrapper}"
+  printf '%s\n' "${target}" > "${stamp}"
+}
+
+# @description Ensure tools + wrapper dir exist, then wrap every target.
+# @noargs
+function main() {
+  if [[ ! -x "${SETCAP}" ]]; then
+    log_err "missing ${SETCAP}"
+    exit 1
+  fi
+  mkdir --parents "${WRAPPER_DIR}"
+
+  local entry name caps
+  for entry in "${TARGETS[@]}"; do
+    name="${entry%% *}"
+    caps="${entry#* }"
+    apply_caps "${name}" "${caps}"
+  done
+}
+
+main "$@"
