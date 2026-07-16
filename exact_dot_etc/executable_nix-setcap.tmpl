@@ -23,7 +23,6 @@ readonly TARGET_USER='{{ .chezmoi.username }}'
 readonly PROFILE_BIN="/home/${TARGET_USER}/.nix-profile/bin"
 readonly WRAPPER_DIR='/usr/local/lib/netcaps'
 readonly SETCAP='/usr/sbin/setcap'
-readonly GETCAP='/usr/sbin/getcap'
 
 function log() {
   printf '[%s] %-5s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$1" "$2" >&2
@@ -66,14 +65,13 @@ function apply_caps() {
   fi
 
   # Idempotency: skip if the copy already tracks this exact store path and
-  # already carries the desired caps.
-  if [[ -f "${stamp}" && -f "${wrapper}" && "$(cat "${stamp}")" == "${target}" ]]; then
-    local current
-    current="$("${GETCAP}" "${wrapper}" 2> /dev/null | sed --regexp-extended 's|.* = ||' || true)"
-    if [[ "${current}" == "${caps}" ]]; then
-      log_info "${name} up to date"
-      return 0
-    fi
+  # already carries the desired caps. setcap -v validates the file's actual
+  # capability set against the same +eip syntax, so it is immune to getcap's
+  # =eip display normalization (a string-compare on getcap output never matches).
+  if [[ -f "${stamp}" && -f "${wrapper}" && "$(cat "${stamp}")" == "${target}" ]] \
+    && "${SETCAP}" -v "${caps}" "${wrapper}" > /dev/null 2>&1; then
+    log_info "${name} up to date"
+    return 0
   fi
 
   log_info "wrapping ${name}: ${target} -> ${wrapper} (${caps})"
@@ -85,8 +83,8 @@ function apply_caps() {
 # @description Ensure tools + wrapper dir exist, then wrap every target.
 # @noargs
 function main() {
-  if [[ ! -x "${SETCAP}" || ! -x "${GETCAP}" ]]; then
-    log_err "missing ${SETCAP} or ${GETCAP}"
+  if [[ ! -x "${SETCAP}" ]]; then
+    log_err "missing ${SETCAP}"
     exit 1
   fi
   mkdir --parents "${WRAPPER_DIR}"
