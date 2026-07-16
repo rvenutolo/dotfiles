@@ -3,4 +3,8 @@ Description=Delete old home-manager generations
 
 [Service]
 Type=oneshot
+{{ if stat "/nix/var/nix/daemon-socket/socket" -}}
+ExecStart=/nix/var/nix/profiles/default/bin/nix-collect-garbage --delete-older-than 10d
+{{- else -}}
 ExecStart={{ .chezmoi.homeDir }}/{{ .paths.nix_user_profile }}/bin/nix-collect-garbage --delete-older-than 10d
+{{- end }}
