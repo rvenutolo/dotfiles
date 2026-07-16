@@ -4,6 +4,7 @@
 **/.claude/*
 .claude/*
 .remember
+.superpowers
 
 ## Docker
 .env
