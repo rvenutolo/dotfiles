@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch nix profile to refresh network-tool capability wrappers
+
+[Path]
+PathChanged=/nix/var/nix/profiles/per-user/{{ .chezmoi.username }}/profile
+Unit=nix-setcap.service
+
+[Install]
+WantedBy=multi-user.target

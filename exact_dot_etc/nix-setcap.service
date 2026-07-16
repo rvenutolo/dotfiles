@@ -1,0 +1,10 @@
+[Unit]
+Description=Cap out-of-store wrapper copies of nix network tools
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/nix-setcap
+
+[Install]
+WantedBy=multi-user.target
