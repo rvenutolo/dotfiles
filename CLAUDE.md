@@ -153,7 +153,30 @@ age is the encryption backend. Recipient and identity are pinned in `.chezmoi.to
 
 ## Scripts
 
-Bootstrap scripts under `.chezmoiscripts/` and any new shell helpers must follow the rules in the global config (`${CLAUDE_CONFIG_DIR}/shared/rules/shell-scripts.md`): `#!/usr/bin/env bash`, `set -Eeuo pipefail`, long CLI options, `[[ ]]` over `[ ]`, quoted expansions, `function name()` syntax, etc. Existing scripts pre-date some of those rules — apply current rules to new code without mass-rewriting old code unless asked.
+Bootstrap scripts under `.chezmoiscripts/` and any new shell helpers must follow the bash style rules at `${PERSONAL_PROJECTS_DIR}/claude-rules/generic.bash-style.md`: `#!/usr/bin/env bash`, `set -Eeuo pipefail` with `IFS=$'\n\t'`, long CLI options, `[[ ]]` over `[ ]`, quoted `${var}` expansions, `function name()` syntax, `readonly UPPER_SNAKE_CASE` constants, shdoc `# @description` / `# @arg` comments, etc. Read that file before writing or editing shell code — the list here is a summary, not the rule set.
+
+The rules apply to any file whose contents are bash, regardless of extension — including chezmoi `run_*` / `modify_*` scripts, which carry no `.sh` suffix and so fall outside the rules file's own `**/*.sh` path globs.
+
+Every script in this repo follows the current rules. There is no grandfathering: when the rule set changes, existing scripts are updated to match rather than left as-is.
+
+Scripts must pass both:
+
+```shell
+shellcheck <files>
+shfmt --list --indent 2 --case-indent --binary-next-line --space-redirects --diff <files>
+```
+
+`.tmpl` scripts must be rendered before linting — `{{ }}` is not valid bash:
+
+```shell
+chezmoi execute-template < <script>.tmpl | shellcheck -
+```
+
+### Sourced bash files are partially exempt
+
+`dot_config/exact_bash/*.bash` are sourced into the shell (`~/.bashrc` → `.config/bash/bashrc.bash`), not executed. Per the rules file's scope section they are exempt from the execution-shaped rules — `set -Eeuo pipefail`, `IFS=$'\n\t'`, the `ERR` trap, `main "$@"`, the file-layout rule, and the executable bit. Applying those would break the interactive shell: `set -e` closes the terminal on any non-zero command, and `IFS` alters word splitting session-wide.
+
+All other rules — quoting, `${var}` braces, `function` keyword, `[[ ]]`, long options, shdoc comments, `shellcheck`, `shfmt` — still apply to them.
 
 ## Working Documents
 
