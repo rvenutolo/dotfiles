@@ -190,6 +190,8 @@ zig-out/
 ## Claude Code
 !**/.claude/commands
 !**/.claude/commands/**
+!**/.claude/hooks
+!**/.claude/hooks/**
 !**/.claude/rules
 !**/.claude/rules/**
 !**/.claude/settings.json
@@ -197,6 +199,8 @@ zig-out/
 !**/.claude/skills/**
 !.claude/commands
 !.claude/commands/**
+!.claude/hooks
+!.claude/hooks/**
 !.claude/rules
 !.claude/rules/**
 !.claude/settings.json
