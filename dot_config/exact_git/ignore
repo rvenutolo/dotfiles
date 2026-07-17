@@ -5,6 +5,8 @@
 .claude/*
 .remember
 .superpowers
+**/docs/superpowers/
+docs/superpowers/
 
 ## Docker
 .env

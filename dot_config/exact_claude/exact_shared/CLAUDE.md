@@ -103,12 +103,6 @@
 - When running Bash() tool commands, prefer `$VAR` over `${VAR}` unless the substitution syntax is necessary (e.g. `${VAR:-default}`, `${VAR%suffix}`). This does not apply to code Claude generates/edits — generated code should default to using `${}`.
 - Any shell command that runs longer than 30 minutes must be killed. Use `timeout 30m` as a prefix for commands that could hang or run unexpectedly long (e.g., `timeout 30m ./mvnw pmd:check`). If a command is killed by the timeout, report it to the user rather than retrying silently.
 
-## Documentation Paths
-- Plans: `.claude/plans/`
-- Specs: `.claude/specs/`
-- Scratch: `.claude/scratch/`
-- Reports: `.claude/reports/`
-
 ## Writing Documentation
 - Never hardcode absolute paths to the current repository in docs, skills, commands, rules, plans, specs, or any other artifact stored inside the repo. Use repo-root-relative paths (e.g., `.claude/rules/shell-scripts.md`, not `/home/<user>/Projects/Foo/.claude/rules/shell-scripts.md`). When the absolute path is genuinely needed at runtime, resolve it dynamically — e.g., `git rev-parse --show-toplevel` for the repo root, `$CLAUDE_CONFIG_DIR` for the Claude config dir, `$HOME` for the user's home — rather than embedding a literal path. Hardcoded paths break the moment the repo is cloned elsewhere or the user/machine changes.
 

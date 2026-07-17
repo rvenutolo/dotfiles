@@ -2,6 +2,7 @@ CLAUDE.md
 README.md
 TODO
 age.key.ENCRYPTED
+docs
 {{- /* Skip terminal-editor .desktop files when the binary isn't installed. */}}
 {{- if not (lookPath "hx") }}
 dot_local/share/applications/hx.desktop

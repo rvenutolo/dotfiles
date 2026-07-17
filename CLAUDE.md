@@ -178,12 +178,6 @@ chezmoi execute-template < <script>.tmpl | shellcheck -
 
 All other rules — quoting, `${var}` braces, `function` keyword, `[[ ]]`, long options, shdoc comments, `shellcheck`, `shfmt` — still apply to them.
 
-## Working Documents
-
-Plans, specs, scratch notes, and reports go under `.claude/` (`.claude/plans/`, `.claude/specs/`, `.claude/scratch/`, `.claude/reports/`) — never `docs/`.
-
-Every top-level path in this repo is chezmoi source state, so a `docs/` directory would apply to `~/docs` on every target host. This overrides any skill that names a different location: the superpowers `writing-plans` skill hardcodes `docs/superpowers/plans/YYYY-MM-DD-<feature>.md` — ignore that path here and use `.claude/plans/` with the same filename convention. A `PreToolUse` hook (`.claude/hooks/block-docs-writes.sh`) enforces this by denying writes under `docs/`.
-
 ## When Adding Files
 
 1. Pick the correct prefix chain for the target path/mode/semantics.
