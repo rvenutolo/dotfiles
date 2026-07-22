@@ -22,6 +22,16 @@ A plugin with a large `SessionStart` hook (e.g. a 15KB knowledge graph) can cons
 
 ## Uninstalled Plugins
 
+### caveman
+Ultra-compressed "caveman" communication mode plus commit/review/help variants. Drops
+articles and filler to cut token usage. Installed from a third-party marketplace
+(`JuliusBrussee/caveman`). Removed because it didn't seem to help and sometimes got in
+the way.
+
+```json
+"caveman@caveman": true,
+```
+
 ### explanatory-output-style
 Recreates the deprecated "Explanatory" output style via a `SessionStart` hook. Injects
 instructions encouraging Claude to provide educational insights about implementation
