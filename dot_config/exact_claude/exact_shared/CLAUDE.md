@@ -67,6 +67,17 @@
 - When asked to explain something, give a high-level summary unless an in-depth explanation is specifically requested.
 - At the end of a response, add a brief summary of what you did
 
+### Attention Banners
+
+- Any message that requires the user's response MUST begin with a banner line of exactly five emojis, on its own line, chosen by message type:
+  - `❓❓❓❓❓` — a question or decision is needed
+  - `🚧🚧🚧🚧🚧` — blocked; user action required (e.g., auth/login, missing prerequisite, denied permission)
+  - `✅✅✅✅✅` — task complete; ready for review / next steps
+- The banner is the first line of the final message of the turn.
+- When using the AskUserQuestion tool, put the banner in the text immediately preceding the tool call (the dialog itself cannot carry it).
+- Use banners only for messages awaiting the user's response — never on intermediate status updates.
+- Do not use any other emojis elsewhere in the message.
+
 ## Git
 
 - Never force-add files that are listed in `.gitignore` (e.g., `git add --force`). If a file needs to be staged but is gitignored, stop and ask the user first.
