@@ -27,6 +27,7 @@ export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id --user)}"
 # PATH manipulation helpers (sourced once XDG_CONFIG_HOME is set; unset
 # at the bottom of this file).
 if [ -r "${XDG_CONFIG_HOME}/path-helpers.sh" ]; then
+  # shellcheck source=/dev/null  # rendered target path; not resolvable from source tree
   . "${XDG_CONFIG_HOME}/path-helpers.sh"
 fi
 
@@ -104,7 +105,10 @@ export SYSTEMD_PAGER=''
 # `tty` returns "not a tty" in non-interactive shells, which would set a
 # bogus GPG_TTY. Guard so we only export it in interactive shells.
 case $- in
-  *i*) export GPG_TTY="$(tty)" ;;
+  *i*)
+    GPG_TTY=$(tty)
+    export GPG_TTY
+    ;;
 esac
 
 ## SSH_ASKPASS discovery.
@@ -167,13 +171,16 @@ fi
 if __flatpak_installed 'dev.zed.Zed'; then
   export VISUAL='flatpak run dev.zed.Zed --wait'
 elif __real_cmd 'zed' > /dev/null; then
-  export VISUAL="$(__real_cmd 'zed') --wait"
+  VISUAL="$(__real_cmd 'zed') --wait"
+  export VISUAL
 elif __real_cmd 'lite-xl' > /dev/null; then
-  export VISUAL="$(__real_cmd 'lite-xl')"
+  VISUAL="$(__real_cmd 'lite-xl')"
+  export VISUAL
 elif __flatpak_installed 'org.kde.kate'; then
   export VISUAL='flatpak run org.kde.kate --block'
 elif __real_cmd 'kate' > /dev/null; then
-  export VISUAL="$(__real_cmd 'kate') --block"
+  VISUAL="$(__real_cmd 'kate') --block"
+  export VISUAL
 else
   export VISUAL="${EDITOR}"
 fi
@@ -196,20 +203,15 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 esac
 
 ## less
-LESS_TERMCAP_mb=$(tput -T ansi blink) # Begin blinking text
-export LESS_TERMCAP_mb
-LESS_TERMCAP_md=$(tput -T ansi setaf 2 ; tput -T ansi bold) # Begin bold text
-export LESS_TERMCAP_md
-LESS_TERMCAP_me=$(tput -T ansi sgr0)  # End all formatting modes
-export LESS_TERMCAP_me
-LESS_TERMCAP_se=$(tput -T ansi rmso)  # End standout mode
-export LESS_TERMCAP_se
-LESS_TERMCAP_so=$(tput -T ansi smso)  # Begin standout mode (used for highlighting/info boxes)
-export LESS_TERMCAP_so
-LESS_TERMCAP_ue=$(tput -T ansi rmul)  # End underline
-export LESS_TERMCAP_ue
-LESS_TERMCAP_us=$(tput -T ansi smul)  # Begin underline
-export LESS_TERMCAP_us
+LESS_TERMCAP_mb=$(tput -T ansi blink)                         # Begin blinking text
+LESS_TERMCAP_md="$(tput -T ansi setaf 2)$(tput -T ansi bold)" # Begin bold text
+LESS_TERMCAP_me=$(tput -T ansi sgr0)                          # End all formatting modes
+LESS_TERMCAP_se=$(tput -T ansi rmso)                          # End standout mode
+LESS_TERMCAP_so=$(tput -T ansi smso)                          # Begin standout mode (used for highlighting/info boxes)
+LESS_TERMCAP_ue=$(tput -T ansi rmul)                          # End underline
+LESS_TERMCAP_us=$(tput -T ansi smul)                          # Begin underline
+export LESS_TERMCAP_mb LESS_TERMCAP_md LESS_TERMCAP_me \
+  LESS_TERMCAP_se LESS_TERMCAP_so LESS_TERMCAP_ue LESS_TERMCAP_us
 
 ## this addresses when ssh-ing to a box that doesn't have terminfo for whatever TERM currently is
 for TERM in "${TERM}" 'xterm-256color' 'xterm-16color' 'xterm-color' 'xterm'; do
@@ -244,6 +246,7 @@ for file in \
   "${NIX_USER_PROFILE}/etc/profile.d/nix.sh" \
   "${NIX_USER_PROFILE}/etc/profile.d/hm-session-vars.sh"; do
   if [ -r "${file}" ]; then
+    # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
     . "${file}"
   fi
 done
@@ -265,7 +268,8 @@ unset -v dir
 
 ## tailscale
 if command -v 'tailscale' > /dev/null 2>&1 && tailscale status > '/dev/null'; then
-  export TAILNET_IP="$(tailscale ip -4)"
+  TAILNET_IP="$(tailscale ip -4)"
+  export TAILNET_IP
   export TAILNET_CIDR='100.64.0.0/10'
 fi
 
@@ -273,6 +277,7 @@ for file in \
   "${HOME}/.profile-local" \
   "${HOME}/.profile-private"; do
   if [ -r "${file}" ]; then
+    # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
     . "${file}"
   fi
 done
