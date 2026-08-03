@@ -2,8 +2,8 @@
 # /etc/NetworkManager/dispatcher.d/99-vpn-dns-fix
 #
 # When the AWS VPN tun0 interface comes up, add ~amazonaws.com as a routing
-# domain so CNAME chases from *.deint.net to *.amazonaws.com stay on the VPN
-# resolver (10.131.0.2) instead of falling through to the default-route
+# domain so CNAME chases from internal work domains to *.amazonaws.com stay on
+# the VPN-pushed resolver instead of falling through to the default-route
 # resolver, which on some networks (AT&T residential gateways) strips A records
 # pointing into RFC 1918 space.
 
@@ -12,8 +12,9 @@ IFS=$'\n\t'
 trap 'echo "error: line ${LINENO} (exit $?): ${BASH_COMMAND}" >&2' ERR
 
 readonly WANT='~amazonaws.com'
-# A domain the AWS client always pushes; used as the race-guard sentinel.
-readonly SENTINEL='digitalenvoy.net'
+# A domain the AWS client always pushes; used as the race-guard sentinel. Kept in
+# an age-encrypted file rather than inline, since this repo is public.
+readonly SENTINEL='{{ include ".work-vpn-sentinel-domain.age" | decrypt | trim }}'
 # Up to ~5s of polling at 0.1s intervals.
 readonly MAX_ATTEMPTS=50
 

@@ -7,5 +7,5 @@
     {"base": "169.254.32.0/19", "size": 24},
     {"base": "169.254.64.0/18", "size": 24}
   ],
-  "dns": ["10.131.0.2", "8.8.8.8"]
+  "dns": ["{{ include ".work-dns-resolver.age" | decrypt | trim }}", "8.8.8.8"]
 }
