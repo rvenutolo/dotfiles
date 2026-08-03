@@ -267,7 +267,7 @@ upgrade = true
 [containers]
 # Specify the containers to ignore while updating (Wildcard supported)
 # ignored_containers = ["ghcr.io/rancher-sandbox/rancher-desktop/rdx-proxy:latest", "docker.io*"]
-ignored_containers = ["*.deint.net/*"]
+ignored_containers = ["*.{{ include ".work-internal-domain.age" | decrypt | trim }}/*"]
 
 [lensfun]
 # If disabled, Topgrade invokes `lensfun‑update‑data` without root priviledge,
