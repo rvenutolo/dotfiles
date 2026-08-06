@@ -62,10 +62,6 @@ export ATOM_HOME="${XDG_DATA_HOME}/atom"
 export AWS_CONFIG_FILE="${XDG_CONFIG_HOME}/aws/config"
 export AWS_SHARED_CREDENTIALS_FILE="${XDG_CONFIG_HOME}/aws/credentials"
 export CARGO_HOME="${XDG_DATA_HOME}/cargo"
-# Default only — an inherited value (e.g. set by direnv for work projects) wins.
-# ~/.bashrc sources this file in every bash shell, including non-interactive ones
-# where the direnv hook never runs, so an unconditional export would clobber it.
-export CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-${XDG_CONFIG_HOME}/claude/personal}"
 export DOCKER_CONFIG="${XDG_CONFIG_HOME}/docker"
 export FFMPEG_DATADIR="${XDG_CONFIG_HOME}/ffmpeg"
 export GEM_HOME="${XDG_DATA_HOME}/gem"
