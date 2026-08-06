@@ -1,2 +1,3 @@
 .config/systemd/user/nix-setcap.path
 .config/systemd/user/nix-setcap.service
+Projects/Work/.envrc
