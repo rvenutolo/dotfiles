@@ -54,6 +54,12 @@ repos:
         entry: .dev/check-renovate-digests.sh
         files: '^\.chezmoiexternal\.toml\.tmpl$'
         pass_filenames: false
+      - id: check-paths-git-repos
+        name: enforce git_repos entries have a matching paths.<name>_dir
+        language: system
+        entry: .dev/check-paths.sh --git-repos-only
+        files: '^(\.chezmoidata\.yaml|\.dev/check-paths\.sh)$'
+        pass_filenames: false
       - id: no-env-template-func
         name: forbid env "..." in templates (use chezmoidata)
         language: pygrep
