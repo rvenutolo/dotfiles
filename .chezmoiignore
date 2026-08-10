@@ -3,6 +3,9 @@ README.md
 TODO
 age.key.ENCRYPTED
 docs
+{{- /* Repo tooling, not target state. */}}
+justfile
+
 {{- /* Skip terminal-editor .desktop files when the binary isn't installed. */}}
 {{- if not (lookPath "hx") }}
 dot_local/share/applications/hx.desktop
