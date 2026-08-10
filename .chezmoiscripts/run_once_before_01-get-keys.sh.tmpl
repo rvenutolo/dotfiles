@@ -28,8 +28,29 @@ function download() {
   curl --disable --fail --silent --location --show-error "$@"
 }
 
+# @description Verify downloaded content against an expected SHA-256; die on mismatch.
+# @arg $1 string Human-readable name of the file being verified
+# @arg $2 string Expected SHA-256 (64 lowercase hex chars)
+# @arg $3 string Content to verify
+function verify_checksum() {
+  local -r name="$1"
+  local -r expected="$2"
+  local -r content="$3"
+  local actual
+  actual="$(sha256sum <<< "${content}")"
+  actual="${actual%% *}"
+  if [[ "${actual}" != "${expected}" ]]; then
+    die "checksum mismatch for ${name}: expected ${expected}, got ${actual}"
+  fi
+}
+
 readonly KEYS_DIR="${HOME}/{{ .paths.keys_dir }}"
 readonly AGE_PRIVATE_KEY_FILE="${HOME}/{{ .paths.age_private_key_file }}"
+readonly AGE_KEY_SHA256='{{ .checksums.crypt_age_key }}'
+declare -rA KEY_FILE_SHA256=(
+  ['id_ed25519']='{{ .checksums.crypt_id_ed25519 }}'
+  ['id_ed25519.pub']='{{ .checksums.crypt_id_ed25519_pub }}'
+)
 
 function main() {
   if ! executable_exists 'age'; then
@@ -47,6 +68,7 @@ function main() {
     local age_key_content
     age_key_content="$(download 'https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/age.key')"
     if [[ -n "${age_key_content}" ]]; then
+      verify_checksum 'age.key' "${AGE_KEY_SHA256}" "${age_key_content}"
       log "Decrypting: ${AGE_PRIVATE_KEY_FILE}"
       until age --decrypt --output "${AGE_PRIVATE_KEY_FILE}" <<< "${age_key_content}"; do :; done
     else
@@ -61,6 +83,7 @@ function main() {
       log "Downloading: ${key_file}"
       key_contents="$(download "https://raw.githubusercontent.com/rvenutolo/crypt/main/keys/${filename}")"
       if [[ -n "${key_contents}" ]]; then
+        verify_checksum "${filename}" "${KEY_FILE_SHA256[${filename}]}" "${key_contents}"
         log "Decrypting: ${key_file}"
         age --decrypt --identity "${AGE_PRIVATE_KEY_FILE}" --output "${key_file}" <<< "${key_contents}"
       else
