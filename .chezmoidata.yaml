@@ -35,5 +35,13 @@ paths:
 age:
   public_key: age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs
 
+# SHA-256 of the age ciphertexts fetched by run_once_before_01-get-keys.sh.tmpl
+# (hash of the file content as captured by "$(curl ...)" then piped via <<<).
+# Rotating keys in the crypt repo requires updating these values.
+checksums:
+  crypt_age_key: 7a7e085779b6356da306b22ef8b2f555000209e742821c421150daf62204d80f
+  crypt_id_ed25519: 80e2778ff54a894887100dfc1b2dd3d6e08db9d007b83c550c49b06652a2c9be
+  crypt_id_ed25519_pub: 4ac458331095e2acf3a3a472960bb36ed419d40dc6781e7ee2e4744dcc1402b2
+
 weather:
   wttr_city: Atlanta
