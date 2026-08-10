@@ -32,7 +32,7 @@ if [[ -d "${SDKMAN_DIR}/candidates" ]]; then
   # e.g. every Claude Code tool call — use the pinned JDK. Matches sdkman
   # semantics: only the current directory is consulted, no upward search.
   # Pinned bins are prepended after the loop above, so they win over current/.
-  if [[ -f '.sdkmanrc' ]]; then
+  if [[ -r '.sdkmanrc' ]]; then
     while IFS='=' read -r __sdkman_name __sdkman_version || [[ -n "${__sdkman_name}" ]]; do
       __sdkman_name="${__sdkman_name//[[:space:]]/}"
       __sdkman_version="${__sdkman_version//[[:space:]]/}"
