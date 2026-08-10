@@ -16,7 +16,8 @@ readonly BAKED_IS_DEBIAN='{{ .is_debian }}'
 readonly BAKED_IS_FEDORA='{{ .is_fedora }}'
 
 function die() {
-  printf '\033[0;31mDIE: %s\033[0m\n' "$*" >&2
+  printf '\033[0;31mDIE: %s (at %s:%s line %s)\033[0m\n' \
+    "$*" "${BASH_SOURCE[1]}" "${FUNCNAME[1]}" "${BASH_LINENO[0]}" >&2
   exit 1
 }
 
