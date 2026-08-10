@@ -101,8 +101,7 @@ export STACK_XDG='1'
 export SYSTEMD_PAGER=''
 # Stop uv's cargo-dist installer (run by `uv self update`) from appending
 # `. "$HOME/.local/share/../bin/env"` to ~/.bashrc, ~/.bash_profile, and
-# ~/.profile — those are symlinks into chezmoi-managed files, so every update
-# shows up as drift in `chezmoi diff`. XDG_BIN_HOME is already on PATH below.
+# ~/.profile. XDG_BIN_HOME is already on PATH below.
 export UV_NO_MODIFY_PATH='1'
 
 ## GPG TTY
