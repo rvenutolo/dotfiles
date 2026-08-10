@@ -104,20 +104,15 @@ for file in \
 done
 unset -v file
 
-# Lazy-load SDKMAN. non-interactive.bash already built the candidate
-# PATH/*_HOME environment cheaply; the full sdkman-init.sh source (~150 ms:
-# sdk function, module sourcing) is deferred to the first `sdk` call.
-# .sdkmanrc auto-env switching is disabled by design (sdkman_auto_env=false
-# in the managed sdkman config) — it would need init's PROMPT_COMMAND hook.
-# shellcheck disable=SC2329  # invoked on first `sdk` use
-function sdk() {
-  unset -f sdk
-  if [[ -r "${SDKMAN_DIR}/bin/sdkman-init.sh" ]]; then
-    # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
-    source "${SDKMAN_DIR}/bin/sdkman-init.sh"
-  fi
-  sdk "$@"
-}
+# SDKMAN full init. non-interactive.bash built the candidate PATH/*_HOME
+# environment (including ./.sdkmanrc pins) cheaply; interactive shells also
+# pay the one-time init (~150 ms) for the `sdk` function, its bash completion
+# (sdkman_auto_complete), and the PROMPT_COMMAND auto-env hook
+# (sdkman_auto_env) that re-applies .sdkmanrc when cd-ing between projects.
+if [[ -r "${SDKMAN_DIR}/bin/sdkman-init.sh" ]]; then
+  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
+  source "${SDKMAN_DIR}/bin/sdkman-init.sh"
+fi
 
 # completions to source
 for file in \
@@ -129,8 +124,7 @@ for file in \
   '/usr/share/the_silver_searcher/completions/ag.bashcomp.sh' \
   '/etc/bash_completion' \
   "${SDKMAN_DIR}/candidates/mvnd/current/bin/mvnd-bash-completion.bash" \
-  "${SDKMAN_DIR}/candidates/springboot/current/shell-completion/bash/spring" \
-  "${SDKMAN_DIR}/contrib/completion/bash/sdk"; do
+  "${SDKMAN_DIR}/candidates/springboot/current/shell-completion/bash/spring"; do
   if [[ -r "${file}" ]]; then
     # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
     source "${file}"
