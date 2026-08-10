@@ -17,14 +17,17 @@ procedure ends with verification and rollback.
 | Passphrase-encrypted identity | `rvenutolo/crypt` repo, `keys/age.key` | Only consumed by fresh bootstraps (`run_once_before_01-get-keys.sh.tmpl`) |
 | Age recipient (public key) | `.chezmoidata.yaml` → `age.public_key` | Single source; `.chezmoi.toml.tmpl` reads it at init |
 | Ciphertext checksums | `.chezmoidata.yaml` → `checksums:` | `crypt_age_key`, `crypt_id_ed25519`, `crypt_id_ed25519_pub`; get-keys aborts on mismatch |
-| Encrypted files (22) | 18 `encrypted_*` sources + 4 root `.work-*.age` template inputs | All ASCII-armored age files, same recipient |
+| Encrypted files (22) | 18 `encrypted_*` sources + 4 root `.work-*.age` template inputs | All ASCII-armored age files, same recipient; 2 of the 18 `encrypted_*` files (`dot_config/exact_git/encrypted_private_config-personal.private.tmpl` and `dot_config/exact_git/encrypted_private_config-work.private.tmpl`) carry no `.age` suffix |
 | SSH keypair | `~/.keys/id_ed25519{,.pub}` on every host; encrypted copies in crypt | `authorized_keys` renders live from the GitHub account's keys (`gitHubKeys "rvenutolo"`) |
 
-All `.age` files in this repo are ASCII-armored and share the single
+All 22 encrypted files in this repo are ASCII-armored and share the single
 recipient pinned in `.chezmoidata.yaml`, so every decrypt in these
 procedures uses the same invocation shape: `age --decrypt --identity
-~/.keys/age.key <file>`. Keep that consistent — a non-armored or
-differently-keyed file would break the loop in Procedure B.
+~/.keys/age.key <file>`. Two of them
+(`dot_config/exact_git/encrypted_private_config-personal.private.tmpl` and
+`dot_config/exact_git/encrypted_private_config-work.private.tmpl`) are
+armored age ciphertext without a `.age` suffix, so `git ls-files '*.age'`
+undercounts them — enumerate by content instead (see Procedure B).
 
 ## Procedure A: passphrase rotation
 
@@ -65,11 +68,16 @@ is done. Do all repo work in a worktree.
    new_recipient="$(age-keygen -y ~/.keys/age.key.new)"
    ```
 
-2. Re-encrypt every `.age` file in the repo (all are armored; the loop
-   covers both `encrypted_*` sources and root `.work-*.age` inputs):
+2. Re-encrypt every armored age file in the repo. Enumerate by content, not
+   by `.age` suffix — `git ls-files '*.age'` misses the two
+   `dot_config/exact_git/encrypted_*.private.tmpl` files, which are armored
+   age ciphertext without that suffix (see "Moving parts"). Run under
+   `set -euo pipefail` so a failed decrypt aborts the loop instead of
+   silently clobbering the original with an empty-plaintext ciphertext:
 
    ```shell
-   git ls-files '*.age' | while IFS= read -r f; do
+   set -euo pipefail
+   git grep --files-with-matches -- '-----BEGIN AGE ENCRYPTED FILE-----' | while IFS= read -r f; do
      age --decrypt --identity ~/.keys/age.key "${f}" \
        | age --encrypt --armor --recipient "${new_recipient}" --output "${f}.tmp"
      mv "${f}.tmp" "${f}"
@@ -87,9 +95,17 @@ is done. Do all repo work in a worktree.
    chezmoi verify
    ```
 
-**Verify (before merging):** every re-encrypted file decrypts with the new
-identity and NOT with the old one; `chezmoi --source <worktree> diff`
-renders without errors using the new identity.
+**Verify (before merging):** per-file, confirm every re-encrypted file
+decrypts with the new identity and NOT with the old one:
+
+```shell
+age --decrypt --identity ~/.keys/age.key.new "${f}" >/dev/null
+```
+
+`chezmoi --source <worktree> diff` cannot be used for this check yet —
+chezmoi's configured identity (`~/.keys/age.key`) still holds the OLD key
+until step 5's swap, so it would fail on every re-encrypted file. Run the
+`chezmoi diff` check only after step 5, as a post-swap sanity check.
 **Rollback:** `git revert` the rotation commit(s); every host still holds
 the old identity until step 5, so reverting restores a working state. Do
 not delete old identity copies until all hosts verify clean.
@@ -114,7 +130,7 @@ not delete old identity copies until all hosts verify clean.
    `.chezmoidata.yaml` (`crypt_id_ed25519`, `crypt_id_ed25519_pub`):
 
    ```shell
-   recipient="$(grep 'public_key:' .chezmoidata.yaml | awk '{print $2}')"
+   recipient="$(yq '.age.public_key' .chezmoidata.yaml)"
    age --encrypt --armor --recipient "${recipient}" --output /tmp/id_ed25519 ~/.keys/id_ed25519.new
    age --encrypt --armor --recipient "${recipient}" --output /tmp/id_ed25519.pub ~/.keys/id_ed25519.new.pub
    sha256sum /tmp/id_ed25519 /tmp/id_ed25519.pub

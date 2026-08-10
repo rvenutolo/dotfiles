@@ -154,7 +154,7 @@ rm -rf ~/.config/chezmoi ~/.local/share/chezmoi
 
 ## Encryption
 
-age is the encryption backend. Recipient and identity are pinned in `.chezmoi.toml.tmpl`. Encrypted files use the `encrypted_` prefix and `.age` suffix. Do not commit plaintext copies of `encrypted_*` files.
+age is the encryption backend. The recipient (public key) is pinned in `.chezmoidata.yaml` (`age.public_key`) and read by `.chezmoi.toml.tmpl` at init; the identity (private key) lives at `~/.keys/age.key` on each host. Encrypted files use the `encrypted_` prefix and (with two documented exceptions under `dot_config/exact_git/`) the `.age` suffix. Do not commit plaintext copies of `encrypted_*` files.
 
 `private_dot_ssh/` holds SSH key material; entries are managed with `private_` (mode `0600`/`0700`) and, where applicable, `encrypted_` via age. Never add plaintext private keys here — encrypt first.
 
