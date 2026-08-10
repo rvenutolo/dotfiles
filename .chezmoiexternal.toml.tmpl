@@ -1,19 +1,24 @@
+# renovate: datasource=git-refs depName=https://github.com/nordtheme/alacritty branch=main
 ['{{ .paths.xdg_config_home }}/alacritty/colors.yml']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/alacritty/refs/heads/main/src/nord.yaml'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/nordtheme/alacritty/9949642f3903e8fcb62bfc03f09410e3d78440c2/src/nord.yaml'
+refreshPeriod = '0'
 filter.command = 'sed'
 filter.args = ['s/^    bar:$/  footer_bar:/']
 
+# renovate: datasource=git-refs depName=https://github.com/cykerway/complete-alias branch=master
 ['{{ .paths.xdg_config_home }}/bash/complete_alias.bash']
 type = 'file'
-url = 'https://raw.githubusercontent.com/cykerway/complete-alias/refs/heads/master/complete_alias'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/cykerway/complete-alias/7f2555c2fe7a1f248ed2d4301e46c8eebcbbc4e2/complete_alias'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/nidhinjs/prompt-master branch=main
 ['{{ .paths.xdg_config_home }}/claude/shared/skills/prompt-master']
-type = 'git-repo'
-url = 'git@github.com:nidhinjs/prompt-master.git'
-refreshPeriod = '1h'
+type = 'archive'
+url = 'https://github.com/nidhinjs/prompt-master/archive/d15eabbe5d2122eedc060bae8a771381e9873d1b.zip'
+exact = true
+stripComponents = 1
+refreshPeriod = '0'
 
 # Disabled - this eats tokens
 #['{{ .paths.xdg_config_home }}/claude/shared/skills/task-observer']
@@ -21,46 +26,52 @@ refreshPeriod = '1h'
 #url = 'git@github.com:rebelytics/one-skill-to-rule-them-all.git'
 #refreshPeriod = '1h'
 
+# renovate: datasource=git-refs depName=https://github.com/nordtheme/dircolors branch=develop
 ['{{ .paths.xdg_config_home }}/dircolors']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/dircolors/refs/heads/develop/src/dir_colors'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/nordtheme/dircolors/0a4906965e2b7b181d2b8f15395dcae2c43ace38/src/dir_colors'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/connorholyday/nord-kitty branch=master
 ['{{ .paths.xdg_config_home }}/kitty/conf/nord.conf']
 type = 'file'
-url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/refs/heads/master/nord.conf'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/connorholyday/nord-kitty/3a819c1f207cd2f98a6b7c7f9ebf1c60da91c9e9/nord.conf'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/flexibeast/kitty_keys branch=main
 ['{{ .paths.xdg_config_home }}/kitty/kitty_keys.sh']
 type = 'file'
-url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/refs/heads/main/kitty_keys.sh'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/flexibeast/kitty_keys/113afd95feaadd788b79fdd01310847d32a5b687/kitty_keys.sh'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/lite-xl/lite-xl-colors branch=master
 ['{{ .paths.xdg_config_home }}/lite-xl/colors']
 type = 'archive'
-url = 'https://github.com/lite-xl/lite-xl-colors/archive/refs/heads/master.zip'
+url = 'https://github.com/lite-xl/lite-xl-colors/archive/bc9f538c7ffe363cd0b0e26cc9effb29192c5405.zip'
 exact = true
 stripComponents = 2
-refreshPeriod = '1h'
+refreshPeriod = '0'
 include = ['*/colors/*.lua']
 
+# renovate: datasource=git-refs depName=https://github.com/lite-xl/lite-xl-widgets branch=master
 ['{{ .paths.xdg_config_home }}/lite-xl/libraries/widget']
 type = 'archive'
-url = 'https://github.com/lite-xl/lite-xl-widgets/archive/refs/heads/master.zip'
+url = 'https://github.com/lite-xl/lite-xl-widgets/archive/dcf1c8c7087638b879d5c9c835686ccd79f963ec.zip'
 exact = true
 stripComponents = 1
-refreshPeriod = '1h'
+refreshPeriod = '0'
 include = [
   '*/*.lua',
   '*/fonts',
   '*/fonts/*.lua'
 ]
 
+# renovate: datasource=git-refs depName=https://github.com/lite-xl/lite-xl-plugins branch=master
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins']
 type = 'archive'
-url = 'https://github.com/lite-xl/lite-xl-plugins/archive/refs/heads/master.zip'
+url = 'https://github.com/lite-xl/lite-xl-plugins/archive/ba6bff1de455a65bf4f5a60f04e07ff390911937.zip'
 stripComponents = 2
-refreshPeriod = '1h'
+refreshPeriod = '0'
 include = [
   '*/plugins/bracketmatch.lua',
   '*/plugins/copyfilelocation.lua',
@@ -97,172 +108,200 @@ include = [
   '*/plugins/wordcount.lua'
 ]
 
+# renovate: datasource=git-refs depName=https://github.com/lite-xl/lite-xl-lsp-servers branch=master
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins/lsp-servers']
 type = 'archive'
-url = 'https://github.com/lite-xl/lite-xl-lsp-servers/archive/refs/heads/master.zip'
+url = 'https://github.com/lite-xl/lite-xl-lsp-servers/archive/3d77d7c38f3ae0620f00907aa3b75baba85e1660.zip'
 stripComponents = 2
-refreshPeriod = '1h'
+refreshPeriod = '0'
 include = ['*/plugins/*.lua']
 
+# renovate: datasource=git-refs depName=https://github.com/chqs-git/code-plus branch=main
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins/code-plus.lua']
 type = 'file'
-url = 'https://raw.githubusercontent.com/chqs-git/code-plus/refs/heads/main/init.lua'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/chqs-git/code-plus/873dbc74d4ff5b858807686b8ee1c9c9182745e4/init.lua'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/ShadiestGoat/lite-xl-exterm branch=main
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins/exterm.lua']
 type = 'file'
-url = 'https://raw.githubusercontent.com/ShadiestGoat/lite-xl-exterm/refs/heads/main/exterm.lua'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/ShadiestGoat/lite-xl-exterm/aca8827fc1af831890cffd3dd122debac72429c6/exterm.lua'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/vincens2005/lite-xl-gitdiff-highlight branch=master
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins/gitdiff_highlight']
 type = 'archive'
-url = 'https://github.com/vincens2005/lite-xl-gitdiff-highlight/archive/refs/heads/master.zip'
+url = 'https://github.com/vincens2005/lite-xl-gitdiff-highlight/archive/f0e02b6a7299acbeb4a5f137b26830a6cca96cc8.zip'
 exact = true
 stripComponents = 1
-refreshPeriod = '1h'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/FilBot3/lite-xl-language-containerfile branch=main
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins/language_containerfile.lua']
 type = 'file'
-url = 'https://raw.githubusercontent.com/FilBot3/lite-xl-language-containerfile/refs/heads/main/init.lua'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/FilBot3/lite-xl-language-containerfile/ae4eddc3f3fa1a0db56344b3b6db0ec0f2283880/init.lua'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/liquidev/lintplus branch=master
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins/lintplus']
 type = 'archive'
-url = 'https://github.com/liquidev/lintplus/archive/refs/heads/master.zip'
+url = 'https://github.com/liquidev/lintplus/archive/1aa6d2d0d799fa20c0fd52efaf89243424c840b0.zip'
 exact = true
 stripComponents = 1
-refreshPeriod = '1h'
+refreshPeriod = '0'
 include = [
   '*/*.lua',
   '*/linters',
   '*/linters/*.lua'
 ]
 
+# renovate: datasource=git-refs depName=https://github.com/lite-xl/lite-xl-lsp branch=master
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins/lsp']
 type = 'archive'
-url = 'https://github.com/lite-xl/lite-xl-lsp/archive/refs/heads/master.zip'
+url = 'https://github.com/lite-xl/lite-xl-lsp/archive/d1432ae0736cd9531798b4bc1221835f534cc689.zip'
 exact = true
 stripComponents = 1
-refreshPeriod = '1h'
+refreshPeriod = '0'
 include = ['*/*.lua']
 
+# renovate: datasource=git-refs depName=https://github.com/vqns/lite-xl-snippets branch=main
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins/lsp_snippets.lua']
 type = 'file'
-url = 'https://raw.githubusercontent.com/vqns/lite-xl-snippets/refs/heads/main/lsp_snippets.lua'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/vqns/lite-xl-snippets/87248a23c8ceb2507f46b3ca3689b32d35c9c709/lsp_snippets.lua'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/vqns/lite-xl-snippets branch=main
 ['{{ .paths.xdg_config_home }}/lite-xl/plugins/snippets.lua']
 type = 'file'
-url = 'https://raw.githubusercontent.com/vqns/lite-xl-snippets/refs/heads/main/snippets.lua'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/vqns/lite-xl-snippets/87248a23c8ceb2507f46b3ca3689b32d35c9c709/snippets.lua'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/scopatz/nanorc branch=master
 ['{{ .paths.xdg_config_home }}/nano/syntax_highlighting']
 type = 'archive'
-url = 'https://github.com/scopatz/nanorc/archive/master.tar.gz'
+url = 'https://github.com/scopatz/nanorc/archive/1aa64a86cf4c750e4d4788ef1a19d7a71ab641dd.tar.gz'
 exact = true
 stripComponents = 1
-refreshPeriod = '1h'
+refreshPeriod = '0'
 include = ['*/*.nanorc']
 
+# renovate: datasource=git-refs depName=https://github.com/nordtheme/vim branch=main
 ['{{ .paths.xdg_config_home }}/nvim/colors/nord.vim']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/vim/refs/heads/main/colors/nord.vim'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/nordtheme/vim/f13f5dfbb784deddbc1d8195f34dfd9ec73e2295/colors/nord.vim'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/nordtheme/tilix branch=develop
 ['{{ .paths.xdg_config_home }}/tilix/schemes/nord.json']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/tilix/refs/heads/develop/src/json/nord.json'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/nordtheme/tilix/3d7ce063694c446010a99ee65139765d83a4a5ae/src/json/nord.json'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/nordtheme/xresources branch=develop
 ['{{ .paths.xdg_config_home }}/X11/Xresources']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/xresources/refs/heads/develop/src/nord'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/nordtheme/xresources/2e4d108bcf044d28469e098979bf6294329813fc/src/nord'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/BachoSeven/dotfiles branch=master
 ['{{ .paths.xdg_bin_home }}/ansi-colors']
 type = 'file'
-url = 'https://raw.githubusercontent.com/BachoSeven/dotfiles/refs/heads/master/.local/bin/colors/16'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/BachoSeven/dotfiles/8e53ab880686cbc478f923a8625de102f44ca5f7/.local/bin/colors/16'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/statico/dotfiles branch=main
 ['{{ .paths.xdg_bin_home }}/ansi-modes']
 type = 'file'
-url = 'https://raw.githubusercontent.com/statico/dotfiles/refs/heads/main/bin/ansimodes'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/statico/dotfiles/f5297bfefe71f771be811a8d6758612608b5db9c/bin/ansimodes'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/ivan-hc/AM branch=main
 ['{{ .paths.xdg_bin_home }}/appman']
 type = 'file'
-url = 'https://raw.githubusercontent.com/ivan-hc/AM/refs/heads/main/APP-MANAGER'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/ivan-hc/AM/240f4f7cbf3a861022c92dd05341a3c91d971f7a/APP-MANAGER'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/xero/dotfiles branch=main
 ['{{ .paths.xdg_bin_home }}/colorscheme']
 type = 'file'
-url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/main/fun/.local/bin/colorscheme'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/xero/dotfiles/5204a2b74f9af6b979b88f71a696eca872396a33/fun/.local/bin/colorscheme'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/mag37/dockcheck branch=main
 ['{{ .paths.xdg_bin_home }}/dockcheck']
 type = 'file'
-url = 'https://raw.githubusercontent.com/mag37/dockcheck/refs/heads/main/dockcheck.sh'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/mag37/dockcheck/7b6c7398a5338938e4555e804762f293b6e7d0f4/dockcheck.sh'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/newren/git-filter-repo branch=main
 ['{{ .paths.xdg_bin_home }}/git-filter-repo']
 type = 'file'
-url = 'https://raw.githubusercontent.com/newren/git-filter-repo/refs/heads/main/git-filter-repo'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/newren/git-filter-repo/d7b75aca907380f608892cc289e616f195427b99/git-filter-repo'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/DanielVartanov/willgit branch=master
 ['{{ .paths.xdg_bin_home }}/git-wtf']
 type = 'file'
-url = 'https://raw.githubusercontent.com/DanielVartanov/willgit/refs/heads/master/bin/git-wtf'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/DanielVartanov/willgit/07e9bfd03e8bf512481bdeb77acec2d8c84b4595/bin/git-wtf'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/ryanoasis/nerd-fonts branch=master
 ['{{ .paths.xdg_bin_home }}/nerd-font-test']
 type = 'file'
-url = 'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/refs/heads/master/bin/scripts/test-fonts.sh'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/da778d6bb3b7a24efb8903b1882cf98e85156b61/bin/scripts/test-fonts.sh'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/xero/dotfiles branch=main
 ['{{ .paths.xdg_bin_home }}/rain']
 type = 'file'
-url = 'https://raw.githubusercontent.com/xero/dotfiles/refs/heads/main/fun/.local/bin/rain'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/xero/dotfiles/5204a2b74f9af6b979b88f71a696eca872396a33/fun/.local/bin/rain'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/sapegin/dotfiles branch=master
 ['{{ .paths.xdg_bin_home }}/starship-git-simple']
 type = 'file'
-url = 'https://raw.githubusercontent.com/sapegin/dotfiles/refs/heads/master/bin/lib/starship-git-simple'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/sapegin/dotfiles/44d02f2d236a46408709c5a78539af2763d51a83/bin/lib/starship-git-simple'
+refreshPeriod = '0'
 executable = true
 
+# renovate: datasource=git-refs depName=https://github.com/juven/maven-bash-completion branch=master
 ['{{ .paths.xdg_data_home }}/bash-completion/completions/mvn']
 type = 'file'
-url = 'https://raw.githubusercontent.com/juven/maven-bash-completion/refs/heads/master/bash_completion.bash'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/juven/maven-bash-completion/216cd667b6119fe200c98b1ac2d030ac002be197/bash_completion.bash'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/nordtheme/gedit branch=develop
 ['{{ .paths.xdg_data_home }}/gedit/styles/nord.xml']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/gedit/refs/heads/develop/src/xml/nord.xml'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/nordtheme/gedit/8d58a7fdd31176d32d4c152b3642b27403ca02eb/src/xml/nord.xml'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/nordtheme/konsole branch=develop
 ['{{ .paths.xdg_data_home }}/konsole/nord.colorscheme']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/konsole/refs/heads/develop/src/nord.colorscheme'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/nordtheme/konsole/fb117d12e2152a7a317927ce1f964f17e791764e/src/nord.colorscheme'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/SilentGlasses/warp_themes branch=main
 ['{{ .paths.xdg_data_home }}/warp-terminal/themes/nord_dark.yaml']
 type = 'file'
-url = 'https://raw.githubusercontent.com/SilentGlasses/warp_themes/refs/heads/main/yaml_files/nord_dark.yaml'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/SilentGlasses/warp_themes/b9494d49181db84cfd89652baf18ad9a0b5bedf5/yaml_files/nord_dark.yaml'
+refreshPeriod = '0'
 
+# renovate: datasource=git-refs depName=https://github.com/nordtheme/xfce-terminal branch=develop
 ['{{ .paths.xdg_data_home }}/xfce4/terminal/colorschemes/nord.theme']
 type = 'file'
-url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/refs/heads/develop/src/nord.theme'
-refreshPeriod = '1h'
+url = 'https://raw.githubusercontent.com/nordtheme/xfce-terminal/25866d6af8d6532e4b968f183a28bf5df92fae06/src/nord.theme'
+refreshPeriod = '0'
 
 ['{{ .paths.personal_projects_dir }}/crypt']
 type = 'git-repo'
