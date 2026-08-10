@@ -31,6 +31,14 @@ repos:
           - --diff
         files: '\.(sh|bash)$'
         exclude: '(^|/)symlink_'
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.38.0
+    hooks:
+      - id: check-jsonschema
+        name: validate .chezmoidata.yaml against schema
+        files: '^\.chezmoidata\.(yaml|schema\.json)$'
+        pass_filenames: false
+        args: [--schemafile, .chezmoidata.schema.json, .chezmoidata.yaml]
   - repo: local
     hooks:
       - id: render-lint-sh-tmpl

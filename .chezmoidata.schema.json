@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "chezmoidata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["hostnames", "paths", "age", "weather"],
+  "properties": {
+    "hostnames": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["personal_desktop", "personal_laptop", "work_laptop"],
+      "properties": {
+        "personal_desktop": { "$ref": "#/$defs/hostname" },
+        "personal_laptop": { "$ref": "#/$defs/hostname" },
+        "work_laptop": { "$ref": "#/$defs/hostname" }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/homeRelativePath" }
+    },
+    "age": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_key"],
+      "properties": {
+        "public_key": { "type": "string", "pattern": "^age1[0-9a-z]{58}$" }
+      }
+    },
+    "weather": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wttr_city"],
+      "properties": {
+        "wttr_city": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "hostname": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "homeRelativePath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*//)(?!.*(^|/)\\.\\.($|/))(?!.*~)\\S+(?<!/)$"
+    }
+  }
+}
