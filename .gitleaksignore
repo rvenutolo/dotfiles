@@ -1,0 +1,6 @@
+# False positives: SHA-256 checksums of publicly-fetched ciphertext files
+# (not secrets themselves — the ciphertexts they hash are already public in
+# https://github.com/rvenutolo/crypt). gitleaks' generic-api-key rule flags
+# the hex strings on entropy alone.
+.chezmoidata.schema.json:generic-api-key:34
+.chezmoidata.yaml:generic-api-key:42

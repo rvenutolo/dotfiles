@@ -3,7 +3,7 @@
   "title": "chezmoidata",
   "type": "object",
   "additionalProperties": false,
-  "required": ["hostnames", "paths", "age", "weather"],
+  "required": ["hostnames", "paths", "age", "checksums", "weather"],
   "properties": {
     "hostnames": {
       "type": "object",
@@ -28,6 +28,16 @@
         "public_key": { "type": "string", "pattern": "^age1[0-9a-z]{58}$" }
       }
     },
+    "checksums": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["crypt_age_key", "crypt_id_ed25519", "crypt_id_ed25519_pub"],
+      "properties": {
+        "crypt_age_key": { "$ref": "#/$defs/sha256" },
+        "crypt_id_ed25519": { "$ref": "#/$defs/sha256" },
+        "crypt_id_ed25519_pub": { "$ref": "#/$defs/sha256" }
+      }
+    },
     "weather": {
       "type": "object",
       "additionalProperties": false,
@@ -42,6 +52,7 @@
     "homeRelativePath": {
       "type": "string",
       "pattern": "^(?!/)(?!.*//)(?!.*(^|/)\\.\\.($|/))(?!.*~)\\S+(?<!/)$"
-    }
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
   }
 }
