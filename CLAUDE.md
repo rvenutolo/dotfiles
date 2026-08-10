@@ -183,9 +183,11 @@ All other rules — quoting, `${var}` braces, `function` keyword, `[[ ]]`, long 
 ### Pre-commit hooks
 
 `.pre-commit-config.yaml` enforces shellcheck/shfmt (including rendered
-`*.sh.tmpl`), gitleaks secret scanning, and a guard against `{{ env "FOO" }}`
-in templates. Install once per clone with `just hooks`. CI runs the identical
-config, so a commit that passes locally passes the lint job.
+`*.sh.tmpl`), gitleaks secret scanning, a guard against `env "FOO"` in
+templates, and schema validation of `.chezmoidata.yaml` against
+`.chezmoidata.schema.json` via a check-jsonschema hook. Install once per
+clone with `just hooks`. CI runs the identical config, so a commit that
+passes locally passes the lint job.
 
 ## When Adding Files
 
