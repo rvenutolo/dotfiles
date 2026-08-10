@@ -44,7 +44,7 @@ baked at `chezmoi init` time — hosts must re-init to pick up changes.
 
 ## Standard Env Vars
 
-Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.age.*`, `.weather.*`.
+Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, git repo list, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.age.*`, `.weather.*`.
 
 Shell consumers get the same values via `dot_config/profile.sh.tmpl`, which renders `export FOO=...` lines from `.chezmoidata.yaml` and lands at `${XDG_CONFIG_HOME}/profile.sh` on target. Both shell and chezmoi templates therefore share one source — no need to source profile.sh before `chezmoi init` on a fresh machine.
 

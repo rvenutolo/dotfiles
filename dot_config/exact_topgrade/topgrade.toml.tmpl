@@ -186,10 +186,12 @@ cleanup = true
 [git]
 
 repos = [
-  "{{ .chezmoi.homeDir }}/{{ .paths.crypt_dir }}",
-  "{{ .chezmoi.homeDir }}/{{ .paths.dotfiles_dir }}",
-  "{{ .chezmoi.homeDir }}/{{ .paths.packages_dir }}",
-  "{{ .chezmoi.homeDir }}/{{ .paths.scripts_dir }}"
+{{- range .git_repos }}
+{{- $key := printf "%s_dir" . }}
+{{- $dir := index $.paths $key }}
+{{- if not $dir }}{{ fail (printf "git_repos entry %q has no matching paths.%s" . $key) }}{{ end }}
+  "{{ $.chezmoi.homeDir }}/{{ $dir }}",
+{{- end }}
 ]
 
 # How many repos to pull at max in parallel
