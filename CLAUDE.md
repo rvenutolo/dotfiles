@@ -78,7 +78,7 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
 - `.chezmoiexternal.toml.tmpl` — external resources (files / git-repos / archives) chezmoi fetches and places under target paths; `refreshPeriod` controls TTL. Cache lives at `~/.cache/chezmoi/`; `chezmoi apply --refresh-externals` forces refetch
 - `.chezmoiignore` — paths in source state that should NOT be applied (`README.md`, `TODO`, `age.key.ENCRYPTED`)
 - `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch, post-apply URL rewrite). `run_once_before_00-install-packages.sh` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
-- `exact_dot_etc/` — config files that may be symlinked into `/etc`; `find-etc-symlinks` reports the link sites
+- `exact_dot_etc/` — config files applied to `~/.etc/` that may be wired into `/etc`. Chezmoi does NOT do the /etc wiring: files are selectively symlinked or copied into `/etc` by set-up scripts in the personal scripts repo (`${PERSONAL_PROJECTS_DIR}/scripts`, e.g. `scripts/set_up/pacman/copy-pacman-conf-file`). `find-etc-symlinks` reports which files are currently linked where
 
 ## Editing Workflow
 
