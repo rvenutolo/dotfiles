@@ -34,6 +34,7 @@ function main() {
   local -i failures=0
   local block_comment=''
   local block_has_digest='false'
+  local block_url_seen='false'
   local line
   while IFS= read -r line; do
     if [[ "${line}" == '# renovate:'* ]]; then
@@ -43,8 +44,15 @@ function main() {
       fi
       block_comment="${line}"
       block_has_digest='false'
-    elif [[ -n "${block_comment}" && "${line}" =~ url\ =\ .*[0-9a-f]{40} ]]; then
-      block_has_digest='true'
+      block_url_seen='false'
+    elif [[ -n "${block_comment}" && "${block_url_seen}" == 'false' && "${line}" =~ ^url\ =\  ]]; then
+      # Only the first `url = ` line after a tag belongs to that tagged
+      # entry; each externals entry has exactly one url line, so a later one
+      # before the next tag belongs to an untagged entry and must not count.
+      block_url_seen='true'
+      if [[ "${line}" =~ [0-9a-f]{40} ]]; then
+        block_has_digest='true'
+      fi
     fi
   done < "${EXTERNALS_FILE}"
   if [[ -n "${block_comment}" && "${block_has_digest}" == 'false' ]]; then
