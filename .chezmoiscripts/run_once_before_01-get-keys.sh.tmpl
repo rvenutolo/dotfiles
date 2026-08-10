@@ -92,8 +92,7 @@ function main() {
     fi
   done
 
-  find "${KEYS_DIR}" -type d -exec chmod 700 {} \;
-  find "${KEYS_DIR}" -type f -exec chmod 600 {} \;
+  chmod --recursive u=rwX,go= "${KEYS_DIR}"
 }
 
 main "$@"

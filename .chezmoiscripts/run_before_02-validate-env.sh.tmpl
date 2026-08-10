@@ -1,0 +1,75 @@
+{{- /* Drift guard for the distro data flags. is_arch/is_debian/is_fedora are
+  baked into chezmoi.toml at `chezmoi init` (see .chezmoi.toml.tmpl) and go
+  stale after a distro change or a config copied between hosts. Compare the
+  baked values against live /etc/os-release on every apply and fail early
+  with a fix hint. Keep the family derivation in sync with
+  .chezmoi.toml.tmpl and run_onchange_before_00-install-packages.sh.tmpl.
+  run_before_ (no once/onchange): drift can appear at any time. */ -}}
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "error: line %s (exit %d): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
+
+readonly BAKED_IS_ARCH='{{ .is_arch }}'
+readonly BAKED_IS_DEBIAN='{{ .is_debian }}'
+readonly BAKED_IS_FEDORA='{{ .is_fedora }}'
+
+function die() {
+  printf '\033[0;31mDIE: %s (at %s:%s line %s)\033[0m\n' \
+    "$*" "${BASH_SOURCE[1]}" "${FUNCNAME[1]}" "${BASH_LINENO[0]}" >&2
+  exit 1
+}
+
+# @description Whether the live os-release ID/ID_LIKE matches a distro family.
+# @arg $1 string Distro family id: arch, debian, or fedora.
+function live_family_is() {
+  local -r family="$1"
+  if [[ "${OS_ID}" == "${family}" ]]; then
+    return 0
+  fi
+  [[ " ${OS_ID_LIKE} " == *" ${family} "* ]]
+}
+
+function main() {
+  local os_id='' os_id_like=''
+  if [[ -r '/etc/os-release' ]]; then
+    # shellcheck disable=SC1091  # runtime system file
+    os_id="$(source '/etc/os-release' && printf '%s' "${ID:-}")"
+    # shellcheck disable=SC1091  # runtime system file
+    os_id_like="$(source '/etc/os-release' && printf '%s' "${ID_LIKE:-}")"
+  fi
+  readonly OS_ID="${os_id}"
+  readonly OS_ID_LIKE="${os_id_like}"
+
+  local -i baked_true_count=0
+  local flag
+  for flag in "${BAKED_IS_ARCH}" "${BAKED_IS_DEBIAN}" "${BAKED_IS_FEDORA}"; do
+    if [[ "${flag}" == 'true' ]]; then
+      baked_true_count=$((baked_true_count + 1))
+    fi
+  done
+  if ((baked_true_count != 1)); then
+    die "expected exactly one distro flag true, got ${baked_true_count} (is_arch=${BAKED_IS_ARCH} is_debian=${BAKED_IS_DEBIAN} is_fedora=${BAKED_IS_FEDORA}) - unsupported distro or stale config; rerun 'chezmoi init'"
+  fi
+
+  local family baked live
+  for family in 'arch' 'debian' 'fedora'; do
+    if live_family_is "${family}"; then
+      live='true'
+    else
+      live='false'
+    fi
+    case "${family}" in
+      'arch') baked="${BAKED_IS_ARCH}" ;;
+      'debian') baked="${BAKED_IS_DEBIAN}" ;;
+      'fedora') baked="${BAKED_IS_FEDORA}" ;;
+      *) die "unreachable family: ${family}" ;;
+    esac
+    if [[ "${live}" != "${baked}" ]]; then
+      die "baked is_${family}=${baked} but live /etc/os-release says ${live} - stale flags; rerun 'chezmoi init'"
+    fi
+  done
+}
+
+main "$@"
