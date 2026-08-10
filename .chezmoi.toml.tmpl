@@ -9,6 +9,8 @@
 {{- $paths := $data.paths -}}
 {{- $hostnames := $data.hostnames -}}
 {{- $age := $data.age -}}
+{{- /* CI runners set CI=true; real hosts never do, so is_ci=false there. */ -}}
+{{- $is_ci := not (empty (env "CI")) -}}
 encryption = 'age'
 format = 'yaml'
 progress = true
@@ -26,6 +28,7 @@ is_laptop = {{- if (or (eq .chezmoi.hostname $hostnames.personal_laptop) (eq .ch
 is_wtf = {{- if (eq .chezmoi.hostname "wtf") }} true {{ else }} false {{ end }}
 is_io= {{- if (eq .chezmoi.hostname "io") }} true {{ else }} false {{ end }}
 is_server = {{- if (not (or (eq .chezmoi.hostname $hostnames.personal_desktop) (eq .chezmoi.hostname $hostnames.personal_laptop) (eq .chezmoi.hostname $hostnames.work_laptop))) }} true {{ else }} false {{ end }}
+is_ci = {{ $is_ci }}
 
 [diff]
 command = 'diff'

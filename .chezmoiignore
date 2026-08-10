@@ -20,3 +20,16 @@ dot_local/share/applications/nvim.desktop
 {{- if not .is_work }}
 .config/claude/work/.claude.json
 {{- end }}
+
+{{- /*
+  CI has no access to the real age identity, so anything that calls decrypt
+  can't render there. Skip the known decrypt-dependent targets when running
+  under CI (is_ci, from .chezmoi.toml.tmpl) so the render-verify workflow can
+  still validate every other template.
+*/}}
+{{- if .is_ci }}
+.config/claude/work/.claude.json
+.config/topgrade/topgrade.toml
+.etc/docker-daemon.json
+.etc/network-manager-aws-vpn-dns-fix
+{{- end }}
