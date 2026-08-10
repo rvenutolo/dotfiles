@@ -35,6 +35,11 @@ Prefixes compose: `private_dot_ssh`, `encrypted_private_profile-local-personal.s
 
 `is_desktop` / `is_laptop` / `is_wtf` / `is_io` are also exposed. Templates in this repo gate config blocks on these flags — do not hardcode hostnames in new content; reuse the booleans from `.chezmoi.toml.tmpl` data.
 
+`is_arch` / `is_debian` / `is_fedora` are derived from
+`.chezmoi.osRelease.id` + `.idLike`, so derivatives count (Ubuntu →
+`is_debian`, EndeavourOS → `is_arch`). Like all `[data]` flags they are
+baked at `chezmoi init` time — hosts must re-init to pick up changes.
+
 `is_ci` is also derived (from the runtime `CI` env var, true when `chezmoi init` runs under GitHub Actions) and is used in `.chezmoiignore` to skip decrypt-dependent targets that CI has no age identity to render.
 
 ## Standard Env Vars
