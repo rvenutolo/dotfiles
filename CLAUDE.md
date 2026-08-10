@@ -89,7 +89,7 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   Pinned URLs are immutable, so pinned entries use `refreshPeriod = '0'`; a SHA
   bump changes the URL, which busts the cache and refetches on the next apply.
 - `.chezmoiignore` — paths in source state that should NOT be applied (`README.md`, `TODO`, `age.key.ENCRYPTED`)
-- `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch, post-apply URL rewrite). `run_onchange_before_00-install-packages.sh.tmpl` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
+- `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch). `run_onchange_before_00-install-packages.sh.tmpl` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
 - `exact_dot_etc/` — config files applied to `~/.etc/` that may be wired into `/etc`. Chezmoi does NOT do the /etc wiring: files are selectively symlinked or copied into `/etc` by set-up scripts in the personal scripts repo (`${PERSONAL_PROJECTS_DIR}/scripts`, e.g. `scripts/set_up/pacman/copy-pacman-conf-file`). `find-etc-symlinks` reports which files are currently linked where
 
 ## Editing Workflow
