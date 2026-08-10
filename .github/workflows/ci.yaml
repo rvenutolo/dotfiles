@@ -23,6 +23,10 @@ jobs:
           mkdir --parents "$(dirname "$HOME/.local/share/chezmoi")"
           ln --symbolic "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
           chezmoi init
+      - name: Install shfmt (needed by the render-lint-sh-tmpl hook)
+        run: |
+          go install mvdan.cc/sh/v3/cmd/shfmt@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -48,4 +52,4 @@ jobs:
           ln --symbolic "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
           chezmoi init
       - name: Render every managed target (dry run)
-        run: chezmoi apply --dry-run --exclude encrypted,externals,scripts
+        run: chezmoi apply --dry-run --no-tty --exclude encrypted,externals,scripts
