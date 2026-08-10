@@ -39,6 +39,10 @@ function main() {
     mapfile -t files < <(git ls-files -- '*.sh' '*.bash' '*.sh.tmpl')
   fi
   for file in "${files[@]}"; do
+    # chezmoi symlink_ sources contain a link target path, not bash — skip.
+    if [[ "${file##*/}" == symlink_* ]]; then
+      continue
+    fi
     lint_file "${file}"
   done
 }
