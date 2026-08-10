@@ -9,13 +9,16 @@
 # to PATH for every installed candidate — the environment sdkman-init.sh's
 # eager loop builds, without its ~160 ms cost in every shell. Pure parameter
 # expansion, no subprocesses. The `sdk` function itself is lazy-loaded on
-# first use (see interactive.bash).
+# first use (see interactive.bash). SDKMAN_CANDIDATES_DIR is exported too —
+# external scripts (e.g. the scripts repo's java-installed) and sdkman's
+# contrib completion read it without running the full init.
 if [[ -d "${SDKMAN_DIR}/candidates" ]]; then
+  export SDKMAN_CANDIDATES_DIR="${SDKMAN_DIR}/candidates"
   for __sdkman_current in "${SDKMAN_DIR}/candidates"/*/current; do
     if [[ -d "${__sdkman_current}" ]]; then
       __sdkman_name="${__sdkman_current%/current}"
       __sdkman_name="${__sdkman_name##*/}"
-      if [[ "${__sdkman_name}" =~ ^[a-zA-Z0-9]+$ ]]; then
+      if [[ "${__sdkman_name}" =~ ^[a-zA-Z][a-zA-Z0-9]*$ ]]; then
         export "${__sdkman_name^^}_HOME=${__sdkman_current}"
         if [[ ":${PATH}:" != *":${__sdkman_current}/bin:"* ]]; then
           PATH="${__sdkman_current}/bin:${PATH}"
