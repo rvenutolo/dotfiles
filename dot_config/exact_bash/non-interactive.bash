@@ -5,21 +5,24 @@
 # interactivity. Anything that produces output, calls `complete`, or
 # otherwise assumes an interactive shell belongs in interactive.bash.
 
-# Pre-set sdkman_auto_complete=false because sdkman-init.sh calls the
-# `complete` builtin, which is unavailable in non-interactive shells.
-# ${SDKMAN_DIR}/etc/config sets sdkman_auto_complete=true and is sourced
-# inside sdkman-init.sh, clobbering this pre-set. Shadow `complete` as a
-# no-op for the duration of the source to swallow the resulting error
-# without patching SDKMAN itself. interactive.bash re-sources
-# sdkman-init.sh later with completion enabled, by which point the shim
-# is gone and the real builtin is in effect.
-# shellcheck disable=SC2034  # consumed by sdkman-init.sh below
-sdkman_auto_complete=false
-# shellcheck disable=SC2329  # invoked indirectly: sdkman-init.sh calls `complete`
-function complete() { :; }
-if [[ -r "${SDKMAN_DIR}/bin/sdkman-init.sh" ]]; then
-  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
-  source "${SDKMAN_DIR}/bin/sdkman-init.sh"
+# SDKMAN fast path: export <CANDIDATE>_HOME and prepend <candidate>/current/bin
+# to PATH for every installed candidate — the environment sdkman-init.sh's
+# eager loop builds, without its ~160 ms cost in every shell. Pure parameter
+# expansion, no subprocesses. The `sdk` function itself is lazy-loaded on
+# first use (see interactive.bash).
+if [[ -d "${SDKMAN_DIR}/candidates" ]]; then
+  for __sdkman_current in "${SDKMAN_DIR}/candidates"/*/current; do
+    if [[ -d "${__sdkman_current}" ]]; then
+      __sdkman_name="${__sdkman_current%/current}"
+      __sdkman_name="${__sdkman_name##*/}"
+      if [[ "${__sdkman_name}" =~ ^[a-zA-Z0-9]+$ ]]; then
+        export "${__sdkman_name^^}_HOME=${__sdkman_current}"
+        if [[ ":${PATH}:" != *":${__sdkman_current}/bin:"* ]]; then
+          PATH="${__sdkman_current}/bin:${PATH}"
+        fi
+      fi
+    fi
+  done
+  export PATH
+  unset -v __sdkman_current __sdkman_name
 fi
-unset -f complete
-unset sdkman_auto_complete
