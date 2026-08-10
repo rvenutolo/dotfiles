@@ -97,6 +97,10 @@ cleanup = true
 # Commands to run after anything
 [post_commands]
 # "Emacs Snapshot" = "rm -rf ~/.emacs.d/elpa.bak && cp -rl ~/.emacs.d/elpa ~/.emacs.d/elpa.bak"
+# Surface (never fail on) chezmoi drift after upgrades. `status` always
+# exits 0, so this cannot mark the topgrade run FAILED. --exclude=scripts:
+# the always-run editor script would otherwise report as pending forever.
+"Chezmoi drift" = "chezmoi status --exclude=scripts"
 
 # Custom commands
 [commands]
