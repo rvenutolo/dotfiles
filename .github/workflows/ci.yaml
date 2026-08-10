@@ -25,7 +25,7 @@ jobs:
           chezmoi init
       - name: Install shfmt (needed by the render-lint-sh-tmpl hook)
         run: |
-          go install mvdan.cc/sh/v3/cmd/shfmt@latest
+          go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - uses: actions/setup-python@v5
         with:

@@ -27,7 +27,7 @@ dot_local/share/applications/nvim.desktop
   under CI (is_ci, from .chezmoi.toml.tmpl) so the render-verify workflow can
   still validate every other template.
 */}}
-{{- if .is_ci }}
+{{- if and (hasKey . "is_ci") .is_ci }}
 .config/claude/work/.claude.json
 .config/topgrade/topgrade.toml
 .etc/docker-daemon.json
