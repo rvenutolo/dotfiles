@@ -37,6 +37,8 @@ age:
 
 # SHA-256 of the age ciphertexts fetched by run_once_before_01-get-keys.sh.tmpl
 # (hash of the file content as captured by "$(curl ...)" then piped via <<<).
+# This matches hashing the file directly (as docs/age-rotation.md does) only
+# because armored age output ends with exactly one trailing newline.
 # Rotating keys in the crypt repo requires updating these values.
 checksums:
   crypt_age_key: 7a7e085779b6356da306b22ef8b2f555000209e742821c421150daf62204d80f
