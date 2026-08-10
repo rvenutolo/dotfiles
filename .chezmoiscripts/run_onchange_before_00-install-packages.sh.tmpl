@@ -1,0 +1,53 @@
+{{- /* Reads osRelease directly (not the .is_* data flags) so rendering
+  never depends on a freshly re-inited chezmoi config; keep the
+  derivation in sync with .chezmoi.toml.tmpl. run_onchange_: rendered
+  content changes (script edits) re-run this, full upgrade included —
+  accepted, see #53. */ -}}
+{{- $osRelease := get .chezmoi "osRelease" | default dict -}}
+{{- $osId := get $osRelease "id" | default "" -}}
+{{- $osIdLike := splitList " " (get $osRelease "idLike" | default "") -}}
+{{- $isDebian := or (eq $osId "debian") (has "debian" $osIdLike) -}}
+{{- $isFedora := or (eq $osId "fedora") (has "fedora" $osIdLike) -}}
+{{- $isArch := or (eq $osId "arch") (has "arch" $osIdLike) -}}
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "error: line %s (exit %d): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
+
+function log() {
+  printf '\033[0;32m[%s %s] %s\033[0m\n' "$(date +%T)" "${0##*/}" "$*" >&2
+}
+
+{{ if $isDebian -}}
+function main() {
+  log 'Updating packages with apt'
+  sudo apt update
+  sudo apt upgrade --yes
+  sudo apt install --yes age curl git jq openssh-client
+}
+{{ else if $isFedora -}}
+function main() {
+  log 'Updating packages with dnf'
+  sudo dnf upgrade
+  sudo dnf install --assumeyes age curl git jq openssh
+}
+{{ else if $isArch -}}
+function main() {
+  log 'Updating packages with pacman'
+  sudo pacman --sync --refresh --sysupgrade
+  sudo pacman --sync --refresh --needed --noconfirm age curl git jq openssh
+}
+{{ else -}}
+function die() {
+  printf '\033[0;31mDIE: %s (at %s:%s line %s)\033[0m\n' \
+    "$*" "${BASH_SOURCE[1]}" "${FUNCNAME[1]}" "${BASH_LINENO[0]}" >&2
+  exit 1
+}
+
+function main() {
+  die 'Unknown distro - Please install age, curl, git, jq, and ssh'
+}
+{{ end -}}
+
+main "$@"
