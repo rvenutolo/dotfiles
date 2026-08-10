@@ -1,0 +1,45 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: check-yaml
+        exclude: '\.tmpl$'
+      - id: check-added-large-files
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        files: '\.(sh|bash)$'
+        exclude: '(^|/)symlink_'
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.13.1-1
+    hooks:
+      - id: shfmt
+        args:
+          - --indent
+          - '2'
+          - --case-indent
+          - --binary-next-line
+          - --space-redirects
+          - --diff
+        files: '\.(sh|bash)$'
+        exclude: '(^|/)symlink_'
+  - repo: local
+    hooks:
+      - id: render-lint-sh-tmpl
+        name: render and lint *.sh.tmpl via chezmoi
+        language: system
+        entry: .dev/lint-bash.sh
+        files: '\.sh\.tmpl$'
+      - id: no-env-template-func
+        name: forbid {{ env "..." }} in templates (use chezmoidata)
+        language: pygrep
+        entry: '\{\{-?\s*env\s'
+        files: '\.tmpl$'
