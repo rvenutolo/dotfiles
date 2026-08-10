@@ -35,6 +35,8 @@ Prefixes compose: `private_dot_ssh`, `encrypted_private_profile-local-personal.s
 
 `is_desktop` / `is_laptop` / `is_wtf` / `is_io` are also exposed. Templates in this repo gate config blocks on these flags — do not hardcode hostnames in new content; reuse the booleans from `.chezmoi.toml.tmpl` data.
 
+`is_ci` is also derived (from the runtime `CI` env var, true when `chezmoi init` runs under GitHub Actions) and is used in `.chezmoiignore` to skip decrypt-dependent targets that CI has no age identity to render.
+
 ## Standard Env Vars
 
 Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.age.*`, `.weather.*`.

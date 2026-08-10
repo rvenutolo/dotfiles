@@ -43,3 +43,8 @@ repos:
         language: pygrep
         entry: '\{\{-?\s*env\s'
         files: '\.tmpl$'
+        # .chezmoi.toml.tmpl legitimately reads runtime env (CI=true) to derive
+        # is_ci at chezmoi-init time, before chezmoidata is even loaded. This
+        # guard exists to stop path/hostname env usage in managed templates,
+        # not to block that one legitimate runtime-env read.
+        exclude: '^\.chezmoi\.toml\.tmpl$'
