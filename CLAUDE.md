@@ -162,6 +162,9 @@ The get-keys bootstrap script verifies fetched ciphertexts against SHA-256
 hashes pinned in `.chezmoidata.yaml` (`checksums:`); rotating keys requires
 updating those hashes.
 
+Rotation procedures (passphrase, age identity, SSH keypair) are documented
+in `docs/age-rotation.md`.
+
 ## Scripts
 
 Bootstrap scripts under `.chezmoiscripts/` and any new shell helpers must follow the bash style rules at `${PERSONAL_PROJECTS_DIR}/claude-rules/generic.bash-style.md`: `#!/usr/bin/env bash`, `set -Eeuo pipefail` with `IFS=$'\n\t'`, long CLI options, `[[ ]]` over `[ ]`, quoted `${var}` expansions, `function name()` syntax, `readonly UPPER_SNAKE_CASE` constants, shdoc `# @description` / `# @arg` comments, etc. Read that file before writing or editing shell code — the list here is a summary, not the rule set.
