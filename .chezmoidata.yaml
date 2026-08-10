@@ -33,8 +33,10 @@ paths:
   xdg_state_home: .local/state
 
 # Personal git repos topgrade keeps updated; entries name paths keys —
-# `<name>` must have a matching `<name>_dir` under paths (template render
-# fails otherwise, which CI catches).
+# `<name>` must have a matching `<name>_dir` under paths. Enforced twice:
+# render-time `{{ fail }}` guard in topgrade.toml.tmpl (apply-time backstop;
+# CI does not render this target) and `.dev/check-paths.sh --git-repos-only`
+# via pre-commit (merge-time enforcement, runs in CI on every push/PR).
 git_repos:
   - crypt
   - dotfiles
