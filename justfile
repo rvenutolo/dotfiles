@@ -37,3 +37,7 @@ lint:
 # Auto-format all plain bash files in place.
 fmt:
   shfmt --list --indent 2 --case-indent --binary-next-line --space-redirects --write $(git ls-files -- '*.sh' '*.bash')
+
+# Install the pre-commit git hooks.
+hooks:
+  pre-commit install
