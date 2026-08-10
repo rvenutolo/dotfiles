@@ -2,6 +2,8 @@ AcceptEnv LANG LC_*
 AllowUsers {{ .chezmoi.username }}
 AuthenticationMethods publickey
 Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com
+ClientAliveCountMax 2
+ClientAliveInterval 300
 KbdInteractiveAuthentication no
 KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
 LoginGraceTime 30s
