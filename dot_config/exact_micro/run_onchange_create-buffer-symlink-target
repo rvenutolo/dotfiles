@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+# Creates the target directory for dot_config/exact_micro/symlink_buffers.tmpl
+# (git cannot track an empty directory). run_onchange_: content is static, so
+# it only needs to run when this script itself changes (or on first apply).
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "error: line %s (exit %d): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
+
+mkdir --parents "${XDG_STATE_HOME:-${HOME}/.local/state}/micro/buffers"

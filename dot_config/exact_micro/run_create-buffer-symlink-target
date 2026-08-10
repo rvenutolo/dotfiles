@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-set -Eeuo pipefail
-IFS=$'\n\t'
-
-mkdir --parents "${XDG_STATE_HOME}/micro/buffers"
