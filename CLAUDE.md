@@ -178,6 +178,13 @@ chezmoi execute-template < <script>.tmpl | shellcheck -
 
 All other rules — quoting, `${var}` braces, `function` keyword, `[[ ]]`, long options, shdoc comments, `shellcheck`, `shfmt` — still apply to them.
 
+### Pre-commit hooks
+
+`.pre-commit-config.yaml` enforces shellcheck/shfmt (including rendered
+`*.sh.tmpl`), gitleaks secret scanning, and a guard against `{{ env "FOO" }}`
+in templates. Install once per clone with `just hooks`. CI runs the identical
+config, so a commit that passes locally passes the lint job.
+
 ## When Adding Files
 
 1. Pick the correct prefix chain for the target path/mode/semantics.
