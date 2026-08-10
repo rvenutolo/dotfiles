@@ -104,15 +104,20 @@ for file in \
 done
 unset -v file
 
-# Re-source SDKMAN init with completion enabled. non-interactive.bash
-# sourced it with sdkman_auto_complete=false to skip the `complete` call
-# (which errors in non-interactive shells). Re-sourcing here, with the
-# default (true), adds the `sdk` completion. PATH and the `sdk` function
-# are idempotent under a second source.
-if [[ -r "${SDKMAN_DIR}/bin/sdkman-init.sh" ]]; then
-  # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
-  source "${SDKMAN_DIR}/bin/sdkman-init.sh"
-fi
+# Lazy-load SDKMAN. non-interactive.bash already built the candidate
+# PATH/*_HOME environment cheaply; the full sdkman-init.sh source (~150 ms:
+# sdk function, module sourcing) is deferred to the first `sdk` call.
+# .sdkmanrc auto-env switching is disabled by design (sdkman_auto_env=false
+# in the managed sdkman config) — it would need init's PROMPT_COMMAND hook.
+# shellcheck disable=SC2329  # invoked on first `sdk` use
+function sdk() {
+  unset -f sdk
+  if [[ -r "${SDKMAN_DIR}/bin/sdkman-init.sh" ]]; then
+    # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
+    source "${SDKMAN_DIR}/bin/sdkman-init.sh"
+  fi
+  sdk "$@"
+}
 
 # completions to source
 for file in \
@@ -124,7 +129,8 @@ for file in \
   '/usr/share/the_silver_searcher/completions/ag.bashcomp.sh' \
   '/etc/bash_completion' \
   "${SDKMAN_DIR}/candidates/mvnd/current/bin/mvnd-bash-completion.bash" \
-  "${SDKMAN_DIR}/candidates/springboot/current/shell-completion/bash/spring"; do
+  "${SDKMAN_DIR}/candidates/springboot/current/shell-completion/bash/spring" \
+  "${SDKMAN_DIR}/contrib/completion/bash/sdk"; do
   if [[ -r "${file}" ]]; then
     # shellcheck source=/dev/null  # sourced at runtime; path not statically resolvable
     source "${file}"
@@ -150,11 +156,18 @@ path_prepend "${SCRIPTS_DIR}/interactive"
 [[ -r "${XDG_CONFIG_HOME}/dircolors" ]] && eval "$(dircolors "${XDG_CONFIG_HOME}/dircolors")"
 command -v 'aws_completer' > /dev/null 2>&1 && complete -C 'aws_completer' aws
 command -v 'appman' > /dev/null 2>&1 && complete -W "$(cat "${XDG_DATA_HOME}/appman/appman/list" 2> /dev/null)" appman
+# carapace registers bundled completers for ~1000 commands (including chezmoi,
+# just, kubectl). `complete` is last-write-wins: the lines after it deliberately
+# override specific commands with the tool's own generated completion, which
+# tracks the installed binary exactly. just stays on carapace — its completer
+# parses the local justfile (recipe-aware), better than just's static one.
 # shellcheck disable=SC1090  # completions generated at runtime; no file to follow
 command -v 'carapace' > /dev/null 2>&1 && source <(carapace _carapace)
 command -v 'batpipe' > /dev/null 2>&1 && eval "$(batpipe)"
 # shellcheck disable=SC1090  # completions generated at runtime; no file to follow
 command -v 'kubectl' > /dev/null 2>&1 && source <(kubectl completion bash)
+# shellcheck disable=SC1090  # completions generated at runtime; no file to follow
+command -v 'chezmoi' > /dev/null 2>&1 && source <(chezmoi completion bash)
 command -v 'zoxide' > /dev/null 2>&1 && export _ZO_DOCTOR='0' && eval "$(zoxide init bash)"
 
 # add completions for aliases
