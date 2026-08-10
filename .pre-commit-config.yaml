@@ -48,6 +48,12 @@ repos:
         language: system
         entry: .dev/lint-bash.sh
         files: '\.sh\.tmpl$'
+      - id: check-renovate-digests
+        name: enforce digest presence for renovate-tagged externals
+        language: system
+        entry: .dev/check-renovate-digests.sh
+        files: '^\.chezmoiexternal\.toml\.tmpl$'
+        pass_filenames: false
       - id: no-env-template-func
         name: forbid env "..." in templates (use chezmoidata)
         language: pygrep
