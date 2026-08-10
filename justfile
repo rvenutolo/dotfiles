@@ -41,3 +41,7 @@ fmt:
 # Install the pre-commit git hooks.
 hooks:
   pre-commit install
+
+# Check that every chezmoidata paths.* entry exists under $HOME.
+check-paths:
+  ./.dev/check-paths.sh
