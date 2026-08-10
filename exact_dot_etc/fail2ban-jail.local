@@ -2,6 +2,6 @@
 ignoreip = 127.0.0.1/8 ::1 100.64.0.0/10
 bantime = 365d
 findtime = 10m
-maxretry = 3
+maxretry = 10
 backend = systemd
 usedns = no
