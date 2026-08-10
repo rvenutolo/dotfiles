@@ -19,7 +19,10 @@ jobs:
           sh -c "$(curl --disable --fail --silent --location --show-error get.chezmoi.io)" -- -b "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Init chezmoi config (runner hostname -> is_server)
-        run: chezmoi init --source "$GITHUB_WORKSPACE"
+        run: |
+          mkdir --parents "$(dirname "$HOME/.local/share/chezmoi")"
+          ln --symbolic "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
+          chezmoi init
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -40,6 +43,9 @@ jobs:
       - name: Become ${{ matrix.host }}
         run: sudo hostnamectl set-hostname '${{ matrix.host }}'
       - name: Init chezmoi config as ${{ matrix.host }}
-        run: chezmoi init --source "$GITHUB_WORKSPACE"
+        run: |
+          mkdir --parents "$(dirname "$HOME/.local/share/chezmoi")"
+          ln --symbolic "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
+          chezmoi init
       - name: Render every managed target (dry run)
         run: chezmoi apply --dry-run --exclude encrypted,externals,scripts
