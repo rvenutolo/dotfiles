@@ -19,7 +19,7 @@ function lint_file() {
   local rendered
   case "${file}" in
     *.sh.tmpl)
-      rendered="$(chezmoi execute-template < "${file}")"
+      rendered="$(chezmoi execute-template --source "$(git rev-parse --show-toplevel)" < "${file}")"
       shellcheck --shell=bash - <<< "${rendered}"
       shfmt "${SHFMT_ARGS[@]}" --diff - <<< "${rendered}"
       ;;
