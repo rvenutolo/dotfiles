@@ -1,0 +1,32 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['config:recommended', ':timezone(America/New_York)'],
+  schedule: ['before 6am on monday'],
+  // Only these managers — everything else in this repo is chezmoi target
+  // state, not dependency manifests.
+  enabledManagers: ['github-actions', 'pre-commit', 'custom.regex'],
+  'pre-commit': { enabled: true },
+  packageRules: [
+    {
+      // Low-risk GitHub Actions updates automerge once CI is green;
+      // minor/major stay manual. External SHA bumps and pre-commit rev
+      // bumps are always manual (unreviewed third-party code).
+      matchManagers: ['github-actions'],
+      matchUpdateTypes: ['pin', 'digest', 'patch'],
+      automerge: true,
+    },
+  ],
+  customManagers: [
+    {
+      // Matches the "# renovate:" hook comments in .chezmoiexternal.toml.tmpl
+      // (see CLAUDE.md, externals pinning policy). currentDigest is the
+      // 40-hex commit SHA embedded in the url line below each comment.
+      customType: 'regex',
+      managerFilePatterns: ['/^\\.chezmoiexternal\\.toml\\.tmpl$/'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<packageName>\\S+) branch=(?<currentValue>\\S+)[\\s\\S]*?url = [^\\n]*?(?<currentDigest>[0-9a-f]{40})',
+      ],
+      datasourceTemplate: '{{datasource}}',
+    },
+  ],
+}
