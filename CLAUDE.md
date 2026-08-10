@@ -50,7 +50,19 @@ Shell consumers get the same values via `dot_config/profile.sh.tmpl`, which rend
 
 Paths in `.chezmoidata.yaml` are home-relative (no leading slash). Join with `.chezmoi.homeDir` when an absolute path is needed.
 
-Conditional exports in `profile.sh.tmpl` — `EDITOR`, `VISUAL`, `PAGER`, `MANPAGER`, `FILE_MANAGER`, `TAILNET_IP`, `TAILNET_CIDR`, `TERM`, etc. — that are gated on `__executable_exists` / `case` / runtime probes are not in chezmoidata; they're shell-only and not meant for cross-file reuse.
+Conditional exports in `profile.sh.tmpl` — `EDITOR`, `VISUAL`, `PAGER`, `MANPAGER`, `FILE_MANAGER`, `TAILNET_IP`, `TAILNET_CIDR`, `TERM`, etc. — that are gated on `command -v` / `__flatpak_installed` / `__real_cmd` / `case` runtime probes are not in chezmoidata; they're shell-only and not meant for cross-file reuse.
+
+### Editors
+
+- **micro is the primary terminal editor** (decision on #59): first in the
+  `EDITOR` chain in `dot_config/profile.sh.tmpl`, and `chezmoi edit` uses it
+  via `[edit]` in `.chezmoi.toml.tmpl`.
+- nano / hx / nvim / vim / vi are fallbacks for minimal or foreign machines.
+  Their configs (`exact_nano/`, `exact_nvim/`) are deliberately minimal — do
+  not invest in feature parity with micro. hx intentionally ships no config.
+- `VISUAL` is a separate GUI chain (zed → lite-xl → kate, flatpak-aware) that
+  falls back to `$EDITOR`; `.chezmoiscripts/run_after_50-set-default-editor.sh.tmpl`
+  reads it at runtime to set xdg-mime defaults.
 
 ### Usage policy
 
