@@ -133,10 +133,14 @@ Pull from git remote and apply in one step:
 chezmoi update
 ```
 
-Check for drift between source and target (exit code reflects status):
+Check for drift between source and target (exit code reflects status). One
+deliberate always-run script (`run_after_50-set-default-editor.sh.tmpl`, which
+re-reads the runtime `$VISUAL` on every apply) always reports as pending, so
+bare `chezmoi verify` exits 1 even with zero real drift. Use
+`--exclude=scripts` for a real drift signal (the justfile recipes already do):
 
 ```shell
-chezmoi verify
+chezmoi verify --exclude=scripts
 ```
 
 Sanity-check environment (binaries, config, encryption, externals):

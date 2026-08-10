@@ -8,15 +8,15 @@ apply:
 
 # Diff source state against the target.
 diff:
-  chezmoi diff
+  chezmoi diff --exclude=scripts
 
-# Show target files with pending changes.
+# Show target files with pending changes (always-run scripts excluded).
 status:
-  chezmoi status
+  chezmoi status --exclude=scripts
 
-# Check for drift between source and target.
+# Check for drift between source and target (always-run scripts excluded).
 verify:
-  chezmoi verify
+  chezmoi verify --exclude=scripts
 
 # Sanity-check the chezmoi environment.
 doctor:
