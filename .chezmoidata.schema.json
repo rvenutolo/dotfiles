@@ -3,7 +3,7 @@
   "title": "chezmoidata",
   "type": "object",
   "additionalProperties": false,
-  "required": ["hostnames", "paths", "age", "checksums", "weather"],
+  "required": ["hostnames", "paths", "git_repos", "age", "checksums", "weather"],
   "properties": {
     "hostnames": {
       "type": "object",
@@ -19,6 +19,12 @@
       "type": "object",
       "minProperties": 1,
       "additionalProperties": { "$ref": "#/$defs/homeRelativePath" }
+    },
+    "git_repos": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z_]+$" }
     },
     "age": {
       "type": "object",

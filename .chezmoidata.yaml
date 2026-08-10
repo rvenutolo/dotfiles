@@ -32,6 +32,15 @@ paths:
   xdg_projects_dir: Projects
   xdg_state_home: .local/state
 
+# Personal git repos topgrade keeps updated; entries name paths keys —
+# `<name>` must have a matching `<name>_dir` under paths (template render
+# fails otherwise, which CI catches).
+git_repos:
+  - crypt
+  - dotfiles
+  - packages
+  - scripts
+
 age:
   public_key: age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs
 

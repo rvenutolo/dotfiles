@@ -44,7 +44,7 @@ baked at `chezmoi init` time — hosts must re-init to pick up changes.
 
 ## Standard Env Vars
 
-Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.age.*`, `.weather.*`.
+Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, git repo list, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.age.*`, `.weather.*`.
 
 Shell consumers get the same values via `dot_config/profile.sh.tmpl`, which renders `export FOO=...` lines from `.chezmoidata.yaml` and lands at `${XDG_CONFIG_HOME}/profile.sh` on target. Both shell and chezmoi templates therefore share one source — no need to source profile.sh before `chezmoi init` on a fresh machine.
 
@@ -89,7 +89,7 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   Pinned URLs are immutable, so pinned entries use `refreshPeriod = '0'`; a SHA
   bump changes the URL, which busts the cache and refetches on the next apply.
 - `.chezmoiignore` — paths in source state that should NOT be applied (`README.md`, `TODO`, `age.key.ENCRYPTED`)
-- `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch, post-apply URL rewrite). `run_onchange_before_00-install-packages.sh.tmpl` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
+- `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch). `run_onchange_before_00-install-packages.sh.tmpl` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
 - `exact_dot_etc/` — config files applied to `~/.etc/` that may be wired into `/etc`. Chezmoi does NOT do the /etc wiring: files are selectively symlinked or copied into `/etc` by set-up scripts in the personal scripts repo (`${PERSONAL_PROJECTS_DIR}/scripts`, e.g. `scripts/set_up/pacman/copy-pacman-conf-file`). `find-etc-symlinks` reports which files are currently linked where
 
 ## Editing Workflow
