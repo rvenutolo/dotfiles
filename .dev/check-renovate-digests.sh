@@ -3,6 +3,7 @@
 # @description Verify every "# renovate:" tagged entry in
 # .chezmoiexternal.toml.tmpl is followed by a `url = ` line containing a
 # pinned 40-hex-char SHA before the next "# renovate:" comment or EOF.
+# Must be run from the repo root.
 #
 # Renovate's custom regex manager compiles matchStrings with RE2, which has
 # no negative lookahead, so the bridge between the "# renovate:" comment and
