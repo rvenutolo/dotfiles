@@ -99,6 +99,10 @@ export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/ssh-agent.socket"
 export SBT_OPTS="-Dsbt.global.base=${XDG_DATA_HOME}/sbt/1.0 -Dsbt.boot.directory=${XDG_CACHE_HOME}/sbt/boot -Dsbt.repository.config=${XDG_CACHE_HOME}/sbt/repositories -Dsbt.ivy.home=${XDG_CACHE_HOME}/ivy2"
 export STACK_XDG='1'
 export SYSTEMD_PAGER=''
+# Stop uv's cargo-dist installer (run by `uv self update`) from appending
+# `. "$HOME/.local/share/../bin/env"` to ~/.bashrc, ~/.bash_profile, and
+# ~/.profile.
+export UV_NO_MODIFY_PATH='1'
 
 ## GPG TTY
 # `tty` returns "not a tty" in non-interactive shells, which would set a
