@@ -4,7 +4,9 @@
   baked values against live /etc/os-release on every apply and fail early
   with a fix hint. Keep the family derivation in sync with
   .chezmoi.toml.tmpl and run_onchange_before_00-install-packages.sh.tmpl.
-  run_before_ (no once/onchange): drift can appear at any time. */ -}}
+  run_before_ (no once/onchange): drift can appear at any time. Runs
+  alphabetically after 00-install-packages and 01-get-keys among the
+  before-scripts; a die here still aborts the apply before any file lands. */ -}}
 #!/usr/bin/env bash
 
 set -Eeuo pipefail
