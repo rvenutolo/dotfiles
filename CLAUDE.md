@@ -35,6 +35,11 @@ Prefixes compose: `private_dot_ssh`, `encrypted_private_profile-local-personal.s
 
 `is_desktop` / `is_laptop` / `is_wtf` / `is_io` are also exposed. Templates in this repo gate config blocks on these flags — do not hardcode hostnames in new content; reuse the booleans from `.chezmoi.toml.tmpl` data.
 
+`is_arch` / `is_debian` / `is_fedora` are derived from
+`.chezmoi.osRelease.id` + `.idLike`, so derivatives count (Ubuntu →
+`is_debian`, EndeavourOS → `is_arch`). Like all `[data]` flags they are
+baked at `chezmoi init` time — hosts must re-init to pick up changes.
+
 `is_ci` is also derived (from the runtime `CI` env var, true when `chezmoi init` runs under GitHub Actions) and is used in `.chezmoiignore` to skip decrypt-dependent targets that CI has no age identity to render.
 
 ## Standard Env Vars
@@ -84,7 +89,7 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   Pinned URLs are immutable, so pinned entries use `refreshPeriod = '0'`; a SHA
   bump changes the URL, which busts the cache and refetches on the next apply.
 - `.chezmoiignore` — paths in source state that should NOT be applied (`README.md`, `TODO`, `age.key.ENCRYPTED`)
-- `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch, post-apply URL rewrite). `run_once_before_00-install-packages.sh` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
+- `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch, post-apply URL rewrite). `run_onchange_before_00-install-packages.sh.tmpl` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
 - `exact_dot_etc/` — config files applied to `~/.etc/` that may be wired into `/etc`. Chezmoi does NOT do the /etc wiring: files are selectively symlinked or copied into `/etc` by set-up scripts in the personal scripts repo (`${PERSONAL_PROJECTS_DIR}/scripts`, e.g. `scripts/set_up/pacman/copy-pacman-conf-file`). `find-etc-symlinks` reports which files are currently linked where
 
 ## Editing Workflow

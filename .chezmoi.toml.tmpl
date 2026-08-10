@@ -11,6 +11,15 @@
 {{- $age := $data.age -}}
 {{- /* CI runners set CI=true; real hosts never do, so is_ci=false there. */ -}}
 {{- $is_ci := not (empty (env "CI")) -}}
+{{- /* Distro flags from /etc/os-release. idLike covers derivatives
+  (Ubuntu → is_debian, EndeavourOS → is_arch). `get` tolerates absent
+  keys (pure Arch has no ID_LIKE; macOS has no osRelease values).
+  Baked into chezmoi.toml at init — rerun `chezmoi init` to refresh.
+  Keep the derivation in sync with run_onchange_before_00-install-packages.sh.tmpl,
+  which reads osRelease directly so it renders without a re-inited config. */ -}}
+{{- $osRelease := get .chezmoi "osRelease" | default dict -}}
+{{- $osId := get $osRelease "id" | default "" -}}
+{{- $osIdLike := splitList " " (get $osRelease "idLike" | default "") -}}
 encryption = 'age'
 format = 'yaml'
 progress = true
@@ -26,9 +35,12 @@ is_work = {{- if (eq .chezmoi.hostname $hostnames.work_laptop) }} true {{ else }
 is_desktop = {{- if (eq .chezmoi.hostname $hostnames.personal_desktop) }} true {{ else }} false {{ end }}
 is_laptop = {{- if (or (eq .chezmoi.hostname $hostnames.personal_laptop) (eq .chezmoi.hostname $hostnames.work_laptop)) }} true {{ else }} false {{ end }}
 is_wtf = {{- if (eq .chezmoi.hostname "wtf") }} true {{ else }} false {{ end }}
-is_io= {{- if (eq .chezmoi.hostname "io") }} true {{ else }} false {{ end }}
+is_io = {{- if (eq .chezmoi.hostname "io") }} true {{ else }} false {{ end }}
 is_server = {{- if (not (or (eq .chezmoi.hostname $hostnames.personal_desktop) (eq .chezmoi.hostname $hostnames.personal_laptop) (eq .chezmoi.hostname $hostnames.work_laptop))) }} true {{ else }} false {{ end }}
 is_ci = {{ $is_ci }}
+is_arch = {{- if (or (eq $osId "arch") (has "arch" $osIdLike)) }} true {{ else }} false {{ end }}
+is_debian = {{- if (or (eq $osId "debian") (has "debian" $osIdLike)) }} true {{ else }} false {{ end }}
+is_fedora = {{- if (or (eq $osId "fedora") (has "fedora" $osIdLike)) }} true {{ else }} false {{ end }}
 
 [diff]
 command = 'diff'
