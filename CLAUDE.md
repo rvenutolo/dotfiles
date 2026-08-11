@@ -2,6 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Table of Contents
+
+- [Repository Purpose](#repository-purpose)
+- [Access Path](#access-path)
+- [Chezmoi Source-State Conventions](#chezmoi-source-state-conventions)
+- [Host-Specific Templating](#host-specific-templating)
+- [Standard Env Vars](#standard-env-vars)
+  - [Editors](#editors)
+  - [Usage policy](#usage-policy)
+- [Template Data](#template-data)
+- [Key Files](#key-files)
+- [Editing Workflow](#editing-workflow)
+- [Common Commands](#common-commands)
+- [Encryption](#encryption)
+- [Scripts](#scripts)
+  - [Sourced bash files are partially exempt](#sourced-bash-files-are-partially-exempt)
+  - [Pre-commit hooks](#pre-commit-hooks)
+- [When Adding Files](#when-adding-files)
+
 ## Repository Purpose
 
 Personal dotfiles managed by [chezmoi](https://www.chezmoi.io/). The working tree at `${XDG_DATA_HOME}/chezmoi` (i.e. `~/.local/share/chezmoi`) is chezmoi's *source state*; running `chezmoi apply` materializes it into `${HOME}` (and a few system paths) on the target machine.
