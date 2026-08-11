@@ -24,6 +24,12 @@ disable = [
   "jetbrains_datagrip",
   "jetbrains_idea",
   "jetbrains_toolbox",
+{{- if lookPath "determinate-nixd" }}
+  # Determinate Nix deprecates nix-channel (warns on every run); the step's
+  # only useful sub-step there, determinate-nixd self-upgrade, moves to a
+  # custom command below. Regular-Nix hosts keep the step.
+  "nix",
+{{- end }}
   "sdkman"
 ]
 
@@ -105,6 +111,10 @@ cleanup = true
 # "Custom command using interactive shell (unix)" = "-i vim_upgrade"
 "SDKMAN Update" = "sdkman-update"
 "SDKMAN Clean" = "sdkman-clean"
+{{- if lookPath "determinate-nixd" }}
+# Replaces the self-upgrade sub-step of the disabled nix step
+"Determinate Nix Upgrade" = "sudo {{ lookPath "determinate-nixd" }} upgrade"
+{{- end }}
 
 
 [python]
