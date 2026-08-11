@@ -109,12 +109,12 @@ cleanup = true
 [commands]
 # "Python Environment" = "~/dev/.env/bin/pip install -i https://pypi.python.org/simple -U --upgrade-strategy eager jupyter"
 # "Custom command using interactive shell (unix)" = "-i vim_upgrade"
-"SDKMAN Update" = "sdkman-update"
-"SDKMAN Clean" = "sdkman-clean"
 {{- if lookPath "determinate-nixd" }}
 # Replaces the self-upgrade sub-step of the disabled nix step
 "Determinate Nix Upgrade" = "sudo {{ lookPath "determinate-nixd" }} upgrade"
 {{- end }}
+"SDKMAN Update" = "sdkman-update"
+"SDKMAN Clean" = "sdkman-clean"
 
 
 [python]
