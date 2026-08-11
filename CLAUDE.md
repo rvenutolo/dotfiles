@@ -6,6 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Personal dotfiles managed by [chezmoi](https://www.chezmoi.io/). The working tree at `${XDG_DATA_HOME}/chezmoi` (i.e. `~/.local/share/chezmoi`) is chezmoi's *source state*; running `chezmoi apply` materializes it into `${HOME}` (and a few system paths) on the target machine.
 
+Diagrams of the data flow, bootstrap sequence, and state boundaries:
+`docs/ARCHITECTURE.md`.
+
 ## Access Path
 
 User normally accesses this repo via `${DOTFILES_DIR}`, which is a symlink to `${XDG_DATA_HOME}/chezmoi`. Both paths resolve to the same source tree — use either. Prefer `${DOTFILES_DIR}` in user-facing references; resolve to the real path only when a tool requires a canonical location.

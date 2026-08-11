@@ -38,6 +38,9 @@ SCRIPTS_AUTO_ANSWER=y ~/Projects/Personal/scripts/run-set-up-scripts
 Full conventions (source-state prefixes, templating, encryption, script rules):
 see [CLAUDE.md](CLAUDE.md).
 
+For diagrams of the data flow, bootstrap sequence, and state boundaries, see
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Remove Dirs to Reset Chezmoi State
 
 ```shell
