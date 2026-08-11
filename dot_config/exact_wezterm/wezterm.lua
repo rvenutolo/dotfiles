@@ -18,6 +18,11 @@ config.cursor_blink_rate = 1000
 
 config.default_cursor_style = "BlinkingBlock"
 
+-- Without this, wezterm spawns the shell as a login shell (argv[0] = "-bash"),
+-- which sources bash_profile.bash -> login.bash. Naming the program directly
+-- keeps it interactive-non-login, matching alacritty.
+config.default_prog = { os.getenv("SHELL") or "/bin/bash" }
+
 config.enable_scroll_bar = true
 
 config.font = wezterm.font({
