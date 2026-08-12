@@ -232,6 +232,9 @@ zig-out/
 
 ### RE-IGNORE RULES
 
+## Claude Code rules manifest
+.copy-rules-manifest
+
 ## Claude Code skill scratch
 **/.claude/skills/**/*-workspace/
 **/.claude/skills/**/.claude/
