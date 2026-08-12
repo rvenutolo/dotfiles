@@ -194,8 +194,6 @@ zig-out/
 !**/.claude/commands/**
 !**/.claude/hooks
 !**/.claude/hooks/**
-!**/.claude/rules
-!**/.claude/rules/**
 !**/.claude/settings.json
 !**/.claude/skills
 !**/.claude/skills/**
@@ -203,8 +201,6 @@ zig-out/
 !.claude/commands/**
 !.claude/hooks
 !.claude/hooks/**
-!.claude/rules
-!.claude/rules/**
 !.claude/settings.json
 !.claude/skills
 !.claude/skills/**
