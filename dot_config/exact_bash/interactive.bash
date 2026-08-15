@@ -114,9 +114,20 @@ if [[ -r "${SDKMAN_DIR}/bin/sdkman-init.sh" ]]; then
   source "${SDKMAN_DIR}/bin/sdkman-init.sh"
 fi
 
+# prefer the nix-profile bash-completion core library when present:
+# XDG_DATA_DIRS (set in profile.sh.tmpl) puts "${HOME}/.nix-profile/share"
+# ahead of /usr/share, so per-command completions dynamically loaded later
+# (eg. chmod) come from the nix package; sourcing the mismatched /usr/share
+# core library instead breaks those completions with
+# "_comp_initialize: command not found"
+bash_completion_main='/usr/share/bash-completion/bash_completion'
+if [[ -r "${HOME}/.nix-profile/share/bash-completion/bash_completion" ]]; then
+  bash_completion_main="${HOME}/.nix-profile/share/bash-completion/bash_completion"
+fi
+
 # completions to source
 for file in \
-  '/usr/share/bash-completion/bash_completion' \
+  "${bash_completion_main}" \
   '/usr/share/bash/bash-completion/completions/'* \
   '/usr/share/fzf/completion.bash' \
   '/usr/share/git/completion/git-completion.bash' \
@@ -130,7 +141,7 @@ for file in \
     source "${file}"
   fi
 done
-unset -v file
+unset -v file bash_completion_main
 
 # my files to source
 for file in \
