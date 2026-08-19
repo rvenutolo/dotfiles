@@ -43,6 +43,41 @@ git_repos:
   - packages
   - scripts
 
+# Editor/pager preference chains, most-preferred first. `profile.sh.tmpl`
+# renders these into runtime `command -v` probe chains, so a missing binary
+# degrades gracefully instead of exporting a name that is not installed.
+# Other templates read the head of a list for the single preferred binary
+# (e.g. `[edit]` in `.chezmoi.toml.tmpl`, kitty's `scrollback_pager`).
+#
+# Entry shape: `bin` (required), `flatpak_id` (optional; probed before `bin`),
+# `args` (optional; appended to the exported command).
+#
+# The LAST entry of `editors.text` and of `pagers` is the unconditional
+# fallback: it is assumed present and is exported without a probe.
+editors:
+  text:
+    - bin: micro
+    - bin: nano
+    - bin: hx
+    - bin: nvim
+    - bin: vim
+    - bin: vi
+  # GUI chain. Probed with `__real_cmd` (PATH stripped of the script-repo
+  # wrapper dirs) rather than `command -v`, and exported as an absolute path.
+  visual:
+    - bin: zed
+      flatpak_id: dev.zed.Zed
+      args: --wait
+    - bin: lite-xl
+    - bin: kate
+      flatpak_id: org.kde.kate
+      args: --block
+
+pagers:
+  - bin: moor
+  - bin: less
+    args: --ignore-case
+
 age:
   public_key: age1v9umzaqlw3euuwd20l605qeyqp9cmqxf3flzz0eh9gj5vxslsarq6fy8gs
 

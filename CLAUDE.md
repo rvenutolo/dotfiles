@@ -47,25 +47,45 @@ baked at `chezmoi init` time — hosts must re-init to pick up changes.
 
 ## Standard Env Vars
 
-Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, git repo list, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.age.*`, `.weather.*`.
+Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, git repo list, editor/pager chains, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.editors.*`, `.pagers`, `.age.*`, `.weather.*`.
 
 Shell consumers get the same values via `dot_config/profile.sh.tmpl`, which renders `export FOO=...` lines from `.chezmoidata.yaml` and lands at `${XDG_CONFIG_HOME}/profile.sh` on target. Both shell and chezmoi templates therefore share one source — no need to source profile.sh before `chezmoi init` on a fresh machine.
 
 Paths in `.chezmoidata.yaml` are home-relative (no leading slash). Join with `.chezmoi.homeDir` when an absolute path is needed.
 
-Conditional exports in `profile.sh.tmpl` — `EDITOR`, `VISUAL`, `PAGER`, `MANPAGER`, `FILE_MANAGER`, `TAILNET_IP`, `TAILNET_CIDR`, `TERM`, etc. — that are gated on `command -v` / `__flatpak_installed` / `__real_cmd` / `case` runtime probes are not in chezmoidata; they're shell-only and not meant for cross-file reuse.
+The `EDITOR` / `VISUAL` / `PAGER` **preference chains** live in
+`.chezmoidata.yaml` (`editors.text`, `editors.visual`, `pagers`), ordered
+most-preferred first. `profile.sh.tmpl` renders them into the same runtime
+probe chain as before (`command -v` / `__flatpak_installed` / `__real_cmd`), so
+resolution still happens in the shell and a missing binary still degrades
+gracefully — the *data* moved, the *behavior* did not. Templates that need only
+the preferred binary read the head of a list: `{{ (index .editors.text 0).bin }}`
+(`[edit]` in `.chezmoi.toml.tmpl`) and `{{ (index .pagers 0).bin }}`
+(kitty `scrollback_pager`). The last entry of `editors.text` and `pagers` is the
+unconditional fallback — assumed present, rendered without a probe.
+
+Other conditional exports in `profile.sh.tmpl` — `MANPAGER`, `FILE_MANAGER`,
+`TAILNET_IP`, `TAILNET_CIDR`, `TERM`, `SSH_ASKPASS`, etc. — remain shell-only.
+They are derived from runtime state (`XDG_CURRENT_DESKTOP`, `tailscale status`,
+another export) rather than from an ordered preference list, so there is nothing
+for another template to reuse.
 
 ### Editors
 
-- **micro is the primary terminal editor** (decision on #59): first in the
-  `EDITOR` chain in `dot_config/profile.sh.tmpl`, and `chezmoi edit` uses it
-  via `[edit]` in `.chezmoi.toml.tmpl`.
+- **micro is the primary terminal editor** (decision on #59): first in
+  `editors.text` in `.chezmoidata.yaml`, which drives both the `EDITOR` chain
+  rendered into `dot_config/profile.sh.tmpl` and `[edit]` in
+  `.chezmoi.toml.tmpl`. Reorder the list to change the preference; do not edit
+  the rendered chain.
 - nano / hx / nvim / vim / vi are fallbacks for minimal or foreign machines.
   Their configs (`exact_nano/`, `exact_nvim/`) are deliberately minimal — do
   not invest in feature parity with micro. hx intentionally ships no config.
-- `VISUAL` is a separate GUI chain (zed → lite-xl → kate, flatpak-aware) that
-  falls back to `$EDITOR`; `.chezmoiscripts/run_after_50-set-default-editor.sh.tmpl`
-  reads it at runtime to set xdg-mime defaults.
+- `VISUAL` is a separate GUI chain (`editors.visual`: zed → lite-xl → kate,
+  flatpak-aware — each entry probes `flatpak_id` before `bin`) that falls back
+  to `$EDITOR`; `.chezmoiscripts/run_after_50-set-default-editor.sh.tmpl` reads
+  it at runtime to set xdg-mime defaults. That script's `bin` → `.desktop`
+  table is deliberately NOT data-driven: it maps a different fact, and covers
+  editors (code, codium, lapce) that are in no chain.
 
 ### Usage policy
 

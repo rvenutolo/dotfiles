@@ -3,7 +3,7 @@
   "title": "chezmoidata",
   "type": "object",
   "additionalProperties": false,
-  "required": ["hostnames", "paths", "git_repos", "age", "checksums", "weather"],
+  "required": ["hostnames", "paths", "git_repos", "editors", "pagers", "age", "checksums", "weather"],
   "properties": {
     "hostnames": {
       "type": "object",
@@ -26,6 +26,16 @@
       "uniqueItems": true,
       "items": { "type": "string", "pattern": "^[a-z_]+$" }
     },
+    "editors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "visual"],
+      "properties": {
+        "text": { "$ref": "#/$defs/programChain" },
+        "visual": { "$ref": "#/$defs/programChain" }
+      }
+    },
+    "pagers": { "$ref": "#/$defs/programChain" },
     "age": {
       "type": "object",
       "additionalProperties": false,
@@ -59,6 +69,21 @@
       "type": "string",
       "pattern": "^(?!/)(?!.*//)(?!.*(^|/)\\.\\.($|/))(?!.*~)\\S+(?<!/)$"
     },
-    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "programChain": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/programEntry" }
+    },
+    "programEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bin"],
+      "properties": {
+        "bin": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$" },
+        "flatpak_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)+$" },
+        "args": { "type": "string", "minLength": 1 }
+      }
+    }
   }
 }
