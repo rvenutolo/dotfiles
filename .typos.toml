@@ -1,0 +1,26 @@
+# Configuration for the `typos` pre-commit hook.
+#
+# Named .typos.toml rather than _typos.toml (both are read by the tool) so that
+# chezmoi ignores it: chezmoi skips dot-prefixed entries in the source state
+# automatically, whereas _typos.toml would be applied to the target as
+# ~/_typos.toml and need a .chezmoiignore entry to suppress.
+
+[files]
+# Encrypted files are base64 ciphertext, so any two-letter run can collide with
+# a dictionary entry. Nine such false hits were flagged before this exclusion.
+# Excluding them is also a safety measure: the hook's upstream default args are
+# --write-changes, and a spell-checker "correcting" ciphertext corrupts it
+# irrecoverably. The hook overrides those args, but the glob is the backstop.
+extend-exclude = ["*.age"]
+
+[default.extend-words]
+# Real vim motion (visual-select inner word), in exact_nvim/init.vim.
+viw = "viw"
+# LESS_TERMCAP_ue — the termcap capability name for "end underline", not a word.
+ue = "ue"
+# TestNG, the Java test framework, in a WebFetch permission domain.
+testng = "testng"
+# Vert.x, the JVM toolkit, likewise in a permission entry.
+vertx = "vertx"
+# Siduction is a real Debian derivative, listed in neofetch's distro table.
+Siduction = "Siduction"
