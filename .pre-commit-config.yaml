@@ -41,6 +41,27 @@ repos:
         files: '^\.chezmoidata\.(yaml|schema\.json)$'
         pass_filenames: false
         args: [--schemafile, .chezmoidata.schema.json, .chezmoidata.yaml]
+  - repo: https://github.com/crate-ci/typos
+    rev: 8a48f81b6c64dcfea44b3633223084c4be58ac5f  # frozen: v1.49.0
+    hooks:
+      - id: typos
+        # args: [] overrides the upstream default of [--write-changes], which
+        # REWRITES FILES IN PLACE. That default is not a theoretical hazard: a
+        # trial run of it on this repo renamed `extra-substituters` to
+        # `extra-substitutes` in two Nix configs, rewrote a real domain in a
+        # WebFetch permission, renamed the Siduction distro, and inserted a
+        # character into age ciphertext. Never remove this line.
+        #
+        # Hook id is `typos` (language: python, prebuilt binary), NOT
+        # `typos-src`, which is language: rust and compiles from source.
+        #
+        # Word allow-list lives in .typos.toml.
+        args: []
+        # The *.age exclusion has to be here, not only in .typos.toml: that
+        # file's files.extend-exclude is applied while typos WALKS a tree, and
+        # pre-commit passes filenames explicitly, which bypasses the walk. The
+        # .typos.toml glob is kept as the backstop for direct CLI runs.
+        exclude: '\.age$'
   - repo: https://github.com/rhysd/actionlint
     rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # frozen: v1.7.12
     hooks:

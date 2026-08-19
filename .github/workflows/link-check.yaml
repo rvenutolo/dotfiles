@@ -1,0 +1,44 @@
+name: Link check
+
+# Deliberately NOT on pull_request or push. Link checking needs the network and
+# fails for reasons unrelated to the commit under test — a rate limit, an
+# upstream outage, a slow host — so putting it on the PR path would make an
+# otherwise hermetic CI run flaky. Link rot also arrives without a commit, so a
+# schedule is the fitting trigger. A failure here emails the repo owner.
+on:
+  schedule:
+    # Mondays 06:00 UTC. Renovate's own schedule is Saturdays; staggering them
+    # keeps an external repo disappearing distinguishable from a Renovate bump.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          # Markdown holds only a handful of links; the value is in the other
+          # two files. .chezmoiexternal.toml.tmpl pins 37 third-party repos and
+          # .pre-commit-config.yaml another 8, and a repo being renamed or
+          # deleted is exactly the failure Renovate reports as "no new digest"
+          # rather than as an error. Verified: no URL in the externals file is
+          # templated, so lychee reads it without rendering.
+          args: >-
+            --no-progress
+            --include-verbatim
+            **/*.md
+            .pre-commit-config.yaml
+            .chezmoiexternal.toml.tmpl
+          fail: true
+        env:
+          # Roughly 70 of the URLs are on github.com, which rate-limits
+          # unauthenticated requests hard enough to redden the run on its own.
+          # This is the auto-issued job token: repo-scoped, read-only per the
+          # permissions block above, and expired by the time the job ends.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

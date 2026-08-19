@@ -277,8 +277,41 @@ All other rules — quoting, `${var}` braces, `function` keyword, `[[ ]]`, long 
 `*.sh.tmpl`), gitleaks secret scanning, a guard against `env "FOO"` in
 templates, a guard against tag-pinned GitHub Actions, and schema validation
 of `.chezmoidata.yaml` against `.chezmoidata.schema.json` via a
-check-jsonschema hook. Install once per clone with `just hooks`. CI runs the
-identical config, so a commit that passes locally passes the lint job.
+check-jsonschema hook, and spell checking via `typos`. Install once per clone
+with `just hooks`. CI runs the identical config, so a commit that passes
+locally passes the lint job.
+
+The `typos` hook carries two settings that must not be removed:
+
+- **`args: []`** overrides the upstream default of `[--write-changes]`, which
+  rewrites files in place. That default was trialled against this repo and
+  renamed `extra-substituters` to `extra-substitutes` in two Nix configs,
+  rewrote a real domain in a `WebFetch` permission, renamed the Siduction
+  distro in neofetch's table, and inserted a character into age ciphertext.
+- **`exclude: '\.age$'`** — the `files.extend-exclude` glob in `.typos.toml`
+  applies only while typos *walks* a tree, and pre-commit passes filenames
+  explicitly, which bypasses the walk. The glob stays as the backstop for
+  direct CLI runs; the hook-level exclude is what actually takes effect.
+
+Use hook id `typos` (a prebuilt binary), never `typos-src` (compiles from
+source). Word exceptions live in `.typos.toml`, named with a leading dot so
+chezmoi ignores it — `_typos.toml` is read by the same tool but would be
+applied to the target as `~/_typos.toml`.
+
+**Trialling a hook with `pre-commit try-repo` is not read-only.** It runs the
+hook with its upstream `args:`, so a fixer hook fixes. Trial on a clean tree
+you are ready to `git restore`, or invoke the underlying tool directly.
+
+### Scheduled link checking
+
+`.github/workflows/link-check.yaml` runs lychee weekly (Mondays 06:00 UTC) and
+on `workflow_dispatch`, over the markdown files, `.pre-commit-config.yaml`, and
+`.chezmoiexternal.toml.tmpl`. **Keep it off the PR path.** It needs the network
+and fails for reasons unrelated to the commit under test, which would make an
+otherwise hermetic CI run flaky; link rot also arrives without a commit, so a
+schedule is the fitting trigger. It authenticates with the job's `GITHUB_TOKEN`
+because most of the URLs are on github.com, which rate-limits anonymous
+requests hard enough to redden the run by itself.
 
 Two hooks lint the CI plumbing itself:
 
