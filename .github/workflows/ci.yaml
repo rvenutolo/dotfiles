@@ -9,6 +9,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -37,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        host: [redstar, bluestar, silverstar]
+        host: [redstar, bluestar, silverstar, io]
     steps:
       - uses: actions/checkout@v4
       - name: Install chezmoi
