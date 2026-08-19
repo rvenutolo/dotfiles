@@ -253,6 +253,24 @@ of `.chezmoidata.yaml` against `.chezmoidata.schema.json` via a
 check-jsonschema hook. Install once per clone with `just hooks`. CI runs the
 identical config, so a commit that passes locally passes the lint job.
 
+Two hooks lint the CI plumbing itself:
+
+- **actionlint** — validates `.github/workflows/*.yaml` (schema, expressions,
+  matrix/`needs` wiring) and shellchecks the embedded `run:` scripts, which
+  the `shellcheck` hook above cannot reach because it matches `\.(sh|bash)$`.
+  The embedded-script pass runs **only when `shellcheck` is on `PATH`** —
+  actionlint skips it silently and still exits 0 otherwise, so the CI lint job
+  asserts `shellcheck --version` before running pre-commit. Keep that step.
+- **renovate-config-validator** — validates `.github/renovate.json5`. Nothing
+  else does: a typo in a manager name or a broken `matchStrings` regex fails
+  no build, it just makes Renovate stop proposing those updates while the
+  pinned externals quietly go stale.
+
+`renovatebot/pre-commit-hooks` releases track Renovate's own (several per
+week), so `.github/renovate.json5` carries a narrow rule automerging *that one
+repo's* patch/minor `rev:` bumps. It is the only exception to "pre-commit rev
+bumps are reviewed by hand" — do not widen it to other hook repos.
+
 ## When Adding Files
 
 1. Pick the correct prefix chain for the target path/mode/semantics.
