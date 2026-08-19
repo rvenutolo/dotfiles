@@ -158,42 +158,26 @@ __real_cmd() {
     command -v "$1"
   )
 }
-if command -v 'micro' > /dev/null 2>&1; then
-  export EDITOR='micro'
-elif command -v 'nano' > /dev/null 2>&1; then
-  export EDITOR='nano'
-elif command -v 'hx' > /dev/null 2>&1; then
-  export EDITOR='hx'
-elif command -v 'nvim' > /dev/null 2>&1; then
-  export EDITOR='nvim'
-elif command -v 'vim' > /dev/null 2>&1; then
-  export EDITOR='vim'
-else
-  export EDITOR='vi'
+{{ $textProbed := initial .editors.text }}{{ $textFallback := last .editors.text }}{{ range $i, $e := $textProbed }}{{ if eq $i 0 }}if{{ else }}elif{{ end }} command -v '{{ $e.bin }}' > /dev/null 2>&1; then
+  export EDITOR='{{ $e.bin }}{{ with (get $e "args") }} {{ . }}{{ end }}'
+{{ end }}else
+  export EDITOR='{{ $textFallback.bin }}{{ with (get $textFallback "args") }} {{ . }}{{ end }}'
 fi
-if __flatpak_installed 'dev.zed.Zed'; then
-  export VISUAL='flatpak run dev.zed.Zed --wait'
-elif __real_cmd 'zed' > /dev/null; then
-  VISUAL="$(__real_cmd 'zed') --wait"
+{{ $first := true }}{{ range $e := .editors.visual }}{{ $args := "" }}{{ with (get $e "args") }}{{ $args = printf " %s" . }}{{ end }}{{ with (get $e "flatpak_id") }}{{ if $first }}if{{ else }}elif{{ end }}{{ $first = false }} __flatpak_installed '{{ . }}'; then
+  export VISUAL='flatpak run {{ . }}{{ $args }}'
+{{ end }}{{ if $first }}if{{ else }}elif{{ end }}{{ $first = false }} __real_cmd '{{ $e.bin }}' > /dev/null; then
+  VISUAL="$(__real_cmd '{{ $e.bin }}'){{ $args }}"
   export VISUAL
-elif __real_cmd 'lite-xl' > /dev/null; then
-  VISUAL="$(__real_cmd 'lite-xl')"
-  export VISUAL
-elif __flatpak_installed 'org.kde.kate'; then
-  export VISUAL='flatpak run org.kde.kate --block'
-elif __real_cmd 'kate' > /dev/null; then
-  VISUAL="$(__real_cmd 'kate') --block"
-  export VISUAL
-else
+{{ end }}else
   export VISUAL="${EDITOR}"
 fi
 unset -f __flatpak_installed __real_cmd
 
 # pager
-if command -v 'moor' > /dev/null 2>&1; then
-  export PAGER='moor'
-else
-  export PAGER='less --ignore-case'
+{{ $pagerProbed := initial .pagers }}{{ $pagerFallback := last .pagers }}{{ range $i, $e := $pagerProbed }}{{ if eq $i 0 }}if{{ else }}elif{{ end }} command -v '{{ $e.bin }}' > /dev/null 2>&1; then
+  export PAGER='{{ $e.bin }}{{ with (get $e "args") }} {{ . }}{{ end }}'
+{{ end }}else
+  export PAGER='{{ $pagerFallback.bin }}{{ with (get $pagerFallback "args") }} {{ . }}{{ end }}'
 fi
 export MANPAGER="${PAGER}"
 export GROFF_NO_SGR=1

@@ -1,4 +1,4 @@
-#: Scrollback {{{
+#: Scrollback {{ "{{{" }}{{/* kitty fold marker, escaped: "{{" opens a Go template action */}}
 
 scrollback_lines 10000
 
@@ -11,7 +11,7 @@ scrollback_lines 10000
 #: is changed it will only affect newly created windows, not existing
 #: ones.
 
-scrollback_pager moor
+scrollback_pager {{ (index .pagers 0).bin }}
 
 #: Program with which to view scrollback in a new window. The
 #: scrollback buffer is passed as STDIN to this program. If you change

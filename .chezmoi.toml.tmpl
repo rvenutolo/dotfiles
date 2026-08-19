@@ -46,6 +46,10 @@ is_fedora = {{- if (or (eq $osId "fedora") (has "fedora" $osIdLike)) }} true {{ 
 command = 'diff'
 
 [edit]
+# Hardcoded, NOT read from `.chezmoidata.yaml`'s `editors.text`: this config
+# template is rendered at `chezmoi init` time, before chezmoidata is loaded
+# (see the same note on `is_ci` in .pre-commit-config.yaml). Keep in sync
+# with the head of `editors.text` by hand.
 command = 'micro'
 
 [merge]
