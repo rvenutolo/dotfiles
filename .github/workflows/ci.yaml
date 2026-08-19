@@ -35,13 +35,52 @@ jobs:
         # so nothing else here depends on the system one.)
         run: shellcheck --version
       - name: Install shfmt (needed by the render-lint-sh-tmpl hook)
+        env:
+          # renovate: datasource=github-releases depName=mvdan/sh
+          SHFMT_VERSION: v3.13.1
+          # sha256 of shfmt_${SHFMT_VERSION}_linux_amd64. Renovate can bump the
+          # version above but cannot update this digest, so a bump fails this
+          # step until a human regenerates it. That is deliberate: a loud
+          # failure beats an unverified download. Regenerate with
+          #   curl --disable --fail --silent --location \
+          #     "https://github.com/mvdan/sh/releases/download/<ver>/shfmt_<ver>_linux_amd64" \
+          #     | sha256sum
+          SHFMT_SHA256: fb096c5d1ac6beabbdbaa2874d025badb03ee07929f0c9ff67563ce8c75398b1
+        # A released binary rather than `go install`, which compiled shfmt from
+        # source on every run (~12s) to obtain a tool upstream already ships.
         run: |
-          go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          curl --disable --fail --silent --location --show-error --output /tmp/shfmt \
+            "https://github.com/mvdan/sh/releases/download/${SHFMT_VERSION}/shfmt_${SHFMT_VERSION}_linux_amd64"
+          echo "${SHFMT_SHA256}  /tmp/shfmt" | sha256sum --check --strict
+          install --mode=0755 /tmp/shfmt "$HOME/.local/bin/shfmt"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        id: setup-python
         with:
           python-version: '3.14'
-      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+      - name: Install pre-commit
+        run: python -m pip install --disable-pip-version-check pre-commit
+      - name: Cache pre-commit hook environments
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          # The prefix fallback is the whole reason this is not pre-commit/action.
+          # That action keys its cache on the same two inputs but supplies no
+          # restore-keys, so ANY edit to .pre-commit-config.yaml is a total miss
+          # that rebuilds all hook environments from scratch (~2m). Renovate rev
+          # bumps touch exactly that file and are this repo's most common PR.
+          # With the fallback, a bump restores the previous cache and rebuilds
+          # only the environment of the hook whose rev actually changed.
+          restore-keys: |
+            pre-commit-${{ steps.setup-python.outputs.python-version }}-
+      - name: Run pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure --color=always
+      - name: Prune stale pre-commit hook environments
+        # Runs before actions/cache saves the directory at job end. Without it a
+        # restored cache accumulates the environment of every rev ever pinned
+        # here, since restore-keys means old entries are never evicted by a miss.
+        if: always()
+        run: pre-commit gc
 
   render:
     runs-on: ubuntu-latest
