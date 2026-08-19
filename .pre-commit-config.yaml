@@ -72,3 +72,19 @@ repos:
         # guard exists to stop path/hostname env usage in managed templates,
         # not to block that one legitimate runtime-env read.
         exclude: '^\.chezmoi\.toml\.tmpl$'
+      - id: no-unpinned-actions
+        name: forbid tag-pinned GitHub Actions (use commit SHAs)
+        language: pygrep
+        entry: 'uses:\s*[^@\s]+@(?![0-9a-fA-F]{40}(\s|$))'
+        files: '^\.github/(workflows|actions)/.*\.ya?ml$'
+        # Supply-chain policy (CLAUDE.md): a tag is mutable and can be
+        # repointed by its owner, so every third-party action is pinned to a
+        # 40-hex commit SHA with the human-readable version in a trailing
+        # comment. Renovate's github-actions manager reads that comment and
+        # automerges pin/digest/patch bumps.
+        #
+        # Flags `uses: owner/repo@<anything-but-40-hex>`. Local (`./...`) and
+        # `docker://` refs have no `@ref` and are untouched. A commented-out
+        # `uses: ...@v1` is flagged too — deliberate, so a stale line cannot be
+        # uncommented back into an unpinned action.
+        # .github/actions/ is matched pre-emptively; no composite actions exist yet.

@@ -123,6 +123,12 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   SHA bumps. Tracking a moving branch is allowed only with a justifying comment.
   Pinned URLs are immutable, so pinned entries use `refreshPeriod = '0'`; a SHA
   bump changes the URL, which busts the cache and refetches on the next apply.
+- `.github/workflows/ci.yaml` — the lint + render CI workflow. The same
+  supply-chain policy applies: every `uses:` is pinned to a 40-hex commit SHA
+  with the version in a trailing comment (`@<sha> # v7.0.1`), because a tag is
+  mutable and can be repointed by its owner. Renovate's `github-actions`
+  manager reads that comment and automerges `pin`/`digest`/`patch` bumps; the
+  `no-unpinned-actions` pre-commit hook stops a floating tag from creeping back.
 - `.chezmoiignore` — paths in source state that should NOT be applied (`README.md`, `TODO`, `age.key.ENCRYPTED`)
 - `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch). `run_onchange_before_00-install-packages.sh.tmpl` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
 - `exact_dot_etc/` — config files applied to `~/.etc/` that may be wired into `/etc`. Chezmoi does NOT do the /etc wiring: files are selectively symlinked or copied into `/etc` by set-up scripts in the personal scripts repo (`${PERSONAL_PROJECTS_DIR}/scripts`, e.g. `scripts/set_up/pacman/copy-pacman-conf-file`). `find-etc-symlinks` reports which files are currently linked where
@@ -242,10 +248,10 @@ All other rules — quoting, `${var}` braces, `function` keyword, `[[ ]]`, long 
 
 `.pre-commit-config.yaml` enforces shellcheck/shfmt (including rendered
 `*.sh.tmpl`), gitleaks secret scanning, a guard against `env "FOO"` in
-templates, and schema validation of `.chezmoidata.yaml` against
-`.chezmoidata.schema.json` via a check-jsonschema hook. Install once per
-clone with `just hooks`. CI runs the identical config, so a commit that
-passes locally passes the lint job.
+templates, a guard against tag-pinned GitHub Actions, and schema validation
+of `.chezmoidata.yaml` against `.chezmoidata.schema.json` via a
+check-jsonschema hook. Install once per clone with `just hooks`. CI runs the
+identical config, so a commit that passes locally passes the lint job.
 
 ## When Adding Files
 
