@@ -1,0 +1,28 @@
+# mise global config. Settings only, deliberately no [tools] table: tool
+# provisioning on these hosts belongs to nix/home-manager (CLI binaries) and
+# SDKMAN (JVM candidates). mise is here for its config/env/task handling and
+# for the odd project that ships its own mise.toml - not as this machine's
+# version manager. See issue #64.
+
+[settings]
+# Default is true, which makes a missing command (typo included) trigger an
+# install attempt. Nothing on this machine should acquire binaries behind our
+# back; nix and SDKMAN own that.
+not_found_auto_install = false
+
+# Java is SDKMAN's, full stop: non-interactive.bash builds JAVA_HOME and the
+# candidate PATH from ${SDKMAN_DIR} on every shell, and honours .sdkmanrc pins.
+# Disabling the backend guarantees mise can never shadow that, even if a
+# project's mise.toml asks for java.
+disable_tools = ["java"]
+
+# Idiomatic version files (.java-version, .node-version, .python-version) stay
+# off. This is mise's default, stated explicitly because it is load-bearing:
+# .java-version would fight SDKMAN, and nothing here pins tool versions
+# per project.
+idiomatic_version_file_enable_tools = []
+
+[settings.hook_env]
+# Default false runs `mise hook-env` on every prompt (~10 ms each). Limit it to
+# actual directory changes - the env only varies by directory anyway. See #9.
+chpwd_only = true

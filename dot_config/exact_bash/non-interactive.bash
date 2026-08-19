@@ -5,6 +5,24 @@
 # interactivity. Anything that produces output, calls `complete`, or
 # otherwise assumes an interactive shell belongs in interactive.bash.
 
+# mise shims: give non-interactive shells (scripts, editors, Claude Code tool
+# calls) any mise-managed tool without paying for `mise activate`'s hook, which
+# interactive.bash installs instead.
+#
+# Ordering against SDKMAN is deliberately NOT what keeps the JVM SDKMAN's. On a
+# fresh PATH this block runs first and the SDKMAN block below prepends ahead of
+# it, but in a re-entrant shell (PATH already carrying the candidate dirs) that
+# block's dedup guard skips re-prepending and the shims end up in front. The
+# actual guarantee is mise-side: disable_tools = ["java"] in
+# ${XDG_CONFIG_HOME}/mise/config.toml means mise never creates a java shim at
+# all, so the two cannot collide regardless of PATH order.
+if [[ -d "${XDG_DATA_HOME}/mise/shims" ]]; then
+  if [[ ":${PATH}:" != *":${XDG_DATA_HOME}/mise/shims:"* ]]; then
+    PATH="${XDG_DATA_HOME}/mise/shims:${PATH}"
+    export PATH
+  fi
+fi
+
 # SDKMAN fast path: export <CANDIDATE>_HOME and prepend <candidate>/current/bin
 # to PATH for every installed candidate — the environment sdkman-init.sh's
 # eager loop builds, without its ~160 ms cost in every shell. Pure parameter

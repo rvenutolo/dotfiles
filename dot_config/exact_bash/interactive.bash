@@ -183,6 +183,10 @@ if [[ -r "${XDG_CONFIG_HOME}/bash/complete_alias.bash" ]]; then
   complete -F _complete_alias "${!BASH_ALIASES[@]}"
 fi
 
+# mise's hook must be installed before direnv's so direnv's `use mise` can see
+# it. Non-interactive shells get the shims dir instead (non-interactive.bash);
+# activate's PATH entries sort ahead of the shims, so the two do not fight.
+command -v 'mise' > /dev/null 2>&1 && eval "$(mise activate bash)"
 command -v 'direnv' > /dev/null 2>&1 && eval "$(direnv hook bash)"
 
 # put this last as starship_preexec() will run before every command after this
