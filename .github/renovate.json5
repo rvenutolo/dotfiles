@@ -9,10 +9,31 @@
   packageRules: [
     {
       // Low-risk GitHub Actions updates automerge once CI is green;
-      // minor/major stay manual. External SHA bumps and pre-commit rev
-      // bumps are always manual (unreviewed third-party code).
+      // minor/major stay manual. External SHA bumps are always manual
+      // (unreviewed third-party code), as are pre-commit rev bumps with the
+      // single narrow exception in the rule below.
       matchManagers: ['github-actions'],
       matchUpdateTypes: ['pin', 'digest', 'patch'],
+      automerge: true,
+    },
+    {
+      // renovatebot/pre-commit-hooks cuts a release for every Renovate
+      // release — several per week — and the only hook used from it is
+      // renovate-config-validator, which parses .github/renovate.json5 and
+      // exits. Automerging patch+minor keeps the validator in step with the
+      // Renovate that actually runs this repo instead of generating a review
+      // chore every Saturday. Majors stay manual: they can tighten schema
+      // validation and break the lint job.
+      //
+      // Deliberate, narrow exception to "pre-commit rev bumps are manual":
+      // matchPackageNames scopes it to this one repo (the pre-commit manager
+      // sets both depName and packageName to the bare owner/repo), and
+      // matchDepTypes: ['repository'] scopes it to `rev:` bumps rather than a
+      // hook's additional_dependencies (depType pre-commit-node).
+      matchManagers: ['pre-commit'],
+      matchDepTypes: ['repository'],
+      matchPackageNames: ['renovatebot/pre-commit-hooks'],
+      matchUpdateTypes: ['patch', 'minor'],
       automerge: true,
     },
   ],

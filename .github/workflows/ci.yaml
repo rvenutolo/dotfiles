@@ -26,6 +26,14 @@ jobs:
           mkdir --parents "$(dirname "$HOME/.local/share/chezmoi")"
           ln --symbolic "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
           chezmoi init
+      - name: Verify shellcheck is present (actionlint needs it)
+        # actionlint shellchecks the embedded `run:` scripts only when
+        # shellcheck is on PATH; without it, it skips them and still exits 0.
+        # ubuntu-latest preinstalls it — assert that rather than rely on it
+        # silently, so a runner-image change fails loudly instead of quietly
+        # dropping lint coverage. (The shellcheck-py hook ships its own binary,
+        # so nothing else here depends on the system one.)
+        run: shellcheck --version
       - name: Install shfmt (needed by the render-lint-sh-tmpl hook)
         run: |
           go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1
