@@ -88,7 +88,6 @@
   - Allowed types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `perf`, `style`, `build`, `revert`
   - Append `!` after the type for breaking changes: `feat!: drop Java 11 support`
   - Optional body (after a blank line): explain *why*, not *what*
-  - When generating a commit message, invoke the `/commit-commands:commit` skill
 
 ## AWS CLI
 
