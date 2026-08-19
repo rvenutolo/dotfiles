@@ -64,6 +64,13 @@ editors:
     - bin: vi
   # GUI chain. Probed with `__real_cmd` (PATH stripped of the script-repo
   # wrapper dirs) rather than `command -v`, and exported as an absolute path.
+  #
+  # Adding an entry here (or to `text`) also needs a matching arm in
+  # `desktop_for_visual()` in
+  # `.chezmoiscripts/run_after_50-set-default-editor.sh.tmpl`, which maps the
+  # binary to its `.desktop` id for xdg-mime. That table is deliberately not
+  # data-driven (see CLAUDE.md > Editors); a missing arm is not fatal — apply
+  # logs "no known .desktop mapping; skipping" and leaves mime defaults alone.
   visual:
     - bin: zed
       flatpak_id: dev.zed.Zed
