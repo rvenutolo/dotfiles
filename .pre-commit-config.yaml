@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: end-of-file-fixer
         exclude: '\.age$'
@@ -11,17 +11,17 @@ repos:
         exclude: '\.tmpl$'
       - id: check-added-large-files
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.1
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # frozen: v8.30.1
     hooks:
       - id: gitleaks
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.11.0.1
+    rev: 745eface02aef23e168a8afb6b5737818efbea95  # frozen: v0.11.0.1
     hooks:
       - id: shellcheck
         files: '\.(sh|bash)$'
         exclude: '(^|/)symlink_'
   - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.13.1-1
+    rev: 05c1426671b9237fb5e1444dd63aa5731bec0dfb  # frozen: v3.13.1-1
     hooks:
       - id: shfmt
         args:
@@ -34,7 +34,7 @@ repos:
         files: '\.(sh|bash)$'
         exclude: '(^|/)symlink_'
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.38.0
+    rev: 12e63946db2c5cfcc9030fac21c3883ba88c6ed8  # frozen: 0.38.0
     hooks:
       - id: check-jsonschema
         name: validate .chezmoidata.yaml against schema
@@ -42,7 +42,7 @@ repos:
         pass_filenames: false
         args: [--schemafile, .chezmoidata.schema.json, .chezmoidata.yaml]
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.12
+    rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # frozen: v1.7.12
     hooks:
       - id: actionlint
         # Lints .github/workflows/*.yaml: schema, expression syntax, and
@@ -53,7 +53,7 @@ repos:
         # is absent — exit 0, no warning — so a green run would not prove that
         # coverage exists. The CI lint job asserts shellcheck's presence.
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 44.35.0
+    rev: 622e490c2f069b30f6c336350ef23ce247325ab0  # frozen: 44.35.0
     hooks:
       - id: renovate-config-validator
         # Validates .github/renovate.json5. Without this, a typo in a manager
@@ -108,3 +108,28 @@ repos:
         # `uses: ...@v1` is flagged too — deliberate, so a stale line cannot be
         # uncommented back into an unpinned action.
         # .github/actions/ is matched pre-emptively; no composite actions exist yet.
+      - id: no-unpinned-precommit-revs
+        name: forbid tag-pinned pre-commit revs (use commit SHAs)
+        language: pygrep
+        entry: '^\s*rev:(?![ \t]*[0-9a-fA-F]{40}([ \t]|$))'
+        files: '^\.pre-commit-config\.yaml$'
+        # The whitespace after `rev:` lives INSIDE the lookahead on purpose.
+        # Written as `rev:\s*(?!...)` the \s* backtracks to zero width, the
+        # lookahead then inspects the space instead of the SHA, and every
+        # correctly pinned line gets flagged. Unit-tested both ways.
+        #
+        # Same supply-chain policy as no-unpinned-actions above, applied to
+        # this file. Arguably the more important of the two: hooks execute on
+        # the developer's machine at commit time with access to ~/.keys and
+        # ~/.ssh, whereas an action runs in a disposable runner.
+        #
+        # Regenerate a rev with:
+        #   git ls-remote <repo> refs/tags/<tag> 'refs/tags/<tag>^{}'
+        # taking the ^{} (dereferenced) SHA when the tag is annotated.
+        #
+        # Do NOT use bare `pre-commit autoupdate --freeze` to maintain these.
+        # It resolves each repo via `git describe` against the default branch,
+        # so a release tagged off-mainline is invisible to it — as of 2026-08
+        # that silently DOWNGRADES gitleaks v8.30.1 (lightweight tag, not
+        # reachable from main) to v8.30.0, four months older. Renovate owns
+        # these bumps; see .github/renovate.json5.

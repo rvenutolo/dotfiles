@@ -2,6 +2,11 @@
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: ['config:recommended', ':timezone(America/New_York)'],
   schedule: ['after 2am on saturday'],
+  // Surfaces everything Renovate is holding back — pending minimumReleaseAge
+  // updates, rate-limited PRs, anything it decided not to propose. Without it,
+  // "Renovate proposed nothing" and "Renovate never ran" look identical from
+  // inside the repo. See #141.
+  dependencyDashboard: true,
   // Only these managers — everything else in this repo is chezmoi target
   // state, not dependency manifests.
   enabledManagers: ['github-actions', 'pre-commit', 'custom.regex'],
@@ -12,9 +17,44 @@
       // minor/major stay manual. External SHA bumps are always manual
       // (unreviewed third-party code), as are pre-commit rev bumps with the
       // single narrow exception in the rule below.
+      //
+      // 'digest' is deliberately NOT in this list. For an action already
+      // pinned to a SHA, a digest-only update means the upstream tag was
+      // repointed to different code at the same version — which is precisely
+      // the mutable-tag attack that SHA pinning exists to stop. Automerging it
+      // would hand that attack back the automation it was meant to lose.
+      // Those bumps get human eyes, always.
       matchManagers: ['github-actions'],
-      matchUpdateTypes: ['pin', 'digest', 'patch'],
+      matchUpdateTypes: ['pin', 'patch'],
       automerge: true,
+    },
+    {
+      // Soak time: adopt only releases that have survived a week of public
+      // scrutiny. Complements SHA pinning rather than duplicating it —
+      // pinning secures the version you are ON (an immutable ref cannot be
+      // repointed under you); this secures the version you are MOVING TO.
+      // It is also what makes the automerge rules above defensible: per
+      // Renovate's docs, automerge + minimumReleaseAge still opens the PR
+      // immediately but blocks the merge behind a renovate/stability-days
+      // pending check, so nothing merges itself within the window.
+      //
+      // SCOPED BY MANAGER ON PURPOSE — do not hoist this to the top level.
+      // minimumReleaseAgeBehaviour defaults to 'timestamp-required', and the
+      // git-refs datasource behind every .chezmoiexternal.toml.tmpl entry
+      // exposes no release timestamp (github-tags declares
+      // releaseTimestampSupport = true; git-refs declares nothing). A global
+      // setting would therefore mark every external permanently unstable and
+      // silently stop external SHA bumps forever. It would still be valid
+      // JSON5, so renovate-config-validator would not catch it.
+      //
+      // Externals lose nothing here: they are never automerged and always
+      // reviewed by hand.
+      //
+      // Fast releasers are fine: internalChecksFilter defaults to 'strict',
+      // which filters pending releases and proposes the newest one already
+      // older than the window — no clock-resetting, no PR flapping.
+      matchManagers: ['github-actions', 'pre-commit'],
+      minimumReleaseAge: '7 days',
     },
     {
       // renovatebot/pre-commit-hooks cuts a release for every Renovate

@@ -118,9 +118,10 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
 
 - `.chezmoi.toml.tmpl` — config rendered into `~/.config/chezmoi/chezmoi.toml` on init; defines host facts and age encryption identity/recipient
 - `.chezmoiexternal.toml.tmpl` — external resources (files / git-repos / archives) chezmoi fetches and places under target paths; `refreshPeriod` controls TTL. Cache lives at `~/.cache/chezmoi/`; `chezmoi apply --refresh-externals` forces refetch
-  Third-party entries are **pinned to commit SHAs** (supply-chain policy): each
-  carries a `# renovate:` comment that Renovate's regex manager uses to propose
-  SHA bumps. Tracking a moving branch is allowed only with a justifying comment.
+  Third-party entries are **pinned to commit SHAs** (supply-chain policy — the
+  same one that governs `.github/workflows/` and `.pre-commit-config.yaml`):
+  each carries a `# renovate:` comment that Renovate's regex manager uses to
+  propose SHA bumps. Tracking a moving branch is allowed only with a justifying comment.
   Pinned URLs are immutable, so pinned entries use `refreshPeriod = '0'`; a SHA
   bump changes the URL, which busts the cache and refetches on the next apply.
 - `.github/workflows/ci.yaml` — the lint + render CI workflow. The same
@@ -129,6 +130,17 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   mutable and can be repointed by its owner. Renovate's `github-actions`
   manager reads that comment and automerges `pin`/`digest`/`patch` bumps; the
   `no-unpinned-actions` pre-commit hook stops a floating tag from creeping back.
+  Note `digest` updates are excluded from that automerge rule: on an
+  already-pinned action a digest-only bump means the upstream tag was
+  repointed to different code at the same version, which is the exact attack
+  SHA pinning exists to stop. Those always get human review.
+
+  Updates also sit behind a 7-day `minimumReleaseAge` cooldown, scoped by
+  manager in `.github/renovate.json5`. **Do not hoist that setting to the top
+  level** — `minimumReleaseAgeBehaviour` defaults to `timestamp-required` and
+  the `git-refs` datasource behind every external carries no release
+  timestamp, so a global setting would silently stop external SHA bumps
+  forever while remaining perfectly valid config.
 - `.chezmoiignore` — paths in source state that should NOT be applied (`README.md`, `TODO`, `age.key.ENCRYPTED`)
 - `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch). `run_onchange_before_00-install-packages.sh.tmpl` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
 - `exact_dot_etc/` — config files applied to `~/.etc/` that may be wired into `/etc`. Chezmoi does NOT do the /etc wiring: files are selectively symlinked or copied into `/etc` by set-up scripts in the personal scripts repo (`${PERSONAL_PROJECTS_DIR}/scripts`, e.g. `scripts/set_up/pacman/copy-pacman-conf-file`). `find-etc-symlinks` reports which files are currently linked where
@@ -270,6 +282,22 @@ Two hooks lint the CI plumbing itself:
 week), so `.github/renovate.json5` carries a narrow rule automerging *that one
 repo's* patch/minor `rev:` bumps. It is the only exception to "pre-commit rev
 bumps are reviewed by hand" — do not widen it to other hook repos.
+
+Every `rev:` in `.pre-commit-config.yaml` is a **40-hex commit SHA** with the
+version in a trailing `# frozen:` comment, under the same supply-chain policy
+as GitHub Actions and externals — and for a stronger reason: hooks execute on
+the developer's machine at commit time with access to `~/.keys` and `~/.ssh`,
+where an action only ever runs in a disposable runner. The
+`no-unpinned-precommit-revs` hook stops a tag from creeping back.
+
+**Do not maintain those revs with `pre-commit autoupdate --freeze`.** It picks
+each repo's latest tag via `git describe` against the default branch, so a
+release tagged off-mainline is invisible to it — as of 2026-08 that silently
+*downgrades* gitleaks from v8.30.1 (a lightweight tag on a commit not
+reachable from `main`) to v8.30.0, four months older. Renovate owns these
+bumps; to set one by hand, resolve the tag with
+`git ls-remote <repo> refs/tags/<tag> 'refs/tags/<tag>^{}'` and take the
+dereferenced (`^{}`) SHA when the tag is annotated.
 
 ## When Adding Files
 
