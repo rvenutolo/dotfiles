@@ -155,10 +155,16 @@ readonly SCANNER="${SCRIPT_DIR}/pgrep-scan.awk"
 
 readonly HOOK_NAME='block-pgrep-self-match'
 
+# Keywords after which the next word is in command position.
 readonly -a COMMAND_POSITION_KEYWORDS=(
   'do' 'then' 'else' 'elif' 'while' 'until' 'if' 'for' 'select' '!' 'time'
 )
 
+# @description True when a token is a shell keyword after which the next word is again in
+#              command position.
+# @arg $1 token the token to test
+# @exitcode 0 the token is such a keyword
+# @exitcode 1 it is not
 function is_keyword() {
   local -r token="$1"
   local keyword
@@ -168,6 +174,11 @@ function is_keyword() {
   return 1
 }
 
+# @description True when a token is a shell operator that ends a simple command. The backtick
+#              counts: the scanner emits it as a standalone token and it restores command position.
+# @arg $1 token the token to test
+# @exitcode 0 the token is an operator
+# @exitcode 1 it is not
 function is_operator() {
   case "$1" in
     ';' | '&' | '|' | '(' | ')' | '{' | '}' | '<NL>' | '`') return 0 ;;
@@ -175,6 +186,10 @@ function is_operator() {
   esac
 }
 
+# @description Locate pgrep/pkill invocations that sit in command position. A quoted mention such as
+#              `grep -r "until ! pgrep --full"` yields nothing, because the scanner masked it.
+# @arg $1 tokens newline-separated "<offset>\t<token>" records from scan_command
+# @stdout lines of "<index>\t<offset>\t<name>"
 function find_invocations() {
   local -r tokens="$1"
   local at_cmd=1 idx=0 offset token
@@ -188,6 +203,11 @@ function find_invocations() {
   done <<< "${tokens}"
 }
 
+# @description Collect one invocation's argument tokens: everything after the command name, up to
+#              the operator that ends the simple command.
+# @arg $1 tokens the token stream from scan_command
+# @arg $2 target index of the pgrep/pkill token itself
+# @stdout lines of "<offset>\t<token>"
 function invocation_args() {
   local -r tokens="$1"
   local -r target="$2"
@@ -202,6 +222,13 @@ function invocation_args() {
   done <<< "${tokens}"
 }
 
+# @description True when an invocation's arguments carry a flag, as either the long option or a
+#              short cluster containing the letter. A bare -- ends option parsing.
+# @arg $1 args newline-separated "<offset>\t<token>" lines
+# @arg $2 long the long option, for example --full
+# @arg $3 short the short cluster letter, for example f
+# @exitcode 0 the flag is present
+# @exitcode 1 it is absent
 function has_flag() {
   local -r args="$1" long="$2" short="$3"
   local offset token
@@ -220,6 +247,12 @@ readonly -a PGREP_VALUE_OPTIONS=(
   '--group' '--ns' '--nslist' '--signal' '--older'
 )
 
+# @description Extract the search pattern: the last argument that is neither a flag, a flag's value,
+#              nor a redirection. Sliced out of the raw command by offset so the original quoting
+#              survives, then one surrounding quote pair is stripped.
+# @arg $1 command the raw command string
+# @arg $2 args newline-separated "<offset>\t<token>" lines
+# @stdout the operand with surrounding quotes removed, or empty
 function pattern_operand() {
   local -r command="$1" args="$2"
   local operand_offset='' operand_length=0 skip=0 offset token value_option
