@@ -545,6 +545,20 @@
     "defaultMode": "acceptEdits"
   },
   "model": "opus[1m]",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_CONFIG_DIR}/hooks/block-pgrep-self-match.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "bash \"${CLAUDE_CONFIG_DIR}/claude-hud.sh\""
