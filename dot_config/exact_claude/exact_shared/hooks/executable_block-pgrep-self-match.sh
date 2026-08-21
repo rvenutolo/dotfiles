@@ -13,12 +13,68 @@ readonly -a SELF_TEST_CASES=(
   $'pgrep --ignore-ancestors --full "x"\tallow'
 )
 
+# @description Tokenize a command, masking quoted regions.
+# @arg $1 command the command string
+# @stdout offset and token pairs, separated by tab
+function scan_command() {
+  local -r command="$1"
+  printf '%s' "${command}" | LC_ALL=C awk -f "${SCANNER}"
+}
+
+# @description Assert helper used by the scanner unit checks.
+# @arg $1 label description
+# @arg $2 expected expected value
+# @arg $3 actual actual value
+# @exitcode 0 match
+# @exitcode 1 mismatch
+function assert_equals() {
+  local -r label="$1"
+  local -r expected="$2"
+  local -r actual="$3"
+  if [[ "${expected}" != "${actual}" ]]; then
+    printf 'FAIL: %s\n  expected: %s\n  actual:   %s\n' "${label}" "${expected}" "${actual}" >&2
+    return 1
+  fi
+}
+
+# @description Unit checks for the scanner.
+# @noargs
+# @exitcode 0 all assertions held
+function run_scanner_tests() {
+  local failures=0
+
+  assert_equals 'quoted mention yields no pgrep token' \
+    '0' "$(scan_command 'grep -r "until ! pgrep --full x" .' | grep --count '\bpgrep$' || true)" \
+    || failures=$((failures + 1))
+
+  assert_equals 'bare pgrep is tokenized' \
+    'pgrep' "$(scan_command 'pgrep --full x' | awk -F'\t' 'NR==1 {print $2}')" \
+    || failures=$((failures + 1))
+
+  # shellcheck disable=SC2016
+  assert_equals 'command substitution inside double quotes is visible' \
+    '14' "$(scan_command 'until [ -z "$(pgrep --full x)" ]; do sleep 5; done' \
+      | awk -F'\t' '$2 == "pgrep" {print $1}')" \
+    || failures=$((failures + 1))
+
+  assert_equals 'newline survives as a literal token' \
+    '<NL>' "$(scan_command "$(printf 'echo hi\nls')" | awk -F'\t' 'NR==3 {print $2}')" \
+    || failures=$((failures + 1))
+
+  if ((failures > 0)); then
+    return 1
+  fi
+}
+
 # @description Run the built-in case table.
 # @noargs
 # @exitcode 0 all cases matched
 # @exitcode 1 at least one case mismatched
 function run_self_test() {
   local failures=0
+  if ! run_scanner_tests; then
+    failures=$((failures + 1))
+  fi
   local case_line expected actual command
   for case_line in "${SELF_TEST_CASES[@]}"; do
     command="${case_line%%$'\t'*}"
@@ -40,6 +96,12 @@ function run_self_test() {
 # Any unexpected failure must still allow the command. A hook that dies non-zero
 # surfaces an error on every Bash call; exit 2 would block the tool outright.
 trap 'emit_allow; exit 0' ERR
+
+# Resolve the scanner relative to this script rather than via CLAUDE_CONFIG_DIR,
+# which is not guaranteed to be exported into the hook's environment.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+readonly SCANNER="${SCRIPT_DIR}/pgrep-scan.awk"
 
 readonly HOOK_NAME='block-pgrep-self-match'
 
