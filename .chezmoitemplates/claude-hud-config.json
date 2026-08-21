@@ -1,5 +1,6 @@
 {
   "display": {
+    "sevenDayThreshold": 0,
     "showAgents": true,
     "showConfigCounts": true,
     "showContextBar": true,
