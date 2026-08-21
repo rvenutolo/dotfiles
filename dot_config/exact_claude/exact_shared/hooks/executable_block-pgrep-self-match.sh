@@ -723,51 +723,42 @@ function emit_deny() {
 #              backward scan's `(` check also excludes an array literal (`arr=(kill $(...))`): the
 #              `(` there opens a list of words rather than a subshell, so `kill` inside it is never
 #              invoked.
-# @arg $1 tokens the token stream from scan_command
+# @arg $1 tokens_var name of the caller's token array (built once by classify_command; every
+#              invocation in the same command reuses it rather than re-parsing the token stream)
 # @arg $2 target index of the invocation token
 # @exitcode 0 output feeds a kill
 # @exitcode 1 it does not
 function feeds_a_kill() {
-  local -r tokens="$1" target="$2"
-  local -a seq=()
-  local idx=0 seen=0 segment='none' offset token word
-  while IFS=$'\t' read -r offset token; do
-    [[ -z "${token}" ]] && continue
-    seq+=("${token}")
-    if ((idx == target)); then
-      seen=1
-      idx=$((idx + 1))
-      continue
-    fi
-    if ((seen == 1)); then
-      word="${token##*/}"
-      case "${word}" in
-        '|') segment='head' ;;
-        ';' | '<NL>') seen=2 ;;
-        *)
-          case "${segment}" in
-            head)
-              if [[ "${word}" == 'kill' ]]; then
-                return 0
-              elif [[ "${word}" == 'xargs' ]]; then
-                segment='xargs'
-              elif ! is_prefix_command "${word}"; then
-                segment='other'
-              fi
-              ;;
-            xargs)
-              if [[ "${word}" == 'kill' ]]; then
-                return 0
-              elif [[ "${word}" != -* ]] && ! is_prefix_command "${word}"; then
-                segment='other'
-              fi
-              ;;
-          esac
-          ;;
-      esac
-    fi
-    idx=$((idx + 1))
-  done <<< "${tokens}"
+  local -n toks="$1"
+  local -r target="$2"
+  local idx segment='none' word
+  for ((idx = target + 1; idx < ${#toks[@]}; idx++)); do
+    word="${toks[idx]##*/}"
+    case "${word}" in
+      '|') segment='head' ;;
+      ';' | '<NL>') break ;;
+      *)
+        case "${segment}" in
+          head)
+            if [[ "${word}" == 'kill' ]]; then
+              return 0
+            elif [[ "${word}" == 'xargs' ]]; then
+              segment='xargs'
+            elif ! is_prefix_command "${word}"; then
+              segment='other'
+            fi
+            ;;
+          xargs)
+            if [[ "${word}" == 'kill' ]]; then
+              return 0
+            elif [[ "${word}" != -* ]] && ! is_prefix_command "${word}"; then
+              segment='other'
+            fi
+            ;;
+        esac
+        ;;
+    esac
+  done
 
   # Backward form: `kill $(pgrep ...)`, `kill -9 $(pgrep ...)`, and the backtick
   # equivalent. Here `kill` precedes the invocation, so the forward scan cannot
@@ -776,14 +767,14 @@ function feeds_a_kill() {
   # where `kill` is merely an argument word, would be denied.
   local k=$((target - 1)) m
   while ((k >= 0)); do
-    word="${seq[k]##*/}"
+    word="${toks[k]##*/}"
     case "${word}" in
       '$' | '(' | '`') ;;
       -*) ;;
       'kill')
         m=$((k - 1))
         while ((m >= 0)); do
-          if is_prefix_command "${seq[m]##*/}"; then
+          if is_prefix_command "${toks[m]##*/}"; then
             m=$((m - 1))
             continue
           fi
@@ -792,10 +783,10 @@ function feeds_a_kill() {
           # opens a list of words, and a `kill` immediately inside it is
           # never invoked. The token right before the `(` ending in `=` is
           # what tells the two apart.
-          if [[ "${seq[m]}" == '(' ]] && ((m > 0)) && [[ "${seq[m - 1]}" == *= ]]; then
+          if [[ "${toks[m]}" == '(' ]] && ((m > 0)) && [[ "${toks[m - 1]}" == *= ]]; then
             return 1
           fi
-          if is_operator "${seq[m]}" || is_keyword "${seq[m]}"; then return 0; fi
+          if is_operator "${toks[m]}" || is_keyword "${toks[m]}"; then return 0; fi
           return 1
         done
         return 0
@@ -813,16 +804,17 @@ function feeds_a_kill() {
 #              already closed, which made `for i in $(seq 1 5); do pgrep -af java; ...; done` read as
 #              a capture. `$` is not an operator token, so the opener is recognised as any token
 #              ending in `$` immediately followed by `(`, which also covers `p=$(...)`.
-# @arg $1 tokens the token stream from scan_command
+# @arg $1 tokens_var name of the caller's token array, built once by classify_command
 # @arg $2 target index of the invocation token
 # @exitcode 0 the invocation is inside a command substitution
 # @exitcode 1 it is not
 function invocation_is_captured() {
-  local -r tokens="$1" target="$2"
+  local -n toks="$1"
+  local -r target="$2"
   local -a stack=()
-  local idx=0 dollar=0 offset token entry
-  while IFS=$'\t' read -r offset token; do
-    [[ -z "${token}" ]] && continue
+  local idx dollar=0 token entry
+  for ((idx = 0; idx <= target; idx++)); do
+    token="${toks[idx]}"
     if ((idx == target)); then
       if ((${#stack[@]} == 0)); then
         return 1
@@ -848,8 +840,7 @@ function invocation_is_captured() {
         ;;
     esac
     if [[ "${token}" == *'$' ]]; then dollar=1; else dollar=0; fi
-    idx=$((idx + 1))
-  done <<< "${tokens}"
+  done
   return 1
 }
 
@@ -860,13 +851,14 @@ function invocation_is_captured() {
 #              `&&`, `||`, `| wc` or `| xargs`; and sitting inside a command substitution. A
 #              redirection target is not consumption: `2>&1` tokenizes as `2>`, `&`, `1`, and a lone
 #              trailing `&` is backgrounding rather than a boolean operator.
-# @arg $1 tokens the token stream from scan_command
+# @arg $1 tokens_var name of the caller's token array, built once by classify_command
 # @arg $2 target index of the invocation token
 # @arg $3 args the invocation's argument lines
 # @exitcode 0 the result is consumed
 # @exitcode 1 the result is only displayed
 function result_is_consumed() {
-  local -r tokens="$1" target="$2" args="$3"
+  local -n toks="$1"
+  local -r target="$2" args="$3"
   local offset token
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
@@ -876,14 +868,9 @@ function result_is_consumed() {
 
   # An enclosing `if` / `elif`, or a negation, reads the exit status as a boolean.
   # Walk back over prefix words so `if sudo pgrep --full x` still counts.
-  local -a seq=()
-  while IFS=$'\t' read -r offset token; do
-    [[ -z "${token}" ]] && continue
-    seq+=("${token}")
-  done <<< "${tokens}"
   local k=$((target - 1)) word
   while ((k >= 0)); do
-    word="${seq[k]##*/}"
+    word="${toks[k]##*/}"
     case "${word}" in
       'if' | 'elif' | '!') return 0 ;;
       *) is_prefix_command "${word}" || break ;;
@@ -891,42 +878,32 @@ function result_is_consumed() {
     k=$((k - 1))
   done
 
-  local idx=0 seen=0 prev='' amp=0 pipe=0
-  while IFS=$'\t' read -r offset token; do
-    [[ -z "${token}" ]] && continue
-    if ((idx == target)); then
-      seen=1
-      idx=$((idx + 1))
+  local idx prev="${toks[target]}" amp=0 pipe=0
+  for ((idx = target + 1; idx < ${#toks[@]}; idx++)); do
+    token="${toks[idx]}"
+    # A redirection target is not consumption: `2>&1` tokenizes as `2>` `&` `1`.
+    if [[ "${prev}" == *[\<\>] ]]; then
       prev="${token}"
       continue
     fi
-    if ((seen == 1)); then
-      # A redirection target is not consumption: `2>&1` tokenizes as `2>` `&` `1`.
-      if [[ "${prev}" == *[\<\>] ]]; then
-        prev="${token}"
-        idx=$((idx + 1))
-        continue
-      fi
-      case "${token}" in
-        '&')
-          amp=$((amp + 1))
-          ((amp >= 2)) && return 0
-          ;;
-        '|')
-          pipe=$((pipe + 1))
-          ((pipe >= 2)) && return 0
-          ;;
-        'wc' | 'xargs') ((pipe >= 1)) && return 0 ;;
-        ';' | '<NL>') break ;;
-        *) amp=0 ;;
-      esac
-    fi
+    case "${token}" in
+      '&')
+        amp=$((amp + 1))
+        ((amp >= 2)) && return 0
+        ;;
+      '|')
+        pipe=$((pipe + 1))
+        ((pipe >= 2)) && return 0
+        ;;
+      'wc' | 'xargs') ((pipe >= 1)) && return 0 ;;
+      ';' | '<NL>') break ;;
+      *) amp=0 ;;
+    esac
     prev="${token}"
-    idx=$((idx + 1))
-  done <<< "${tokens}"
+  done
 
   # `p=$(pgrep ...)`: the output is captured rather than printed.
-  invocation_is_captured "${tokens}" "${target}" && return 0
+  invocation_is_captured "$1" "${target}" && return 0
   return 1
 }
 
@@ -986,6 +963,19 @@ function classify_command() {
   fi
   local tokens
   tokens="$(scan_command "${command}")"
+
+  # Parsed once and shared by every invocation in this command, instead of
+  # each of feeds_a_kill / result_is_consumed / invocation_is_captured
+  # re-parsing the full token stream from scratch per invocation. A command
+  # with many invocations (a long chain of pgrep calls) made that rescan
+  # quadratic; array indexing does not.
+  local -a CMD_TOKENS=()
+  local _ raw_token
+  while IFS=$'\t' read -r _ raw_token; do
+    [[ -z "${raw_token}" ]] && continue
+    CMD_TOKENS+=("${raw_token}")
+  done <<< "${tokens}"
+
   local verdict='allow'
   local idx offset name args operand context
   while IFS=$'\t' read -r idx offset name; do
@@ -995,7 +985,7 @@ function classify_command() {
     has_flag "${args}" '--ignore-ancestors' 'A' && continue
     operand="$(pattern_operand "${command}" "${args}")"
     bracket_mitigation_holds "${command}" "${operand}" && continue
-    if [[ "${name}" == 'pkill' ]] || feeds_a_kill "${tokens}" "${idx}"; then
+    if [[ "${name}" == 'pkill' ]] || feeds_a_kill CMD_TOKENS "${idx}"; then
       printf 'deny:kill\n'
       return 0
     fi
@@ -1006,14 +996,14 @@ function classify_command() {
         return 0
         ;;
       body)
-        if result_is_consumed "${tokens}" "${idx}" "${args}" \
+        if result_is_consumed CMD_TOKENS "${idx}" "${args}" \
           && body_has_terminator "${tokens}" "${idx}"; then
           printf 'deny:loop\n'
           return 0
         fi
         ;;
     esac
-    result_is_consumed "${tokens}" "${idx}" "${args}" && verdict='warn'
+    result_is_consumed CMD_TOKENS "${idx}" "${args}" && verdict='warn'
   done <<< "$(find_invocations "${tokens}")"
   printf '%s\n' "${verdict}"
 }
