@@ -61,9 +61,59 @@ function run_scanner_tests() {
     '<NL>' "$(scan_command "$(printf 'echo hi\nls')" | awk -F'\t' 'NR==3 {print $2}')" \
     || failures=$((failures + 1))
 
+  assert_equals 'long full flag' 'yes' "$(flag_probe 'pgrep --full x' '--full' 'f')" \
+    || failures=$((failures + 1))
+  assert_equals 'short cluster -af is full' 'yes' "$(flag_probe 'pgrep -af x' '--full' 'f')" \
+    || failures=$((failures + 1))
+  assert_equals 'plain -a is not full' 'no' "$(flag_probe 'pgrep -a x' '--full' 'f')" \
+    || failures=$((failures + 1))
+  assert_equals 'long ignore-ancestors' 'yes' \
+    "$(flag_probe 'pgrep --ignore-ancestors --full x' '--ignore-ancestors' 'A')" \
+    || failures=$((failures + 1))
+  assert_equals 'short -A' 'yes' "$(flag_probe 'pgrep -Af x' '--ignore-ancestors' 'A')" \
+    || failures=$((failures + 1))
+  assert_equals 'operand is last non-flag arg' 'unittest discover' \
+    "$(pattern_probe 'pgrep --full "unittest discover"')" || failures=$((failures + 1))
+  assert_equals 'operand skips a flag value' 'java' \
+    "$(pattern_probe 'pgrep --full --delimiter , java')" || failures=$((failures + 1))
+  assert_equals 'operand ignores a redirection target' 'x' \
+    "$(pattern_probe 'pgrep --full x > /tmp/out')" || failures=$((failures + 1))
+
   if ((failures > 0)); then
     return 1
   fi
+}
+
+# @description Self-test helper: does the first invocation carry a flag class?
+# @arg $1 command the command string
+# @arg $2 long the long option
+# @arg $3 short the short cluster letter
+# @stdout yes or no
+function flag_probe() {
+  local -r command="$1"
+  local -r long="$2"
+  local -r short="$3"
+  local tokens
+  tokens="$(scan_command "${command}")"
+  local idx
+  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
+  local args
+  args="$(invocation_args "${tokens}" "${idx}")"
+  if has_flag "${args}" "${long}" "${short}"; then printf 'yes\n'; else printf 'no\n'; fi
+}
+
+# @description Self-test helper: the pattern operand of the first invocation.
+# @arg $1 command the command string
+# @stdout the operand, or empty
+function pattern_probe() {
+  local -r command="$1"
+  local tokens
+  tokens="$(scan_command "${command}")"
+  local idx
+  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
+  local args
+  args="$(invocation_args "${tokens}" "${idx}")"
+  pattern_operand "${command}" "${args}"
 }
 
 # @description Run the built-in case table.
@@ -104,6 +154,102 @@ readonly SCRIPT_DIR
 readonly SCANNER="${SCRIPT_DIR}/pgrep-scan.awk"
 
 readonly HOOK_NAME='block-pgrep-self-match'
+
+readonly -a COMMAND_POSITION_KEYWORDS=(
+  'do' 'then' 'else' 'elif' 'while' 'until' 'if' 'for' 'select' '!' 'time'
+)
+
+function is_keyword() {
+  local -r token="$1"
+  local keyword
+  for keyword in "${COMMAND_POSITION_KEYWORDS[@]}"; do
+    [[ "${token}" == "${keyword}" ]] && return 0
+  done
+  return 1
+}
+
+function is_operator() {
+  case "$1" in
+    ';' | '&' | '|' | '(' | ')' | '{' | '}' | '<NL>' | '`') return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+function find_invocations() {
+  local -r tokens="$1"
+  local at_cmd=1 idx=0 offset token
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    if ((at_cmd == 1)) && [[ "${token}" == 'pgrep' || "${token}" == 'pkill' ]]; then
+      printf '%s\t%s\t%s\n' "${idx}" "${offset}" "${token}"
+    fi
+    if is_operator "${token}" || is_keyword "${token}"; then at_cmd=1; else at_cmd=0; fi
+    idx=$((idx + 1))
+  done <<< "${tokens}"
+}
+
+function invocation_args() {
+  local -r tokens="$1"
+  local -r target="$2"
+  local idx=0 offset token
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    if ((idx > target)); then
+      is_operator "${token}" && break
+      printf '%s\t%s\n' "${offset}" "${token}"
+    fi
+    idx=$((idx + 1))
+  done <<< "${tokens}"
+}
+
+function has_flag() {
+  local -r args="$1" long="$2" short="$3"
+  local offset token
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    [[ "${token}" == '--' ]] && return 1
+    [[ "${token}" == "${long}" ]] && return 0
+    if [[ "${token}" == -[a-zA-Z]* && "${token}" != --* && "${token}" == *"${short}"* ]]; then return 0; fi
+  done <<< "${args}"
+  return 1
+}
+
+# Long options that take a separate value, so that value is not the operand.
+readonly -a PGREP_VALUE_OPTIONS=(
+  '--delimiter' '--parent' '--pgroup' '--session' '--terminal' '--uid' '--euid'
+  '--group' '--ns' '--nslist' '--signal' '--older'
+)
+
+function pattern_operand() {
+  local -r command="$1" args="$2"
+  local operand_offset='' operand_length=0 skip=0 offset token value_option
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    if ((skip == 1)); then
+      skip=0
+      continue
+    fi
+    case "${token}" in
+      --*)
+        for value_option in "${PGREP_VALUE_OPTIONS[@]}"; do
+          [[ "${token}" == "${value_option}" ]] && skip=1 && break
+        done
+        ;;
+      -*) : ;;
+      *[\<\>]*)
+        [[ "${token}" == '>' || "${token}" == '<' || "${token}" == '>>' ]] && skip=1
+        ;;
+      *)
+        operand_offset="${offset}"
+        operand_length="${#token}"
+        ;;
+    esac
+  done <<< "${args}"
+  [[ -z "${operand_offset}" ]] && return 0
+  local raw="${command:operand_offset:operand_length}"
+  if [[ "${raw}" == \"*\" || "${raw}" == \'*\' ]]; then raw="${raw:1:${#raw}-2}"; fi
+  printf '%s' "${raw}"
+}
 
 # @description Emit an allow decision.
 # @noargs
