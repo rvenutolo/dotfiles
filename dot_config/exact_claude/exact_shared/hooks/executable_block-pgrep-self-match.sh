@@ -251,6 +251,9 @@ function run_scanner_tests() {
     "$(inactive_probe "${probe_dir}/hook.sh" "${PATH}")" || failures=$((failures + 1))
   rm --recursive --force "${probe_dir}"
 
+  assert_equals 'tsv round-trip preserves a literal tab and newline' \
+    $'a\tb\nc' "$(tsv_roundtrip_probe $'a\tb\nc')" || failures=$((failures + 1))
+
   if ((failures > 0)); then
     return 1
   fi
@@ -273,6 +276,24 @@ function inactive_probe() {
   output="$(printf '{"tool_name":"Bash","tool_input":{"command":"pkill --full java"}}' \
     | env --ignore-environment "PATH=${path}" bash "${script}" 2> /dev/null || true)"
   if [[ "${output}" == *INACTIVE* ]]; then printf 'inactive\n'; else printf 'active\n'; fi
+}
+
+# @description Self-test helper: round-trip a command string through the same jq @tsv
+#              extraction and printf %b decoding that main() uses, to confirm a literal tab and
+#              newline in the command survive it byte for byte. jq escapes an actual tab as `\t`
+#              and an actual newline as `\n` so the record stays on one TSV line; decoding the
+#              wrong sequences, or in the wrong order, corrupts token boundaries silently rather
+#              than erroring.
+# @arg $1 command the command string to round-trip
+# @stdout the decoded command
+function tsv_roundtrip_probe() {
+  local -r command="$1"
+  local input tsv_line
+  input="$(jq --null-input --arg cmd "${command}" '{tool_name: "Bash", tool_input: {command: $cmd}}')"
+  tsv_line="$(jq --raw-output '[(.tool_name // ""), (.tool_input.command // "")] | @tsv' <<< "${input}")"
+  local tool_name command_escaped
+  IFS=$'\t' read -r tool_name command_escaped <<< "${tsv_line}"
+  printf '%b' "${command_escaped}"
 }
 
 # @description Self-test helper: does the first invocation carry a flag class?
@@ -1031,15 +1052,25 @@ function main() {
   local input
   input="$(cat)"
 
-  local tool_name
-  tool_name="$(jq --raw-output '.tool_name // empty' <<< "${input}")"
+  # One jq spawn instead of two, since it runs on every Bash call. The command
+  # can contain literal tabs and newlines, which @tsv escapes as `\t` / `\n`
+  # rather than emitting them raw -- raw newlines would split a single TSV
+  # record across lines, and a raw tab would be indistinguishable from the
+  # field separator. `printf '%b'` decodes exactly that escape set (`\\`,
+  # `\t`, `\n`, `\r`) as a single left-to-right pass, which is what makes it
+  # safe: every backslash jq emits is already paired, so there is no separate
+  # unescape step that could reinterpret a decoded literal backslash.
+  local tsv_line
+  tsv_line="$(jq --raw-output '[(.tool_name // ""), (.tool_input.command // "")] | @tsv' <<< "${input}")"
+  local tool_name command_escaped
+  IFS=$'\t' read -r tool_name command_escaped <<< "${tsv_line}"
   if [[ "${tool_name}" != 'Bash' ]]; then
     emit_allow
     return 0
   fi
 
   local command
-  command="$(jq --raw-output '.tool_input.command // empty' <<< "${input}")"
+  command="$(printf '%b' "${command_escaped}")"
 
   local decision
   decision="$(classify_command "${command}")"
