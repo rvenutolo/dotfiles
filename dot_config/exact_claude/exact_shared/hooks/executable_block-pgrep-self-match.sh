@@ -79,6 +79,16 @@ function run_scanner_tests() {
   assert_equals 'operand ignores a redirection target' 'x' \
     "$(pattern_probe 'pgrep --full x > /tmp/out')" || failures=$((failures + 1))
 
+  assert_equals 'bracket alone holds' 'yes' \
+    "$(bracket_probe 'pgrep --full "[u]nittest discover"')" || failures=$((failures + 1))
+  assert_equals 'bracket voided by a bare copy' 'no' \
+    "$(bracket_probe 'echo "unittest discover"; pgrep --full "[u]nittest discover"')" \
+    || failures=$((failures + 1))
+  assert_equals 'no bracket, no mitigation' 'no' \
+    "$(bracket_probe 'pgrep --full "unittest discover"')" || failures=$((failures + 1))
+  assert_equals 'bracket later in the pattern holds' 'yes' \
+    "$(bracket_probe 'pgrep --full "probe[.]py"')" || failures=$((failures + 1))
+
   if ((failures > 0)); then
     return 1
   fi
@@ -114,6 +124,22 @@ function pattern_probe() {
   local args
   args="$(invocation_args "${tokens}" "${idx}")"
   pattern_operand "${command}" "${args}"
+}
+
+# @description Self-test helper: does the bracket mitigation hold?
+# @arg $1 command the command string
+# @stdout yes or no
+function bracket_probe() {
+  local -r command="$1"
+  local tokens
+  tokens="$(scan_command "${command}")"
+  local idx
+  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
+  local args
+  args="$(invocation_args "${tokens}" "${idx}")"
+  local operand
+  operand="$(pattern_operand "${command}" "${args}")"
+  if bracket_mitigation_holds "${command}" "${operand}"; then printf 'yes\n'; else printf 'no\n'; fi
 }
 
 # @description Run the built-in case table.
@@ -282,6 +308,28 @@ function pattern_operand() {
   local raw="${command:operand_offset:operand_length}"
   if [[ "${raw}" == \"*\" || "${raw}" == \'*\' ]]; then raw="${raw:1:${#raw}-2}"; fi
   printf '%s' "${raw}"
+}
+
+# @description Decide whether a bracket-class pattern actually defeats self-match. It does only when
+#              the de-bracketed literal appears nowhere else in the command line: a single-character
+#              class hides the needle from its own regex, but an unbracketed copy elsewhere in the
+#              same `bash -c` argument puts it straight back.
+# @arg $1 command the raw command string
+# @arg $2 operand the pattern operand, quotes already stripped
+# @exitcode 0 the mitigation holds
+# @exitcode 1 no bracket class, or the bare literal occurs elsewhere
+function bracket_mitigation_holds() {
+  local -r command="$1" operand="$2"
+  [[ -z "${operand}" ]] && return 1
+  [[ "${operand}" != *\[?\]* ]] && return 1
+  local bare="${operand}"
+  while [[ "${bare}" == *\[?\]* ]]; do
+    bare="${bare%%\[*}${bare#*\[}"
+    bare="${bare/\]/}"
+  done
+  [[ -z "${bare}" ]] && return 1
+  [[ "${command}" == *"${bare}"* ]] && return 1
+  return 0
 }
 
 # @description Emit an allow decision.
