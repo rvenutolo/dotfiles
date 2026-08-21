@@ -154,3 +154,12 @@ repos:
         # that silently DOWNGRADES gitleaks v8.30.1 (lightweight tag, not
         # reachable from main) to v8.30.0, four months older. Renovate owns
         # these bumps; see .github/renovate.json5.
+      - id: pgrep-hook-self-test
+        name: self-test the pgrep poll-loop PreToolUse hook
+        language: system
+        entry: dot_config/exact_claude/exact_shared/hooks/executable_block-pgrep-self-match.sh --self-test
+        files: '^dot_config/exact_claude/exact_shared/hooks/(executable_block-pgrep-self-match\.sh|pgrep-scan\.awk)$'
+        pass_filenames: false
+        # A hook that silently stops matching is worse than no hook, so the case
+        # table is the regression guard. `files` covers the awk scanner too: a
+        # change there breaks classification without touching the bash script.
