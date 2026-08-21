@@ -2,6 +2,13 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
+# The scanner emits BYTE offsets, and this script slices the raw command back out
+# with ${command:offset:length}. Bash string operations are locale-aware, so under
+# a UTF-8 locale a single multibyte character earlier in the command shifts every
+# later slice and silently voids the bracket mitigation. Force the C locale so the
+# two index bases agree.
+export LC_ALL=C
+
 if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 3))); then
   printf '{}\n'
   exit 0
@@ -58,6 +65,42 @@ readonly -a SELF_TEST_CASES=(
   # Exercises the redirection-target guard: a real pipe followed by a redirect
   # into a file literally named `wc` must not read as "piped into wc".
   $'pgrep --full x | sort > wc\tallow'
+
+  # F1 -- unquoted `#` comments. One apostrophe in prose inverts quote parity for
+  # the rest of the command, and it fails in both directions: the first row
+  # exposes a quoted string as if it were code, the second hides a real loop.
+  $'# don\'t do it\necho \'while true; do pgrep --full x || break; sleep 5; done\'\tallow'
+  $'# don\'t do this\nuntil ! pgrep --full y; do sleep 5; done\tdeny:loop'
+  # The `#` of ${#arr[@]} follows `{`, not whitespace, so it opens no comment.
+  # Without that precondition the rest of the line is masked and the loop escapes.
+  $'n=${#arr[@]}; until ! pgrep --full x; do sleep 5; done\tdeny:loop'
+
+  # F2 -- a command substitution that has already CLOSED is not a capture. The
+  # first row is a bounded five-iteration loop that only prints; a prefix
+  # substring test read the `$(seq ...)` as capturing the pgrep and denied it.
+  $'for i in $(seq 1 5); do pgrep -af java; [ "$i" -gt 2 ] && break; done\tallow'
+  $'echo $(date); pgrep --full java\tallow'
+
+  # F3 -- the scanner emits byte offsets; a multibyte character earlier in the
+  # command must not shift the slice that recovers the pattern operand.
+  $'echo "→ checking"; until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tallow'
+
+  # F4 -- `kill` must head a pipeline segment (or follow an `xargs` that does).
+  # Searching output for the word "kill" kills nothing.
+  $'pgrep --full x | grep -i kill\tallow'
+  $'pgrep --full java | xargs --no-run-if-empty kill -9\tdeny:kill'
+
+  # F5 -- prefix commands and absolute paths must not defeat the guard.
+  $'sudo pkill --full java\tdeny:kill'
+  $'command pkill --full java\tdeny:kill'
+  $'/usr/bin/pgrep --full x | xargs kill\tdeny:kill'
+  $'until ! sudo pgrep --full x; do sleep 5; done\tdeny:loop'
+
+  # F6 -- an enclosing `if`/`elif`, or a leading `!`, reads the exit status as a
+  # boolean, which is exactly the reading the off-by-one corrupts.
+  $'if pgrep --full "java -jar app" > /dev/null; then echo up; fi\twarn'
+  $'! pgrep --full java\twarn'
+  $'if ! pgrep -f java; then echo down; fi\twarn'
 )
 
 # @description Tokenize a command, masking quoted regions.
@@ -291,6 +334,25 @@ readonly -a COMMAND_POSITION_KEYWORDS=(
   'do' 'then' 'else' 'elif' 'while' 'until' 'if' 'for' 'select' '!' 'time'
 )
 
+# Words that run another command and so preserve command position for the word
+# after them. `sudo pkill --full java` is the single most likely session-killing
+# form, so the guard must see through the prefix.
+readonly -a PREFIX_COMMANDS=('sudo' 'doas' 'env' 'nohup' 'command' 'time')
+
+# @description True when a token is a command prefix that keeps the following word in command
+#              position.
+# @arg $1 token the token to test
+# @exitcode 0 the token is a prefix command
+# @exitcode 1 it is not
+function is_prefix_command() {
+  local -r token="$1"
+  local prefix
+  for prefix in "${PREFIX_COMMANDS[@]}"; do
+    [[ "${token}" == "${prefix}" ]] && return 0
+  done
+  return 1
+}
+
 # @description True when a token is a shell keyword after which the next word is again in
 #              command position.
 # @arg $1 token the token to test
@@ -318,18 +380,30 @@ function is_operator() {
 }
 
 # @description Locate pgrep/pkill invocations that sit in command position. A quoted mention such as
-#              `grep -r "until ! pgrep --full"` yields nothing, because the scanner masked it.
+#              `grep -r "until ! pgrep --full"` yields nothing, because the scanner masked it. A
+#              leading run of prefix words (`sudo`, `command`, ...) keeps command position, and the
+#              token is matched on its basename so `/usr/bin/pgrep` counts.
 # @arg $1 tokens newline-separated "<offset>\t<token>" records from scan_command
-# @stdout lines of "<index>\t<offset>\t<name>"
+# @stdout lines of "<index>\t<offset>\t<basename>"
 function find_invocations() {
+  local at_cmd=1 idx=0 offset token word next_at_cmd
   local -r tokens="$1"
-  local at_cmd=1 idx=0 offset token
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
-    if ((at_cmd == 1)) && [[ "${token}" == 'pgrep' || "${token}" == 'pkill' ]]; then
-      printf '%s\t%s\t%s\n' "${idx}" "${offset}" "${token}"
+    word="${token##*/}"
+    if ((at_cmd == 1)) && [[ "${word}" == 'pgrep' || "${word}" == 'pkill' ]]; then
+      printf '%s\t%s\t%s\n' "${idx}" "${offset}" "${word}"
     fi
-    if is_operator "${token}" || is_keyword "${token}"; then at_cmd=1; else at_cmd=0; fi
+    if is_operator "${token}" || is_keyword "${token}"; then
+      next_at_cmd=1
+    elif ((at_cmd == 1)) && is_prefix_command "${word}"; then
+      # Only a prefix that is itself in command position chains: in `git command x`
+      # the word `command` is an argument, not a prefix.
+      next_at_cmd=1
+    else
+      next_at_cmd=0
+    fi
+    at_cmd="${next_at_cmd}"
     idx=$((idx + 1))
   done <<< "${tokens}"
 }
@@ -548,7 +622,9 @@ function emit_deny() {
 
 # @description True when an invocation's output is piped into a kill, or when the invocation is
 #              itself substituted into a kill's argument list (`kill $(pgrep ...)` and the backtick
-#              equivalent).
+#              equivalent). The forward pipeline scan requires `kill` to head a pipeline segment, or
+#              to follow an `xargs` that heads one, with flags and prefix words allowed in between:
+#              `pgrep --full x | grep -i kill` merely searches for the word and kills nothing.
 # @arg $1 tokens the token stream from scan_command
 # @arg $2 target index of the invocation token
 # @exitcode 0 output feeds a kill
@@ -556,7 +632,7 @@ function emit_deny() {
 function feeds_a_kill() {
   local -r tokens="$1" target="$2"
   local -a seq=()
-  local idx=0 seen=0 piped=0 offset token
+  local idx=0 seen=0 segment='none' offset token word
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
     seq+=("${token}")
@@ -566,10 +642,30 @@ function feeds_a_kill() {
       continue
     fi
     if ((seen == 1)); then
-      case "${token}" in
-        '|') piped=1 ;;
-        'kill') ((piped == 1)) && return 0 ;;
+      word="${token##*/}"
+      case "${word}" in
+        '|') segment='head' ;;
         ';' | '<NL>') seen=2 ;;
+        *)
+          case "${segment}" in
+            head)
+              if [[ "${word}" == 'kill' ]]; then
+                return 0
+              elif [[ "${word}" == 'xargs' ]]; then
+                segment='xargs'
+              elif ! is_prefix_command "${word}"; then
+                segment='other'
+              fi
+              ;;
+            xargs)
+              if [[ "${word}" == 'kill' ]]; then
+                return 0
+              elif [[ "${word}" != -* ]] && ! is_prefix_command "${word}"; then
+                segment='other'
+              fi
+              ;;
+          esac
+          ;;
       esac
     fi
     idx=$((idx + 1))
@@ -580,22 +676,21 @@ function feeds_a_kill() {
   # see it. Skip the substitution punctuation and any flags on the way back, then
   # require the `kill` to be in command position -- otherwise `echo kill $(...)`,
   # where `kill` is merely an argument word, would be denied.
-  local k=$((target - 1))
+  local k=$((target - 1)) m
   while ((k >= 0)); do
-    case "${seq[k]}" in
+    word="${seq[k]##*/}"
+    case "${word}" in
       '$' | '(' | '`') ;;
       -*) ;;
       'kill')
-        local m=$((k - 1))
+        m=$((k - 1))
         while ((m >= 0)); do
-          case "${seq[m]}" in
-            'sudo' | 'doas' | 'env' | 'nohup' | 'command' | 'time') ;;
-            *)
-              if is_operator "${seq[m]}" || is_keyword "${seq[m]}"; then return 0; fi
-              return 1
-              ;;
-          esac
-          m=$((m - 1))
+          if is_prefix_command "${seq[m]##*/}"; then
+            m=$((m - 1))
+            continue
+          fi
+          if is_operator "${seq[m]}" || is_keyword "${seq[m]}"; then return 0; fi
+          return 1
         done
         return 0
         ;;
@@ -606,18 +701,66 @@ function feeds_a_kill() {
   return 1
 }
 
+# @description True when an invocation sits inside a command substitution, so its output is captured
+#              rather than printed. Counted as a depth over the token stream: a substring test on the
+#              raw command prefix cannot tell an enclosing `$(` from an unrelated one that has
+#              already closed, which made `for i in $(seq 1 5); do pgrep -af java; ...; done` read as
+#              a capture. `$` is not an operator token, so the opener is recognised as any token
+#              ending in `$` immediately followed by `(`, which also covers `p=$(...)`.
+# @arg $1 tokens the token stream from scan_command
+# @arg $2 target index of the invocation token
+# @exitcode 0 the invocation is inside a command substitution
+# @exitcode 1 it is not
+function invocation_is_captured() {
+  local -r tokens="$1" target="$2"
+  local -a stack=()
+  local idx=0 dollar=0 offset token entry
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    if ((idx == target)); then
+      if ((${#stack[@]} == 0)); then
+        return 1
+      fi
+      for entry in "${stack[@]}"; do
+        [[ "${entry}" == 'capture' || "${entry}" == 'backtick' ]] && return 0
+      done
+      return 1
+    fi
+    case "${token}" in
+      '(')
+        if ((dollar == 1)); then stack+=('capture'); else stack+=('subshell'); fi
+        ;;
+      ')')
+        if ((${#stack[@]} > 0)); then unset 'stack[${#stack[@]}-1]'; fi
+        ;;
+      '`')
+        if ((${#stack[@]} > 0)) && [[ "${stack[${#stack[@]} - 1]}" == 'backtick' ]]; then
+          unset 'stack[${#stack[@]}-1]'
+        else
+          stack+=('backtick')
+        fi
+        ;;
+    esac
+    if [[ "${token}" == *'$' ]]; then dollar=1; else dollar=0; fi
+    idx=$((idx + 1))
+  done <<< "${tokens}"
+  return 1
+}
+
 # @description True when an invocation's result is read as a boolean, a count, or captured into a
 #              variable, rather than merely displayed. Only then can the silent off-by-one produce a
-#              wrong conclusion. A redirection target is not consumption: `2>&1` tokenizes as `2>`,
-#              `&`, `1`, and a lone trailing `&` is backgrounding rather than a boolean operator.
+#              wrong conclusion. Four shapes count: pgrep's own `--count` / `-c`; an enclosing `if`
+#              or `elif`, or a leading `!`, which read the exit status as a boolean; a following
+#              `&&`, `||`, `| wc` or `| xargs`; and sitting inside a command substitution. A
+#              redirection target is not consumption: `2>&1` tokenizes as `2>`, `&`, `1`, and a lone
+#              trailing `&` is backgrounding rather than a boolean operator.
 # @arg $1 tokens the token stream from scan_command
 # @arg $2 target index of the invocation token
 # @arg $3 args the invocation's argument lines
-# @arg $4 command the raw command string
 # @exitcode 0 the result is consumed
 # @exitcode 1 the result is only displayed
 function result_is_consumed() {
-  local -r tokens="$1" target="$2" args="$3" command="$4"
+  local -r tokens="$1" target="$2" args="$3"
   local offset token
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
@@ -625,8 +768,22 @@ function result_is_consumed() {
     if [[ "${token}" == -[a-zA-Z]* && "${token}" != --* && "${token}" == *c* ]]; then return 0; fi
   done <<< "${args}"
 
-  local invocation_offset
-  invocation_offset="$(printf '%s\n' "${tokens}" | awk -F'\t' -v t="${target}" 'NF && NR-1==t {print $1}')"
+  # An enclosing `if` / `elif`, or a negation, reads the exit status as a boolean.
+  # Walk back over prefix words so `if sudo pgrep --full x` still counts.
+  local -a seq=()
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    seq+=("${token}")
+  done <<< "${tokens}"
+  local k=$((target - 1)) word
+  while ((k >= 0)); do
+    word="${seq[k]##*/}"
+    case "${word}" in
+      'if' | 'elif' | '!') return 0 ;;
+      *) is_prefix_command "${word}" || break ;;
+    esac
+    k=$((k - 1))
+  done
 
   local idx=0 seen=0 prev='' amp=0 pipe=0
   while IFS=$'\t' read -r offset token; do
@@ -662,12 +819,8 @@ function result_is_consumed() {
     idx=$((idx + 1))
   done <<< "${tokens}"
 
-  # `p=$(pgrep ...)`: the substitution opener precedes the invocation.
-  if [[ -n "${invocation_offset}" ]]; then
-    local prefix="${command:0:invocation_offset}"
-    local -r subst_open="\$("
-    [[ "${prefix}" == *"${subst_open}"* ]] && return 0
-  fi
+  # `p=$(pgrep ...)`: the output is captured rather than printed.
+  invocation_is_captured "${tokens}" "${target}" && return 0
   return 1
 }
 
@@ -747,14 +900,14 @@ function classify_command() {
         return 0
         ;;
       body)
-        if result_is_consumed "${tokens}" "${idx}" "${args}" "${command}" \
+        if result_is_consumed "${tokens}" "${idx}" "${args}" \
           && body_has_terminator "${tokens}" "${idx}"; then
           printf 'deny:loop\n'
           return 0
         fi
         ;;
     esac
-    result_is_consumed "${tokens}" "${idx}" "${args}" "${command}" && verdict='warn'
+    result_is_consumed "${tokens}" "${idx}" "${args}" && verdict='warn'
   done <<< "$(find_invocations "${tokens}")"
   printf '%s\n' "${verdict}"
 }
