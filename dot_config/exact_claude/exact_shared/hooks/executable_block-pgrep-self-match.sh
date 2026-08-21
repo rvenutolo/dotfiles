@@ -97,6 +97,22 @@ function run_scanner_tests() {
   assert_equals 'stray class opener is unreconstructable' 'no' \
     "$(bracket_probe 'pgrep --full "abc[def[g]hij"')" || failures=$((failures + 1))
 
+  assert_equals 'condition span' 'cond' \
+    "$(context_probe 'until ! pgrep --full x; do sleep 5; done')" || failures=$((failures + 1))
+  assert_equals 'body span' 'body' \
+    "$(context_probe 'while true; do pgrep --full x || break; sleep 5; done')" \
+    || failures=$((failures + 1))
+  assert_equals 'outside every loop' 'none' \
+    "$(context_probe 'while read -r line; do :; done < f; pgrep -af java')" \
+    || failures=$((failures + 1))
+  assert_equals 'for head is not a condition' 'none' \
+    "$(context_probe 'for f in *; do :; done; pgrep --full x')" || failures=$((failures + 1))
+  assert_equals 'nested loop attributes to inner body' 'body' \
+    "$(context_probe 'while true; do for f in *; do pgrep --full x || break; done; done')" \
+    || failures=$((failures + 1))
+  assert_equals 'echo done does not close a span' 'cond' \
+    "$(context_probe 'until ! pgrep --full x; do echo done; done')" || failures=$((failures + 1))
+
   if ((failures > 0)); then
     return 1
   fi
@@ -148,6 +164,18 @@ function bracket_probe() {
   local operand
   operand="$(pattern_operand "${command}" "${args}")"
   if bracket_mitigation_holds "${command}" "${operand}"; then printf 'yes\n'; else printf 'no\n'; fi
+}
+
+# @description Self-test helper: loop context of the first invocation.
+# @arg $1 command the command string
+# @stdout none, cond, or body
+function context_probe() {
+  local -r command="$1"
+  local tokens
+  tokens="$(scan_command "${command}")"
+  local idx
+  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
+  loop_context "${tokens}" "${idx}"
 }
 
 # @description Run the built-in case table.
@@ -343,6 +371,75 @@ function bracket_mitigation_holds() {
   [[ -z "${bare}" ]] && return 1
   [[ "${command}" == *"${bare}"* ]] && return 1
   return 0
+}
+
+# @description Determine whether a token index sits inside a while/until condition, inside any loop
+#              body, or outside every loop. A for/select head reports "none": it is evaluated once,
+#              so a self-matching pgrep there pins no termination test.
+# @arg $1 tokens the token stream from scan_command
+# @arg $2 target index of the invocation token
+# @stdout none, cond, or body
+function loop_context() {
+  local -r tokens="$1" target="$2"
+  local -a stack=()
+  local idx=0 at_cmd=1 offset token
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    if ((idx == target)); then
+      if ((${#stack[@]} == 0)); then
+        printf 'none\n'
+        return 0
+      fi
+      case "${stack[${#stack[@]} - 1]}" in
+        cond) printf 'cond\n' ;;
+        body) printf 'body\n' ;;
+        *) printf 'none\n' ;;
+      esac
+      return 0
+    fi
+    if ((at_cmd == 1)); then
+      case "${token}" in
+        'while' | 'until') stack+=('cond') ;;
+        'for' | 'select') stack+=('head') ;;
+        'do')
+          ((${#stack[@]} > 0)) && unset 'stack[${#stack[@]}-1]'
+          stack+=('body')
+          ;;
+        'done') ((${#stack[@]} > 0)) && unset 'stack[${#stack[@]}-1]' ;;
+      esac
+    fi
+    if is_operator "${token}" || is_keyword "${token}"; then at_cmd=1; else at_cmd=0; fi
+    idx=$((idx + 1))
+  done <<< "${tokens}"
+  printf 'none\n'
+}
+
+# @description True when the loop body enclosing an invocation contains a break, exit or return in
+#              command position, which makes a body-position pgrep the effective termination test.
+# @arg $1 tokens the token stream from scan_command
+# @arg $2 target index of the invocation token
+# @exitcode 0 a terminator is present in the enclosing body
+# @exitcode 1 no terminator
+function body_has_terminator() {
+  local -r tokens="$1" target="$2"
+  local depth=0 seen=0 at_cmd=1 idx=0 offset token
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    ((idx == target)) && seen=1
+    if ((at_cmd == 1)); then
+      case "${token}" in
+        'do') depth=$((depth + 1)) ;;
+        'done')
+          ((seen == 1 && depth > 0)) && return 1
+          ((depth > 0)) && depth=$((depth - 1))
+          ;;
+        'break' | 'exit' | 'return') ((depth > 0)) && return 0 ;;
+      esac
+    fi
+    if is_operator "${token}" || is_keyword "${token}"; then at_cmd=1; else at_cmd=0; fi
+    idx=$((idx + 1))
+  done <<< "${tokens}"
+  return 1
 }
 
 # @description Emit an allow decision.
