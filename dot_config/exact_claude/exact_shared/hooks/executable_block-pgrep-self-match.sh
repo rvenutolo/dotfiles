@@ -14,396 +14,6 @@ if ((BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 3))); 
   exit 0
 fi
 
-readonly -a SELF_TEST_CASES=(
-  $'ls -la\tallow'
-  $'echo hello\tallow'
-  $'grep --recursive "until ! pgrep --full x" .\tallow'
-  $'echo "pgrep --full x"\tallow'
-  $'echo "while until pgrep --full x"\tallow'
-  $'pgrep java\tallow'
-  $'pgrep -a java\tallow'
-  $'until ! pgrep --full "unittest discover" > /dev/null 2>&1; do sleep 5; done\tdeny:loop'
-  $'while pgrep -f build >/dev/null; do sleep 2; done\tdeny:loop'
-  $'while true; do pgrep --full x >/dev/null || break; sleep 5; done\tdeny:loop'
-  $'until ! pgrep --ignore-ancestors --full x; do sleep 5; done\tallow'
-  $'until ! pgrep -Af x; do sleep 5; done\tallow'
-  $'until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tallow'
-  $'echo "unittest discover"; until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tdeny:loop'
-  $'pkill --full "unittest discover"\tdeny:kill'
-  $'pgrep --full java | xargs kill\tdeny:kill'
-  $'pkill --ignore-ancestors --full java\tallow'
-  $'while read -r line; do :; done < f; pgrep -af java\tallow'
-  $'for f in *; do :; done; pgrep --full x && echo yes\twarn'
-  $'pgrep --full x >/dev/null && echo running\twarn'
-  $'pgrep --full x | wc -l\twarn'
-  $'pgrep -cf java\twarn'
-  $'while [ -n "$p" ]; do p=$(pgrep --full x); sleep 5; done\twarn'
-  $'pgrep -af java\tallow'
-  # This row does not discriminate on its own -- the command also carries --full.
-  # The two rows below it do: each has a lookalike and nothing else.
-  $'pgrep --list-full --full java\tallow'
-  $'until ! pgrep --list-full java; do sleep 5; done\tallow'
-  $'until ! pgrep -- --full x; do sleep 5; done\tallow'
-  # NEW rows covering the review findings
-  # A valid silent-allow case, but a stray `&` alone does not exercise the
-  # redirection-target guard in result_is_consumed (amp only reaches 1).
-  $'pgrep -af java > /tmp/x 2>&1\tallow'
-  $'until [ -z "$(pgrep --full x)" ]; do sleep 5; done\tdeny:loop'
-  $'echo hi\nuntil ! pgrep --full x\ndo sleep 5\ndone\tdeny:loop'
-  $'pgrep --full x &\tallow'
-  # Backtick command substitution, both quoted and unquoted (Task 2 regression).
-  # The quoted row pins the context-stack special-casing; the unquoted row pins
-  # the tokenizer's operator set -- removing the backtick from either breaks it.
-  $'until [ -z "`pgrep --full x`" ]; do sleep 5; done\tdeny:loop'
-  $'until [ -z `pgrep --full x` ]; do sleep 5; done\tdeny:loop'
-  # Command substitution into kill: same session-killing effect as pkill --full.
-  $'kill $(pgrep --full x)\tdeny:kill'
-  $'kill -9 $(pgrep --full x)\tdeny:kill'
-  $'sudo kill $(pgrep --full x)\tdeny:kill'
-  # `kill` as an argument word is not a kill form; it must be in command position.
-  $'echo kill $(pgrep --full x)\twarn'
-  # A prefix chain before kill is still a kill form.
-  $'true; kill $(pgrep --full x)\tdeny:kill'
-  # A substitution feeding something harmless is still only a warn.
-  $'echo $(pgrep --full x)\twarn'
-  # Exercises the redirection-target guard: a real pipe followed by a redirect
-  # into a file literally named `wc` must not read as "piped into wc".
-  $'pgrep --full x | sort > wc\tallow'
-
-  # F1 -- unquoted `#` comments. One apostrophe in prose inverts quote parity for
-  # the rest of the command, and it fails in both directions: the first row
-  # exposes a quoted string as if it were code, the second hides a real loop.
-  $'# don\'t do it\necho \'while true; do pgrep --full x || break; sleep 5; done\'\tallow'
-  $'# don\'t do this\nuntil ! pgrep --full y; do sleep 5; done\tdeny:loop'
-  # The `#` of ${#arr[@]} follows `{`, not whitespace, so it opens no comment.
-  # Without that precondition the rest of the line is masked and the loop escapes.
-  $'n=${#arr[@]}; until ! pgrep --full x; do sleep 5; done\tdeny:loop'
-
-  # F2 -- a command substitution that has already CLOSED is not a capture. The
-  # first row is a bounded five-iteration loop that only prints; a prefix
-  # substring test read the `$(seq ...)` as capturing the pgrep and denied it.
-  $'for i in $(seq 1 5); do pgrep -af java; [ "$i" -gt 2 ] && break; done\tallow'
-  $'echo $(date); pgrep --full java\tallow'
-
-  # F3 -- the scanner emits byte offsets; a multibyte character earlier in the
-  # command must not shift the slice that recovers the pattern operand.
-  $'echo "→ checking"; until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tallow'
-
-  # F4 -- `kill` must head a pipeline segment (or follow an `xargs` that does).
-  # Searching output for the word "kill" kills nothing.
-  $'pgrep --full x | grep -i kill\tallow'
-  $'pgrep --full java | xargs --no-run-if-empty kill -9\tdeny:kill'
-
-  # F5 -- prefix commands and absolute paths must not defeat the guard.
-  $'sudo pkill --full java\tdeny:kill'
-  $'command pkill --full java\tdeny:kill'
-  $'/usr/bin/pgrep --full x | xargs kill\tdeny:kill'
-  $'until ! sudo pgrep --full x; do sleep 5; done\tdeny:loop'
-
-  # F6 -- an enclosing `if`/`elif`, or a leading `!`, reads the exit status as a
-  # boolean, which is exactly the reading the off-by-one corrupts.
-  $'if pgrep --full "java -jar app" > /dev/null; then echo up; fi\twarn'
-  $'! pgrep --full java\twarn'
-  $'if ! pgrep -f java; then echo down; fi\twarn'
-
-  # F7 -- everything after a bare `--` end-of-options terminator is a pattern,
-  # not a flag. A displayed one-shot with no consuming context is still a
-  # silent allow, same as any other bare full-match invocation; the case that
-  # actually changes is a bracket class recognised only once `-x` is no
-  # longer swallowed as a flag.
-  $'pgrep --full -- -x\tallow'
-  $'until ! pgrep --full -- "[u]nittest discover"; do sleep 5; done\tallow'
-
-  # F8 -- an array literal's `(` restores command position for legitimate
-  # reasons (grouping, subshells), but `arr=(...)` is not one of them: `kill`
-  # immediately inside an array literal is a string element, never invoked.
-  $'arr=(kill $(pgrep --full x))\twarn'
-)
-
-# @description Tokenize a command, masking quoted regions.
-# @arg $1 command the command string
-# @stdout offset and token pairs, separated by tab
-function scan_command() {
-  local -r command="$1"
-  printf '%s' "${command}" | LC_ALL=C awk -f "${SCANNER}"
-}
-
-# @description Assert helper used by the scanner unit checks.
-# @arg $1 label description
-# @arg $2 expected expected value
-# @arg $3 actual actual value
-# @exitcode 0 match
-# @exitcode 1 mismatch
-function assert_equals() {
-  local -r label="$1"
-  local -r expected="$2"
-  local -r actual="$3"
-  if [[ "${expected}" != "${actual}" ]]; then
-    printf 'FAIL: %s\n  expected: %s\n  actual:   %s\n' "${label}" "${expected}" "${actual}" >&2
-    return 1
-  fi
-}
-
-# @description Unit checks for the scanner.
-# @noargs
-# @exitcode 0 all assertions held
-function run_scanner_tests() {
-  local failures=0
-
-  assert_equals 'quoted mention yields no pgrep token' \
-    '0' "$(scan_command 'grep -r "until ! pgrep --full x" .' | grep --count '\bpgrep$' || true)" \
-    || failures=$((failures + 1))
-
-  assert_equals 'bare pgrep is tokenized' \
-    'pgrep' "$(scan_command 'pgrep --full x' | awk -F'\t' 'NR==1 {print $2}')" \
-    || failures=$((failures + 1))
-
-  # shellcheck disable=SC2016
-  assert_equals 'command substitution inside double quotes is visible' \
-    '14' "$(scan_command 'until [ -z "$(pgrep --full x)" ]; do sleep 5; done' \
-      | awk -F'\t' '$2 == "pgrep" {print $1}')" \
-    || failures=$((failures + 1))
-
-  assert_equals 'newline survives as a literal token' \
-    '<NL>' "$(scan_command "$(printf 'echo hi\nls')" | awk -F'\t' 'NR==3 {print $2}')" \
-    || failures=$((failures + 1))
-
-  assert_equals 'long full flag' 'yes' "$(flag_probe 'pgrep --full x' '--full' 'f')" \
-    || failures=$((failures + 1))
-  assert_equals 'short cluster -af is full' 'yes' "$(flag_probe 'pgrep -af x' '--full' 'f')" \
-    || failures=$((failures + 1))
-  assert_equals 'plain -a is not full' 'no' "$(flag_probe 'pgrep -a x' '--full' 'f')" \
-    || failures=$((failures + 1))
-  assert_equals 'long ignore-ancestors' 'yes' \
-    "$(flag_probe 'pgrep --ignore-ancestors --full x' '--ignore-ancestors' 'A')" \
-    || failures=$((failures + 1))
-  assert_equals 'short -A' 'yes' "$(flag_probe 'pgrep -Af x' '--ignore-ancestors' 'A')" \
-    || failures=$((failures + 1))
-  assert_equals 'operand is last non-flag arg' 'unittest discover' \
-    "$(pattern_probe 'pgrep --full "unittest discover"')" || failures=$((failures + 1))
-  assert_equals 'operand skips a flag value' 'java' \
-    "$(pattern_probe 'pgrep --full --delimiter , java')" || failures=$((failures + 1))
-  assert_equals 'operand ignores a redirection target' 'x' \
-    "$(pattern_probe 'pgrep --full x > /tmp/out')" || failures=$((failures + 1))
-  assert_equals 'operand after -- is not swallowed as a flag' '-x' \
-    "$(pattern_probe 'pgrep --full -- -x')" || failures=$((failures + 1))
-
-  assert_equals 'bracket alone holds' 'yes' \
-    "$(bracket_probe 'pgrep --full "[u]nittest discover"')" || failures=$((failures + 1))
-  assert_equals 'bracket voided by a bare copy' 'no' \
-    "$(bracket_probe 'echo "unittest discover"; pgrep --full "[u]nittest discover"')" \
-    || failures=$((failures + 1))
-  assert_equals 'no bracket, no mitigation' 'no' \
-    "$(bracket_probe 'pgrep --full "unittest discover"')" || failures=$((failures + 1))
-  assert_equals 'bracket later in the pattern holds' 'yes' \
-    "$(bracket_probe 'pgrep --full "probe[.]py"')" || failures=$((failures + 1))
-
-  assert_equals 'multi-char class is not the idiom' 'no' \
-    "$(bracket_probe 'pgrep --full "[abc]needle[d]"')" || failures=$((failures + 1))
-  assert_equals 'single then multi-char class' 'no' \
-    "$(bracket_probe 'pgrep --full "[d]needle[abc]"')" || failures=$((failures + 1))
-
-  assert_equals 'stray class opener is unreconstructable' 'no' \
-    "$(bracket_probe 'pgrep --full "abc[def[g]hij"')" || failures=$((failures + 1))
-
-  assert_equals 'condition span' 'cond' \
-    "$(context_probe 'until ! pgrep --full x; do sleep 5; done')" || failures=$((failures + 1))
-  assert_equals 'body span' 'body' \
-    "$(context_probe 'while true; do pgrep --full x || break; sleep 5; done')" \
-    || failures=$((failures + 1))
-  assert_equals 'outside every loop' 'none' \
-    "$(context_probe 'while read -r line; do :; done < f; pgrep -af java')" \
-    || failures=$((failures + 1))
-  # shellcheck disable=SC2016
-  assert_equals 'for head is not a condition' 'none' \
-    "$(context_probe 'for f in $(pgrep --full x); do :; done')" || failures=$((failures + 1))
-  assert_equals 'nested loop attributes to inner body' 'body' \
-    "$(context_probe 'while true; do for f in *; do pgrep --full x || break; done; done')" \
-    || failures=$((failures + 1))
-  assert_equals 'done as an argument does not close a span' 'body' \
-    "$(context_probe 'while true; do echo done; pgrep --full x || break; done')" \
-    || failures=$((failures + 1))
-  # A `done` inside a command substitution IS in command position -- unlike the
-  # argument-word case above -- but it must still be unable to pop a span that
-  # encloses the substitution. Without a scope barrier this `done` pops the
-  # outer body early, and the invocation reads as outside every loop.
-  # shellcheck disable=SC2016
-  assert_equals 'a done inside a substitution cannot pop the enclosing body span' 'body' \
-    "$(context_probe 'while true; do echo "$(: ; done)"; pgrep --full x || break; sleep 5; done')" \
-    || failures=$((failures + 1))
-  assert_equals 'body terminator found' 'yes' \
-    "$(terminator_probe 'while true; do pgrep --full x || break; done')" || failures=$((failures + 1))
-  assert_equals 'no terminator in body' 'no' \
-    "$(terminator_probe 'while true; do pgrep --full x; sleep 5; done')" || failures=$((failures + 1))
-  assert_equals 'terminator in an outer body only' 'no' \
-    "$(terminator_probe 'while true; do for f in *; do pgrep --full x; done; break; done')" \
-    || failures=$((failures + 1))
-
-  # A guard that dies quietly is worse than no guard, so both missing-dependency
-  # branches are exercised against a real end-to-end run of a copy of this script.
-  # The stub PATH holds only what the script needs before the awk check.
-  local probe_dir stub_dir binary
-  probe_dir="$(mktemp --directory)"
-  stub_dir="${probe_dir}/bin"
-  mkdir --parents "${stub_dir}"
-  for binary in bash jq dirname cat; do
-    ln --symbolic "$(command -v "${binary}" || printf '/nonexistent')" "${stub_dir}/${binary}" \
-      || true
-  done
-  cp "${SCRIPT_PATH}" "${probe_dir}/hook.sh"
-  cp "${SCANNER}" "${probe_dir}/pgrep-scan.awk"
-  assert_equals 'missing awk announces the guard inactive' 'inactive' \
-    "$(inactive_probe "${probe_dir}/hook.sh" "${stub_dir}")" || failures=$((failures + 1))
-  rm --force "${probe_dir}/pgrep-scan.awk"
-  assert_equals 'missing scanner announces the guard inactive' 'inactive' \
-    "$(inactive_probe "${probe_dir}/hook.sh" "${PATH}")" || failures=$((failures + 1))
-  rm --recursive --force "${probe_dir}"
-
-  assert_equals 'tsv round-trip preserves a literal tab and newline' \
-    $'a\tb\nc' "$(tsv_roundtrip_probe $'a\tb\nc')" || failures=$((failures + 1))
-
-  if ((failures > 0)); then
-    return 1
-  fi
-}
-
-# @description Self-test helper: run a copy of this hook end to end and report whether it announced
-#              that the guard is inactive, rather than dying into the ERR trap's silent allow. The
-#              probe command must contain `pgrep`, or classify_command short-circuits before the
-#              scanner is ever reached and a dead scanner looks healthy. The child runs under
-#              `env --ignore-environment`: a plain PATH prefix assignment is not enough, because a
-#              BASH_ENV inherited from the caller re-sources the user's profile, which rebuilds PATH
-#              and quietly restores the very binary the probe is trying to remove.
-# @arg $1 script path to the hook copy to run
-# @arg $2 path the PATH that copy should see
-# @stdout inactive or active
-function inactive_probe() {
-  local -r script="$1"
-  local -r path="$2"
-  local output
-  output="$(printf '{"tool_name":"Bash","tool_input":{"command":"pkill --full java"}}' \
-    | env --ignore-environment "PATH=${path}" bash "${script}" 2> /dev/null || true)"
-  if [[ "${output}" == *INACTIVE* ]]; then printf 'inactive\n'; else printf 'active\n'; fi
-}
-
-# @description Self-test helper: round-trip a command string through the same jq @tsv
-#              extraction and printf %b decoding that main() uses, to confirm a literal tab and
-#              newline in the command survive it byte for byte. jq escapes an actual tab as `\t`
-#              and an actual newline as `\n` so the record stays on one TSV line; decoding the
-#              wrong sequences, or in the wrong order, corrupts token boundaries silently rather
-#              than erroring.
-# @arg $1 command the command string to round-trip
-# @stdout the decoded command
-function tsv_roundtrip_probe() {
-  local -r command="$1"
-  local input tsv_line
-  input="$(jq --null-input --arg cmd "${command}" '{tool_name: "Bash", tool_input: {command: $cmd}}')"
-  tsv_line="$(jq --raw-output '[(.tool_name // ""), (.tool_input.command // "")] | @tsv' <<< "${input}")"
-  local tool_name command_escaped
-  IFS=$'\t' read -r tool_name command_escaped <<< "${tsv_line}"
-  printf '%b' "${command_escaped}"
-}
-
-# @description Self-test helper: does the first invocation carry a flag class?
-# @arg $1 command the command string
-# @arg $2 long the long option
-# @arg $3 short the short cluster letter
-# @stdout yes or no
-function flag_probe() {
-  local -r command="$1"
-  local -r long="$2"
-  local -r short="$3"
-  local tokens
-  tokens="$(scan_command "${command}")"
-  local idx
-  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
-  local args
-  args="$(invocation_args "${tokens}" "${idx}")"
-  if has_flag "${args}" "${long}" "${short}"; then printf 'yes\n'; else printf 'no\n'; fi
-}
-
-# @description Self-test helper: the pattern operand of the first invocation.
-# @arg $1 command the command string
-# @stdout the operand, or empty
-function pattern_probe() {
-  local -r command="$1"
-  local tokens
-  tokens="$(scan_command "${command}")"
-  local idx
-  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
-  local args
-  args="$(invocation_args "${tokens}" "${idx}")"
-  pattern_operand "${command}" "${args}"
-}
-
-# @description Self-test helper: does the bracket mitigation hold?
-# @arg $1 command the command string
-# @stdout yes or no
-function bracket_probe() {
-  local -r command="$1"
-  local tokens
-  tokens="$(scan_command "${command}")"
-  local idx
-  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
-  local args
-  args="$(invocation_args "${tokens}" "${idx}")"
-  local operand
-  operand="$(pattern_operand "${command}" "${args}")"
-  if bracket_mitigation_holds "${command}" "${operand}"; then printf 'yes\n'; else printf 'no\n'; fi
-}
-
-# @description Self-test helper: loop context of the first invocation.
-# @arg $1 command the command string
-# @stdout none, cond, or body
-function context_probe() {
-  local -r command="$1"
-  local tokens
-  tokens="$(scan_command "${command}")"
-  local idx
-  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
-  loop_context "${tokens}" "${idx}"
-}
-
-# @description Self-test helper: does the loop body enclosing the first invocation
-#              contain a break, exit or return?
-# @arg $1 command the command string
-# @stdout yes or no
-function terminator_probe() {
-  local -r command="$1"
-  local tokens
-  tokens="$(scan_command "${command}")"
-  local idx
-  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
-  if body_has_terminator "${tokens}" "${idx}"; then printf 'yes\n'; else printf 'no\n'; fi
-}
-
-# @description Run the built-in case table.
-# @noargs
-# @exitcode 0 all cases matched
-# @exitcode 1 at least one case mismatched
-function run_self_test() {
-  local failures=0
-  if ! run_scanner_tests; then
-    failures=$((failures + 1))
-  fi
-  local case_line expected actual command
-  for case_line in "${SELF_TEST_CASES[@]}"; do
-    command="${case_line%%$'\t'*}"
-    expected="${case_line##*$'\t'}"
-    actual="$(classify_command "${command}")"
-    if [[ "${actual}" != "${expected}" ]]; then
-      printf 'FAIL: %s\n  expected: %s\n  actual:   %s\n' \
-        "${command//$'\n'/\\n}" "${expected}" "${actual}" >&2
-      failures=$((failures + 1))
-    fi
-  done
-  if ((failures > 0)); then
-    printf '%d self-test failure(s)\n' "${failures}" >&2
-    return 1
-  fi
-  printf 'all %d self-test cases passed\n' "${#SELF_TEST_CASES[@]}"
-}
-
 # Any unexpected failure must still allow the command. A hook that dies non-zero
 # surfaces an error on every Bash call; exit 2 would block the tool outright.
 trap 'emit_allow; exit 0' ERR
@@ -465,6 +75,14 @@ function is_operator() {
     ';' | '&' | '|' | '(' | ')' | '{' | '}' | '<NL>' | '`') return 0 ;;
     *) return 1 ;;
   esac
+}
+
+# @description Tokenize a command, masking quoted regions.
+# @arg $1 command the command string
+# @stdout offset and token pairs, separated by tab
+function scan_command() {
+  local -r command="$1"
+  printf '%s' "${command}" | LC_ALL=C awk -f "${SCANNER}"
 }
 
 # @description Locate pgrep/pkill invocations that sit in command position. A quoted mention such as
@@ -1124,6 +742,388 @@ function main() {
       emit_allow
       ;;
   esac
+}
+
+readonly -a SELF_TEST_CASES=(
+  $'ls -la\tallow'
+  $'echo hello\tallow'
+  $'grep --recursive "until ! pgrep --full x" .\tallow'
+  $'echo "pgrep --full x"\tallow'
+  $'echo "while until pgrep --full x"\tallow'
+  $'pgrep java\tallow'
+  $'pgrep -a java\tallow'
+  $'until ! pgrep --full "unittest discover" > /dev/null 2>&1; do sleep 5; done\tdeny:loop'
+  $'while pgrep -f build >/dev/null; do sleep 2; done\tdeny:loop'
+  $'while true; do pgrep --full x >/dev/null || break; sleep 5; done\tdeny:loop'
+  $'until ! pgrep --ignore-ancestors --full x; do sleep 5; done\tallow'
+  $'until ! pgrep -Af x; do sleep 5; done\tallow'
+  $'until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tallow'
+  $'echo "unittest discover"; until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tdeny:loop'
+  $'pkill --full "unittest discover"\tdeny:kill'
+  $'pgrep --full java | xargs kill\tdeny:kill'
+  $'pkill --ignore-ancestors --full java\tallow'
+  $'while read -r line; do :; done < f; pgrep -af java\tallow'
+  $'for f in *; do :; done; pgrep --full x && echo yes\twarn'
+  $'pgrep --full x >/dev/null && echo running\twarn'
+  $'pgrep --full x | wc -l\twarn'
+  $'pgrep -cf java\twarn'
+  $'while [ -n "$p" ]; do p=$(pgrep --full x); sleep 5; done\twarn'
+  $'pgrep -af java\tallow'
+  # This row does not discriminate on its own -- the command also carries --full.
+  # The two rows below it do: each has a lookalike and nothing else.
+  $'pgrep --list-full --full java\tallow'
+  $'until ! pgrep --list-full java; do sleep 5; done\tallow'
+  $'until ! pgrep -- --full x; do sleep 5; done\tallow'
+  # NEW rows covering the review findings
+  # A valid silent-allow case, but a stray `&` alone does not exercise the
+  # redirection-target guard in result_is_consumed (amp only reaches 1).
+  $'pgrep -af java > /tmp/x 2>&1\tallow'
+  $'until [ -z "$(pgrep --full x)" ]; do sleep 5; done\tdeny:loop'
+  $'echo hi\nuntil ! pgrep --full x\ndo sleep 5\ndone\tdeny:loop'
+  $'pgrep --full x &\tallow'
+  # Backtick command substitution, both quoted and unquoted (Task 2 regression).
+  # The quoted row pins the context-stack special-casing; the unquoted row pins
+  # the tokenizer's operator set -- removing the backtick from either breaks it.
+  $'until [ -z "`pgrep --full x`" ]; do sleep 5; done\tdeny:loop'
+  $'until [ -z `pgrep --full x` ]; do sleep 5; done\tdeny:loop'
+  # Command substitution into kill: same session-killing effect as pkill --full.
+  $'kill $(pgrep --full x)\tdeny:kill'
+  $'kill -9 $(pgrep --full x)\tdeny:kill'
+  $'sudo kill $(pgrep --full x)\tdeny:kill'
+  # `kill` as an argument word is not a kill form; it must be in command position.
+  $'echo kill $(pgrep --full x)\twarn'
+  # A prefix chain before kill is still a kill form.
+  $'true; kill $(pgrep --full x)\tdeny:kill'
+  # A substitution feeding something harmless is still only a warn.
+  $'echo $(pgrep --full x)\twarn'
+  # Exercises the redirection-target guard: a real pipe followed by a redirect
+  # into a file literally named `wc` must not read as "piped into wc".
+  $'pgrep --full x | sort > wc\tallow'
+
+  # F1 -- unquoted `#` comments. One apostrophe in prose inverts quote parity for
+  # the rest of the command, and it fails in both directions: the first row
+  # exposes a quoted string as if it were code, the second hides a real loop.
+  $'# don\'t do it\necho \'while true; do pgrep --full x || break; sleep 5; done\'\tallow'
+  $'# don\'t do this\nuntil ! pgrep --full y; do sleep 5; done\tdeny:loop'
+  # The `#` of ${#arr[@]} follows `{`, not whitespace, so it opens no comment.
+  # Without that precondition the rest of the line is masked and the loop escapes.
+  $'n=${#arr[@]}; until ! pgrep --full x; do sleep 5; done\tdeny:loop'
+
+  # F2 -- a command substitution that has already CLOSED is not a capture. The
+  # first row is a bounded five-iteration loop that only prints; a prefix
+  # substring test read the `$(seq ...)` as capturing the pgrep and denied it.
+  $'for i in $(seq 1 5); do pgrep -af java; [ "$i" -gt 2 ] && break; done\tallow'
+  $'echo $(date); pgrep --full java\tallow'
+
+  # F3 -- the scanner emits byte offsets; a multibyte character earlier in the
+  # command must not shift the slice that recovers the pattern operand.
+  $'echo "→ checking"; until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tallow'
+
+  # F4 -- `kill` must head a pipeline segment (or follow an `xargs` that does).
+  # Searching output for the word "kill" kills nothing.
+  $'pgrep --full x | grep -i kill\tallow'
+  $'pgrep --full java | xargs --no-run-if-empty kill -9\tdeny:kill'
+
+  # F5 -- prefix commands and absolute paths must not defeat the guard.
+  $'sudo pkill --full java\tdeny:kill'
+  $'command pkill --full java\tdeny:kill'
+  $'/usr/bin/pgrep --full x | xargs kill\tdeny:kill'
+  $'until ! sudo pgrep --full x; do sleep 5; done\tdeny:loop'
+
+  # F6 -- an enclosing `if`/`elif`, or a leading `!`, reads the exit status as a
+  # boolean, which is exactly the reading the off-by-one corrupts.
+  $'if pgrep --full "java -jar app" > /dev/null; then echo up; fi\twarn'
+  $'! pgrep --full java\twarn'
+  $'if ! pgrep -f java; then echo down; fi\twarn'
+
+  # F7 -- everything after a bare `--` end-of-options terminator is a pattern,
+  # not a flag. A displayed one-shot with no consuming context is still a
+  # silent allow, same as any other bare full-match invocation; the case that
+  # actually changes is a bracket class recognised only once `-x` is no
+  # longer swallowed as a flag.
+  $'pgrep --full -- -x\tallow'
+  $'until ! pgrep --full -- "[u]nittest discover"; do sleep 5; done\tallow'
+
+  # F8 -- an array literal's `(` restores command position for legitimate
+  # reasons (grouping, subshells), but `arr=(...)` is not one of them: `kill`
+  # immediately inside an array literal is a string element, never invoked.
+  $'arr=(kill $(pgrep --full x))\twarn'
+)
+
+# @description Assert helper used by the scanner unit checks.
+# @arg $1 label description
+# @arg $2 expected expected value
+# @arg $3 actual actual value
+# @exitcode 0 match
+# @exitcode 1 mismatch
+function assert_equals() {
+  local -r label="$1"
+  local -r expected="$2"
+  local -r actual="$3"
+  if [[ "${expected}" != "${actual}" ]]; then
+    printf 'FAIL: %s\n  expected: %s\n  actual:   %s\n' "${label}" "${expected}" "${actual}" >&2
+    return 1
+  fi
+}
+
+# @description Unit checks for the scanner.
+# @noargs
+# @exitcode 0 all assertions held
+function run_scanner_tests() {
+  local failures=0
+
+  assert_equals 'quoted mention yields no pgrep token' \
+    '0' "$(scan_command 'grep -r "until ! pgrep --full x" .' | grep --count '\bpgrep$' || true)" \
+    || failures=$((failures + 1))
+
+  assert_equals 'bare pgrep is tokenized' \
+    'pgrep' "$(scan_command 'pgrep --full x' | awk -F'\t' 'NR==1 {print $2}')" \
+    || failures=$((failures + 1))
+
+  # shellcheck disable=SC2016
+  assert_equals 'command substitution inside double quotes is visible' \
+    '14' "$(scan_command 'until [ -z "$(pgrep --full x)" ]; do sleep 5; done' \
+      | awk -F'\t' '$2 == "pgrep" {print $1}')" \
+    || failures=$((failures + 1))
+
+  assert_equals 'newline survives as a literal token' \
+    '<NL>' "$(scan_command "$(printf 'echo hi\nls')" | awk -F'\t' 'NR==3 {print $2}')" \
+    || failures=$((failures + 1))
+
+  assert_equals 'long full flag' 'yes' "$(flag_probe 'pgrep --full x' '--full' 'f')" \
+    || failures=$((failures + 1))
+  assert_equals 'short cluster -af is full' 'yes' "$(flag_probe 'pgrep -af x' '--full' 'f')" \
+    || failures=$((failures + 1))
+  assert_equals 'plain -a is not full' 'no' "$(flag_probe 'pgrep -a x' '--full' 'f')" \
+    || failures=$((failures + 1))
+  assert_equals 'long ignore-ancestors' 'yes' \
+    "$(flag_probe 'pgrep --ignore-ancestors --full x' '--ignore-ancestors' 'A')" \
+    || failures=$((failures + 1))
+  assert_equals 'short -A' 'yes' "$(flag_probe 'pgrep -Af x' '--ignore-ancestors' 'A')" \
+    || failures=$((failures + 1))
+  assert_equals 'operand is last non-flag arg' 'unittest discover' \
+    "$(pattern_probe 'pgrep --full "unittest discover"')" || failures=$((failures + 1))
+  assert_equals 'operand skips a flag value' 'java' \
+    "$(pattern_probe 'pgrep --full --delimiter , java')" || failures=$((failures + 1))
+  assert_equals 'operand ignores a redirection target' 'x' \
+    "$(pattern_probe 'pgrep --full x > /tmp/out')" || failures=$((failures + 1))
+  assert_equals 'operand after -- is not swallowed as a flag' '-x' \
+    "$(pattern_probe 'pgrep --full -- -x')" || failures=$((failures + 1))
+
+  assert_equals 'bracket alone holds' 'yes' \
+    "$(bracket_probe 'pgrep --full "[u]nittest discover"')" || failures=$((failures + 1))
+  assert_equals 'bracket voided by a bare copy' 'no' \
+    "$(bracket_probe 'echo "unittest discover"; pgrep --full "[u]nittest discover"')" \
+    || failures=$((failures + 1))
+  assert_equals 'no bracket, no mitigation' 'no' \
+    "$(bracket_probe 'pgrep --full "unittest discover"')" || failures=$((failures + 1))
+  assert_equals 'bracket later in the pattern holds' 'yes' \
+    "$(bracket_probe 'pgrep --full "probe[.]py"')" || failures=$((failures + 1))
+
+  assert_equals 'multi-char class is not the idiom' 'no' \
+    "$(bracket_probe 'pgrep --full "[abc]needle[d]"')" || failures=$((failures + 1))
+  assert_equals 'single then multi-char class' 'no' \
+    "$(bracket_probe 'pgrep --full "[d]needle[abc]"')" || failures=$((failures + 1))
+
+  assert_equals 'stray class opener is unreconstructable' 'no' \
+    "$(bracket_probe 'pgrep --full "abc[def[g]hij"')" || failures=$((failures + 1))
+
+  assert_equals 'condition span' 'cond' \
+    "$(context_probe 'until ! pgrep --full x; do sleep 5; done')" || failures=$((failures + 1))
+  assert_equals 'body span' 'body' \
+    "$(context_probe 'while true; do pgrep --full x || break; sleep 5; done')" \
+    || failures=$((failures + 1))
+  assert_equals 'outside every loop' 'none' \
+    "$(context_probe 'while read -r line; do :; done < f; pgrep -af java')" \
+    || failures=$((failures + 1))
+  # shellcheck disable=SC2016
+  assert_equals 'for head is not a condition' 'none' \
+    "$(context_probe 'for f in $(pgrep --full x); do :; done')" || failures=$((failures + 1))
+  assert_equals 'nested loop attributes to inner body' 'body' \
+    "$(context_probe 'while true; do for f in *; do pgrep --full x || break; done; done')" \
+    || failures=$((failures + 1))
+  assert_equals 'done as an argument does not close a span' 'body' \
+    "$(context_probe 'while true; do echo done; pgrep --full x || break; done')" \
+    || failures=$((failures + 1))
+  # A `done` inside a command substitution IS in command position -- unlike the
+  # argument-word case above -- but it must still be unable to pop a span that
+  # encloses the substitution. Without a scope barrier this `done` pops the
+  # outer body early, and the invocation reads as outside every loop.
+  # shellcheck disable=SC2016
+  assert_equals 'a done inside a substitution cannot pop the enclosing body span' 'body' \
+    "$(context_probe 'while true; do echo "$(: ; done)"; pgrep --full x || break; sleep 5; done')" \
+    || failures=$((failures + 1))
+  assert_equals 'body terminator found' 'yes' \
+    "$(terminator_probe 'while true; do pgrep --full x || break; done')" || failures=$((failures + 1))
+  assert_equals 'no terminator in body' 'no' \
+    "$(terminator_probe 'while true; do pgrep --full x; sleep 5; done')" || failures=$((failures + 1))
+  assert_equals 'terminator in an outer body only' 'no' \
+    "$(terminator_probe 'while true; do for f in *; do pgrep --full x; done; break; done')" \
+    || failures=$((failures + 1))
+
+  # A guard that dies quietly is worse than no guard, so both missing-dependency
+  # branches are exercised against a real end-to-end run of a copy of this script.
+  # The stub PATH holds only what the script needs before the awk check.
+  local probe_dir stub_dir binary
+  probe_dir="$(mktemp --directory)"
+  stub_dir="${probe_dir}/bin"
+  mkdir --parents "${stub_dir}"
+  for binary in bash jq dirname cat; do
+    ln --symbolic "$(command -v "${binary}" || printf '/nonexistent')" "${stub_dir}/${binary}" \
+      || true
+  done
+  cp "${SCRIPT_PATH}" "${probe_dir}/hook.sh"
+  cp "${SCANNER}" "${probe_dir}/pgrep-scan.awk"
+  assert_equals 'missing awk announces the guard inactive' 'inactive' \
+    "$(inactive_probe "${probe_dir}/hook.sh" "${stub_dir}")" || failures=$((failures + 1))
+  rm --force "${probe_dir}/pgrep-scan.awk"
+  assert_equals 'missing scanner announces the guard inactive' 'inactive' \
+    "$(inactive_probe "${probe_dir}/hook.sh" "${PATH}")" || failures=$((failures + 1))
+  rm --recursive --force "${probe_dir}"
+
+  assert_equals 'tsv round-trip preserves a literal tab and newline' \
+    $'a\tb\nc' "$(tsv_roundtrip_probe $'a\tb\nc')" || failures=$((failures + 1))
+
+  if ((failures > 0)); then
+    return 1
+  fi
+}
+
+# @description Self-test helper: run a copy of this hook end to end and report whether it announced
+#              that the guard is inactive, rather than dying into the ERR trap's silent allow. The
+#              probe command must contain `pgrep`, or classify_command short-circuits before the
+#              scanner is ever reached and a dead scanner looks healthy. The child runs under
+#              `env --ignore-environment`: a plain PATH prefix assignment is not enough, because a
+#              BASH_ENV inherited from the caller re-sources the user's profile, which rebuilds PATH
+#              and quietly restores the very binary the probe is trying to remove.
+# @arg $1 script path to the hook copy to run
+# @arg $2 path the PATH that copy should see
+# @stdout inactive or active
+function inactive_probe() {
+  local -r script="$1"
+  local -r path="$2"
+  local output
+  output="$(printf '{"tool_name":"Bash","tool_input":{"command":"pkill --full java"}}' \
+    | env --ignore-environment "PATH=${path}" bash "${script}" 2> /dev/null || true)"
+  if [[ "${output}" == *INACTIVE* ]]; then printf 'inactive\n'; else printf 'active\n'; fi
+}
+
+# @description Self-test helper: round-trip a command string through the same jq @tsv
+#              extraction and printf %b decoding that main() uses, to confirm a literal tab and
+#              newline in the command survive it byte for byte. jq escapes an actual tab as `\t`
+#              and an actual newline as `\n` so the record stays on one TSV line; decoding the
+#              wrong sequences, or in the wrong order, corrupts token boundaries silently rather
+#              than erroring.
+# @arg $1 command the command string to round-trip
+# @stdout the decoded command
+function tsv_roundtrip_probe() {
+  local -r command="$1"
+  local input tsv_line
+  input="$(jq --null-input --arg cmd "${command}" '{tool_name: "Bash", tool_input: {command: $cmd}}')"
+  tsv_line="$(jq --raw-output '[(.tool_name // ""), (.tool_input.command // "")] | @tsv' <<< "${input}")"
+  local tool_name command_escaped
+  IFS=$'\t' read -r tool_name command_escaped <<< "${tsv_line}"
+  printf '%b' "${command_escaped}"
+}
+
+# @description Self-test helper: compute the token stream, the first invocation's index, and its
+#              argument lines for a command -- the common preamble every probe below needs before
+#              calling the function it actually exercises.
+# @arg $1 command the command string
+# @arg $2 tokens_var name of the caller's variable to receive the token stream
+# @arg $3 idx_var name of the caller's variable to receive the invocation index
+# @arg $4 args_var name of the caller's variable to receive the argument lines
+function first_invocation() {
+  local -r command="$1"
+  local -n tokens_out="$2" idx_out="$3" args_out="$4"
+  tokens_out="$(scan_command "${command}")"
+  idx_out="$(find_invocations "${tokens_out}" | head --lines=1 | cut --fields=1)"
+  # shellcheck disable=SC2034 # write-only output param; the caller reads it through the nameref
+  args_out="$(invocation_args "${tokens_out}" "${idx_out}")"
+}
+
+# @description Self-test helper: does the first invocation carry a flag class?
+# @arg $1 command the command string
+# @arg $2 long the long option
+# @arg $3 short the short cluster letter
+# @stdout yes or no
+function flag_probe() {
+  local -r command="$1"
+  local -r long="$2"
+  local -r short="$3"
+  local tokens idx args
+  first_invocation "${command}" tokens idx args
+  if has_flag "${args}" "${long}" "${short}"; then printf 'yes\n'; else printf 'no\n'; fi
+}
+
+# @description Self-test helper: the pattern operand of the first invocation.
+# @arg $1 command the command string
+# @stdout the operand, or empty
+function pattern_probe() {
+  local -r command="$1"
+  local tokens idx args
+  first_invocation "${command}" tokens idx args
+  pattern_operand "${command}" "${args}"
+}
+
+# @description Self-test helper: does the bracket mitigation hold?
+# @arg $1 command the command string
+# @stdout yes or no
+function bracket_probe() {
+  local -r command="$1"
+  local tokens idx args
+  first_invocation "${command}" tokens idx args
+  local operand
+  operand="$(pattern_operand "${command}" "${args}")"
+  if bracket_mitigation_holds "${command}" "${operand}"; then printf 'yes\n'; else printf 'no\n'; fi
+}
+
+# @description Self-test helper: loop context of the first invocation.
+# @arg $1 command the command string
+# @stdout none, cond, or body
+function context_probe() {
+  local -r command="$1"
+  local tokens idx args
+  first_invocation "${command}" tokens idx args
+  loop_context "${tokens}" "${idx}"
+}
+
+# @description Self-test helper: does the loop body enclosing the first invocation
+#              contain a break, exit or return?
+# @arg $1 command the command string
+# @stdout yes or no
+function terminator_probe() {
+  local -r command="$1"
+  local tokens idx args
+  first_invocation "${command}" tokens idx args
+  if body_has_terminator "${tokens}" "${idx}"; then printf 'yes\n'; else printf 'no\n'; fi
+}
+
+# @description Run the built-in case table.
+# @noargs
+# @exitcode 0 all cases matched
+# @exitcode 1 at least one case mismatched
+function run_self_test() {
+  local failures=0
+  if ! run_scanner_tests; then
+    failures=$((failures + 1))
+  fi
+  local case_line expected actual command
+  for case_line in "${SELF_TEST_CASES[@]}"; do
+    command="${case_line%%$'\t'*}"
+    expected="${case_line##*$'\t'}"
+    actual="$(classify_command "${command}")"
+    if [[ "${actual}" != "${expected}" ]]; then
+      printf 'FAIL: %s\n  expected: %s\n  actual:   %s\n' \
+        "${command//$'\n'/\\n}" "${expected}" "${actual}" >&2
+      failures=$((failures + 1))
+    fi
+  done
+  if ((failures > 0)); then
+    printf '%d self-test failure(s)\n' "${failures}" >&2
+    return 1
+  fi
+  printf 'all %d self-test cases passed\n' "${#SELF_TEST_CASES[@]}"
 }
 
 main "$@"
