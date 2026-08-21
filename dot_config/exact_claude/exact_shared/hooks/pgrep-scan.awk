@@ -2,6 +2,12 @@
 # A command substitution re-enters an unquoted context even inside double
 # quotes, because the shell expands it there -- that is what makes
 # `until [ -z "$(pgrep --full x)" ]` visible to the scanner.
+#
+# An unquoted `#` that starts a word opens a comment, which the shell ignores to
+# end of line. Masking it matters in both directions: a single apostrophe in
+# prose ("it's", "don't") otherwise inverts quote parity for the whole rest of
+# the command, which has been observed both exposing a quoted string as if it
+# were code and hiding a real poll loop inside a quoted region.
 BEGIN { RS = "\0"; ORS = "" }
 {
   cmd = $0
@@ -12,6 +18,7 @@ BEGIN { RS = "\0"; ORS = "" }
   i = 1
   while (i <= n) {
     ch = substr(cmd, i, 1)
+    prev = (i > 1) ? substr(cmd, i - 1, 1) : ""
     cur = ctx[depth]
     out = ch
     if (cur == "S") {
@@ -30,6 +37,12 @@ BEGIN { RS = "\0"; ORS = "" }
       if (ch == "\\") { masked = masked "\001\001"; i += 2; continue }
       if (ch == "\"") ctx[depth] = "N_END"
     } else {
+      # The whitespace-or-start precondition is load-bearing: without it the `#`
+      # of `${#arr[@]}` would open a comment and mask the rest of the line.
+      if (ch == "#" && (i == 1 || prev == " " || prev == "\t" || prev == "\n")) {
+        while (i <= n && substr(cmd, i, 1) != "\n") { masked = masked "\001"; i++ }
+        continue
+      }
       if (ch == "$" && substr(cmd, i + 1, 1) == "(") {
         masked = masked "$("; i += 2; depth++; ctx[depth] = "N"; opener[depth] = "P"; continue
       }
