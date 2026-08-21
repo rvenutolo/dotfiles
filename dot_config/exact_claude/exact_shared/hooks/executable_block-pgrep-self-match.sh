@@ -89,6 +89,11 @@ function run_scanner_tests() {
   assert_equals 'bracket later in the pattern holds' 'yes' \
     "$(bracket_probe 'pgrep --full "probe[.]py"')" || failures=$((failures + 1))
 
+  assert_equals 'multi-char class is not the idiom' 'no' \
+    "$(bracket_probe 'pgrep --full "[abc]needle[d]"')" || failures=$((failures + 1))
+  assert_equals 'single then multi-char class' 'no' \
+    "$(bracket_probe 'pgrep --full "[d]needle[abc]"')" || failures=$((failures + 1))
+
   if ((failures > 0)); then
     return 1
   fi
@@ -323,10 +328,16 @@ function bracket_mitigation_holds() {
   [[ -z "${operand}" ]] && return 1
   [[ "${operand}" != *\[?\]* ]] && return 1
   local bare="${operand}"
+  local prefix rest
   while [[ "${bare}" == *\[?\]* ]]; do
-    bare="${bare%%\[*}${bare#*\[}"
-    bare="${bare/\]/}"
+    prefix="${bare%%\[?\]*}"
+    rest="${bare#"${prefix}"}"
+    bare="${prefix}${rest:1:1}${rest:3}"
   done
+  # A multi-character class such as [abc] is a genuine alternation, not the
+  # hide-the-needle idiom, and the literal text it matches cannot be
+  # reconstructed. Never claim a mitigation we cannot verify.
+  [[ "${bare}" == *\[*\]* ]] && return 1
   [[ -z "${bare}" ]] && return 1
   [[ "${command}" == *"${bare}"* ]] && return 1
   return 0
