@@ -39,7 +39,11 @@ readonly -a SELF_TEST_CASES=(
   $'pgrep -cf java\twarn'
   $'while [ -n "$p" ]; do p=$(pgrep --full x); sleep 5; done\twarn'
   $'pgrep -af java\tallow'
+  # This row does not discriminate on its own -- the command also carries --full.
+  # The two rows below it do: each has a lookalike and nothing else.
   $'pgrep --list-full --full java\tallow'
+  $'until ! pgrep --list-full java; do sleep 5; done\tallow'
+  $'until ! pgrep -- --full x; do sleep 5; done\tallow'
   # NEW rows covering the review findings
   # A valid silent-allow case, but a stray `&` alone does not exercise the
   # redirection-target guard in result_is_consumed (amp only reaches 1).
