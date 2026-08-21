@@ -49,6 +49,10 @@ readonly -a SELF_TEST_CASES=(
   $'kill $(pgrep --full x)\tdeny:kill'
   $'kill -9 $(pgrep --full x)\tdeny:kill'
   $'sudo kill $(pgrep --full x)\tdeny:kill'
+  # `kill` as an argument word is not a kill form; it must be in command position.
+  $'echo kill $(pgrep --full x)\twarn'
+  # A prefix chain before kill is still a kill form.
+  $'true; kill $(pgrep --full x)\tdeny:kill'
   # A substitution feeding something harmless is still only a warn.
   $'echo $(pgrep --full x)\twarn'
   # Exercises the redirection-target guard: a real pipe followed by a redirect
@@ -573,13 +577,28 @@ function feeds_a_kill() {
 
   # Backward form: `kill $(pgrep ...)`, `kill -9 $(pgrep ...)`, and the backtick
   # equivalent. Here `kill` precedes the invocation, so the forward scan cannot
-  # see it. Skip the substitution punctuation and any flags on the way back.
+  # see it. Skip the substitution punctuation and any flags on the way back, then
+  # require the `kill` to be in command position -- otherwise `echo kill $(...)`,
+  # where `kill` is merely an argument word, would be denied.
   local k=$((target - 1))
   while ((k >= 0)); do
     case "${seq[k]}" in
       '$' | '(' | '`') ;;
       -*) ;;
-      'kill') return 0 ;;
+      'kill')
+        local m=$((k - 1))
+        while ((m >= 0)); do
+          case "${seq[m]}" in
+            'sudo' | 'doas' | 'env' | 'nohup' | 'command' | 'time') ;;
+            *)
+              if is_operator "${seq[m]}" || is_keyword "${seq[m]}"; then return 0; fi
+              return 1
+              ;;
+          esac
+          m=$((m - 1))
+        done
+        return 0
+        ;;
       *) return 1 ;;
     esac
     k=$((k - 1))
