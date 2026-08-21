@@ -212,9 +212,48 @@ function run_scanner_tests() {
     "$(terminator_probe 'while true; do for f in *; do pgrep --full x; done; break; done')" \
     || failures=$((failures + 1))
 
+  # A guard that dies quietly is worse than no guard, so both missing-dependency
+  # branches are exercised against a real end-to-end run of a copy of this script.
+  # The stub PATH holds only what the script needs before the awk check.
+  local probe_dir stub_dir binary
+  probe_dir="$(mktemp --directory)"
+  stub_dir="${probe_dir}/bin"
+  mkdir --parents "${stub_dir}"
+  for binary in bash jq dirname cat; do
+    ln --symbolic "$(command -v "${binary}" || printf '/nonexistent')" "${stub_dir}/${binary}" \
+      || true
+  done
+  cp "${SCRIPT_PATH}" "${probe_dir}/hook.sh"
+  cp "${SCANNER}" "${probe_dir}/pgrep-scan.awk"
+  assert_equals 'missing awk announces the guard inactive' 'inactive' \
+    "$(inactive_probe "${probe_dir}/hook.sh" "${stub_dir}")" || failures=$((failures + 1))
+  rm --force "${probe_dir}/pgrep-scan.awk"
+  assert_equals 'missing scanner announces the guard inactive' 'inactive' \
+    "$(inactive_probe "${probe_dir}/hook.sh" "${PATH}")" || failures=$((failures + 1))
+  rm --recursive --force "${probe_dir}"
+
   if ((failures > 0)); then
     return 1
   fi
+}
+
+# @description Self-test helper: run a copy of this hook end to end and report whether it announced
+#              that the guard is inactive, rather than dying into the ERR trap's silent allow. The
+#              probe command must contain `pgrep`, or classify_command short-circuits before the
+#              scanner is ever reached and a dead scanner looks healthy. The child runs under
+#              `env --ignore-environment`: a plain PATH prefix assignment is not enough, because a
+#              BASH_ENV inherited from the caller re-sources the user's profile, which rebuilds PATH
+#              and quietly restores the very binary the probe is trying to remove.
+# @arg $1 script path to the hook copy to run
+# @arg $2 path the PATH that copy should see
+# @stdout inactive or active
+function inactive_probe() {
+  local -r script="$1"
+  local -r path="$2"
+  local output
+  output="$(printf '{"tool_name":"Bash","tool_input":{"command":"pkill --full java"}}' \
+    | env --ignore-environment "PATH=${path}" bash "${script}" 2> /dev/null || true)"
+  if [[ "${output}" == *INACTIVE* ]]; then printf 'inactive\n'; else printf 'active\n'; fi
 }
 
 # @description Self-test helper: does the first invocation carry a flag class?
@@ -326,6 +365,7 @@ trap 'emit_allow; exit 0' ERR
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly SCRIPT_DIR
 readonly SCANNER="${SCRIPT_DIR}/pgrep-scan.awk"
+readonly SCRIPT_PATH="${SCRIPT_DIR}/${BASH_SOURCE[0]##*/}"
 
 readonly HOOK_NAME='block-pgrep-self-match'
 
@@ -925,6 +965,21 @@ function main() {
   if ! command -v jq > /dev/null 2>&1; then
     printf '{"systemMessage":"%s"}\n' \
       "${HOOK_NAME}: jq not found on PATH; the pgrep poll-loop guard is INACTIVE for this command."
+    return 0
+  fi
+
+  # Without these two the scanner call dies, the ERR trap allows, and the guard is
+  # silently dead -- which is the exact failure mode this hook exists to prevent.
+  # Fail open loudly, the same way the jq branch does.
+  if ! command -v awk > /dev/null 2>&1; then
+    printf '{"systemMessage":"%s"}\n' \
+      "${HOOK_NAME}: awk not found on PATH; the pgrep poll-loop guard is INACTIVE for this command."
+    return 0
+  fi
+
+  if [[ ! -r "${SCANNER}" ]]; then
+    printf '{"systemMessage":"%s"}\n' \
+      "${HOOK_NAME}: scanner pgrep-scan.awk is missing; the pgrep poll-loop guard is INACTIVE for this command."
     return 0
   fi
 
