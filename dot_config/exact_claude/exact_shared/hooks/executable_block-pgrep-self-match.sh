@@ -94,6 +94,9 @@ function run_scanner_tests() {
   assert_equals 'single then multi-char class' 'no' \
     "$(bracket_probe 'pgrep --full "[d]needle[abc]"')" || failures=$((failures + 1))
 
+  assert_equals 'stray class opener is unreconstructable' 'no' \
+    "$(bracket_probe 'pgrep --full "abc[def[g]hij"')" || failures=$((failures + 1))
+
   if ((failures > 0)); then
     return 1
   fi
@@ -334,10 +337,9 @@ function bracket_mitigation_holds() {
     rest="${bare#"${prefix}"}"
     bare="${prefix}${rest:1:1}${rest:3}"
   done
-  # A multi-character class such as [abc] is a genuine alternation, not the
-  # hide-the-needle idiom, and the literal text it matches cannot be
-  # reconstructed. Never claim a mitigation we cannot verify.
-  [[ "${bare}" == *\[*\]* ]] && return 1
+  # A surviving `[` means an unresolved class opener whose literal text cannot be
+  # reconstructed. A surviving `]` is just a literal character and is fine.
+  [[ "${bare}" == *\[* ]] && return 1
   [[ -z "${bare}" ]] && return 1
   [[ "${command}" == *"${bare}"* ]] && return 1
   return 0
