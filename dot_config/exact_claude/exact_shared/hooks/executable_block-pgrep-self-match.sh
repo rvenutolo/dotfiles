@@ -105,13 +105,22 @@ function run_scanner_tests() {
   assert_equals 'outside every loop' 'none' \
     "$(context_probe 'while read -r line; do :; done < f; pgrep -af java')" \
     || failures=$((failures + 1))
+  # shellcheck disable=SC2016
   assert_equals 'for head is not a condition' 'none' \
-    "$(context_probe 'for f in *; do :; done; pgrep --full x')" || failures=$((failures + 1))
+    "$(context_probe 'for f in $(pgrep --full x); do :; done')" || failures=$((failures + 1))
   assert_equals 'nested loop attributes to inner body' 'body' \
     "$(context_probe 'while true; do for f in *; do pgrep --full x || break; done; done')" \
     || failures=$((failures + 1))
-  assert_equals 'echo done does not close a span' 'cond' \
-    "$(context_probe 'until ! pgrep --full x; do echo done; done')" || failures=$((failures + 1))
+  assert_equals 'done as an argument does not close a span' 'body' \
+    "$(context_probe 'while true; do echo done; pgrep --full x || break; done')" \
+    || failures=$((failures + 1))
+  assert_equals 'body terminator found' 'yes' \
+    "$(terminator_probe 'while true; do pgrep --full x || break; done')" || failures=$((failures + 1))
+  assert_equals 'no terminator in body' 'no' \
+    "$(terminator_probe 'while true; do pgrep --full x; sleep 5; done')" || failures=$((failures + 1))
+  assert_equals 'terminator in an outer body only' 'no' \
+    "$(terminator_probe 'while true; do for f in *; do pgrep --full x; done; break; done')" \
+    || failures=$((failures + 1))
 
   if ((failures > 0)); then
     return 1
@@ -176,6 +185,19 @@ function context_probe() {
   local idx
   idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
   loop_context "${tokens}" "${idx}"
+}
+
+# @description Self-test helper: does the loop body enclosing the first invocation
+#              contain a break, exit or return?
+# @arg $1 command the command string
+# @stdout yes or no
+function terminator_probe() {
+  local -r command="$1"
+  local tokens
+  tokens="$(scan_command "${command}")"
+  local idx
+  idx="$(find_invocations "${tokens}" | head --lines=1 | cut --fields=1)"
+  if body_has_terminator "${tokens}" "${idx}"; then printf 'yes\n'; else printf 'no\n'; fi
 }
 
 # @description Run the built-in case table.
