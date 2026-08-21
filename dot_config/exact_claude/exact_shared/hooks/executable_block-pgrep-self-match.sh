@@ -10,7 +10,37 @@ fi
 readonly -a SELF_TEST_CASES=(
   $'ls -la\tallow'
   $'echo hello\tallow'
-  $'pgrep --ignore-ancestors --full "x"\tallow'
+  $'grep --recursive "until ! pgrep --full x" .\tallow'
+  $'echo "pgrep --full x"\tallow'
+  $'echo "while until pgrep --full x"\tallow'
+  $'pgrep java\tallow'
+  $'pgrep -a java\tallow'
+  $'until ! pgrep --full "unittest discover" > /dev/null 2>&1; do sleep 5; done\tdeny:loop'
+  $'while pgrep -f build >/dev/null; do sleep 2; done\tdeny:loop'
+  $'while true; do pgrep --full x >/dev/null || break; sleep 5; done\tdeny:loop'
+  $'until ! pgrep --ignore-ancestors --full x; do sleep 5; done\tallow'
+  $'until ! pgrep -Af x; do sleep 5; done\tallow'
+  $'until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tallow'
+  $'echo "unittest discover"; until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tdeny:loop'
+  $'pkill --full "unittest discover"\tdeny:kill'
+  $'pgrep --full java | xargs kill\tdeny:kill'
+  $'pkill --ignore-ancestors --full java\tallow'
+  $'while read -r line; do :; done < f; pgrep -af java\tallow'
+  $'for f in *; do :; done; pgrep --full x && echo yes\twarn'
+  $'pgrep --full x >/dev/null && echo running\twarn'
+  $'pgrep --full x | wc -l\twarn'
+  $'pgrep -cf java\twarn'
+  $'while [ -n "$p" ]; do p=$(pgrep --full x); sleep 5; done\twarn'
+  $'pgrep -af java\tallow'
+  $'pgrep --list-full --full java\tallow'
+  # NEW rows covering the review findings
+  $'pgrep -af java > /tmp/x 2>&1\tallow'
+  $'until [ -z "$(pgrep --full x)" ]; do sleep 5; done\tdeny:loop'
+  $'echo hi\nuntil ! pgrep --full x\ndo sleep 5\ndone\tdeny:loop'
+  $'pgrep --full x &\tallow'
+  # Backtick command substitution, both quoted and unquoted (Task 2 regression).
+  $'until [ -z "`pgrep --full x`" ]; do sleep 5; done\tdeny:loop'
+  $'until [ -z `pgrep --full x` ]; do sleep 5; done\tdeny:loop'
 )
 
 # @description Tokenize a command, masking quoted regions.
@@ -499,15 +529,144 @@ function emit_deny() {
   }'
 }
 
-readonly WARN_MESSAGE='placeholder'
-
-# @description Build the deny reason. Replaced in Task 6.
-# @arg $1 kind loop or kill
-function deny_message() {
-  printf '%s\n' "$1"
+# @description True when an invocation's output is piped into a kill.
+# @arg $1 tokens the token stream from scan_command
+# @arg $2 target index of the invocation token
+# @exitcode 0 output feeds a kill
+# @exitcode 1 it does not
+function feeds_a_kill() {
+  local -r tokens="$1" target="$2"
+  local idx=0 seen=0 piped=0 offset token
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    if ((idx == target)); then
+      seen=1
+      idx=$((idx + 1))
+      continue
+    fi
+    if ((seen == 1)); then
+      case "${token}" in
+        '|') piped=1 ;;
+        'kill') ((piped == 1)) && return 0 ;;
+        ';' | '<NL>') break ;;
+      esac
+    fi
+    idx=$((idx + 1))
+  done <<< "${tokens}"
+  return 1
 }
 
-# @description Classify a Bash command string. Replaced in Task 6.
+# @description True when an invocation's result is read as a boolean, a count, or captured into a
+#              variable, rather than merely displayed. Only then can the silent off-by-one produce a
+#              wrong conclusion. A redirection target is not consumption: `2>&1` tokenizes as `2>`,
+#              `&`, `1`, and a lone trailing `&` is backgrounding rather than a boolean operator.
+# @arg $1 tokens the token stream from scan_command
+# @arg $2 target index of the invocation token
+# @arg $3 args the invocation's argument lines
+# @arg $4 command the raw command string
+# @exitcode 0 the result is consumed
+# @exitcode 1 the result is only displayed
+function result_is_consumed() {
+  local -r tokens="$1" target="$2" args="$3" command="$4"
+  local offset token
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    [[ "${token}" == '--count' ]] && return 0
+    if [[ "${token}" == -[a-zA-Z]* && "${token}" != --* && "${token}" == *c* ]]; then return 0; fi
+  done <<< "${args}"
+
+  local invocation_offset
+  invocation_offset="$(printf '%s\n' "${tokens}" | awk -F'\t' -v t="${target}" 'NF && NR-1==t {print $1}')"
+
+  local idx=0 seen=0 prev='' amp=0 pipe=0
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    if ((idx == target)); then
+      seen=1
+      idx=$((idx + 1))
+      prev="${token}"
+      continue
+    fi
+    if ((seen == 1)); then
+      # A redirection target is not consumption: `2>&1` tokenizes as `2>` `&` `1`.
+      if [[ "${prev}" == *[\<\>] ]]; then
+        prev="${token}"
+        idx=$((idx + 1))
+        continue
+      fi
+      case "${token}" in
+        '&')
+          amp=$((amp + 1))
+          ((amp >= 2)) && return 0
+          ;;
+        '|')
+          pipe=$((pipe + 1))
+          ((pipe >= 2)) && return 0
+          ;;
+        'wc' | 'xargs') ((pipe >= 1)) && return 0 ;;
+        ';' | '<NL>') break ;;
+        *) amp=0 ;;
+      esac
+    fi
+    prev="${token}"
+    idx=$((idx + 1))
+  done <<< "${tokens}"
+
+  # `p=$(pgrep ...)`: the substitution opener precedes the invocation.
+  if [[ -n "${invocation_offset}" ]]; then
+    local prefix="${command:0:invocation_offset}"
+    local -r subst_open="\$("
+    [[ "${prefix}" == *"${subst_open}"* ]] && return 0
+  fi
+  return 1
+}
+
+# shellcheck disable=SC2016
+readonly WARN_MESSAGE='Note: this `pgrep --full` also matches the process running this very command.
+The Bash tool executes commands as `bash -c ...`, so the search pattern appears in an ancestor
+process command line and is always found. The result is therefore inflated by one, and an exit status
+of 0 does not mean the target process is running. Add `--ignore-ancestors` if the count or the exit
+status is being used for anything.'
+
+# @description Build the deny reason for a deny kind.
+# @arg $1 kind loop or kill
+# @stdout the reason text
+function deny_message() {
+  local -r kind="$1"
+  local preamble
+
+  case "${kind}" in
+    loop)
+      # shellcheck disable=SC2016
+      preamble='This loop can never exit. The Bash tool runs commands as `bash -c ...`, so the search
+pattern is by construction part of an ancestor process command line. `pgrep --full` matches that
+ancestor, the loop always sees a live process, and it spins until something kills it.'
+      ;;
+    kill)
+      # shellcheck disable=SC2016
+      preamble='This matches the invoking shell itself. The Bash tool runs commands as `bash -c ...`,
+so the search pattern is part of an ancestor process command line, and killing that match terminates
+the session shell.'
+      ;;
+    *)
+      preamble='This pgrep matches its own ancestor process.'
+      ;;
+  esac
+
+  # shellcheck disable=SC2016
+  printf '%s\n\n%s\n' "${preamble}" 'Three fixes, in order of preference:
+
+1. Do not poll. Use `kill -0 "$pid"`, a PID file, or let the background task notification wake you --
+   completion re-invokes the model automatically. Polling is the root cause; this is a symptom.
+2. `pgrep --ignore-ancestors --full <pattern>` excludes the `bash -c` ancestor.
+3. `pgrep --full "[p]attern"` hides the needle from its own regex, but only when the bare literal
+   appears NOWHERE ELSE in the same command. A second copy in the same call silently defeats it.
+
+If this command writes text that CONTAINS such an example rather than running one, use the Write tool
+instead of a heredoc; this guard only inspects Bash commands.'
+}
+
+# @description Classify a Bash command string.
 # @arg $1 command the command string
 # @stdout allow, warn, deny:loop, or deny:kill
 function classify_command() {
@@ -516,7 +675,38 @@ function classify_command() {
     printf 'allow\n'
     return 0
   fi
-  printf 'allow\n'
+  local tokens
+  tokens="$(scan_command "${command}")"
+  local verdict='allow'
+  local idx offset name args operand context
+  while IFS=$'\t' read -r idx offset name; do
+    [[ -z "${idx}" ]] && continue
+    args="$(invocation_args "${tokens}" "${idx}")"
+    has_flag "${args}" '--full' 'f' || continue
+    has_flag "${args}" '--ignore-ancestors' 'A' && continue
+    operand="$(pattern_operand "${command}" "${args}")"
+    bracket_mitigation_holds "${command}" "${operand}" && continue
+    if [[ "${name}" == 'pkill' ]] || feeds_a_kill "${tokens}" "${idx}"; then
+      printf 'deny:kill\n'
+      return 0
+    fi
+    context="$(loop_context "${tokens}" "${idx}")"
+    case "${context}" in
+      cond)
+        printf 'deny:loop\n'
+        return 0
+        ;;
+      body)
+        if result_is_consumed "${tokens}" "${idx}" "${args}" "${command}" \
+          && body_has_terminator "${tokens}" "${idx}"; then
+          printf 'deny:loop\n'
+          return 0
+        fi
+        ;;
+    esac
+    result_is_consumed "${tokens}" "${idx}" "${args}" "${command}" && verdict='warn'
+  done <<< "$(find_invocations "${tokens}")"
+  printf '%s\n' "${verdict}"
 }
 
 # @description Entry point.
