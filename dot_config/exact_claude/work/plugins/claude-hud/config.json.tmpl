@@ -1,1 +1,8 @@
-{{ template "claude-hud-config.json" . -}}
+{{- /* Work profile: red 'WORK' badge at the head of the HUD's first line.
+       Shared settings come from .chezmoitemplates/claude-hud-config.json;
+       only the profile badge differs between config directories. */ -}}
+{{- $base := include ".chezmoitemplates/claude-hud-config.json" | fromJson -}}
+{{- $delta := dict
+      "colors" (dict "custom" "red")
+      "display" (dict "customLine" "WORK" "customLinePosition" "first") -}}
+{{ mergeOverwrite $base $delta | toPrettyJson -}}
