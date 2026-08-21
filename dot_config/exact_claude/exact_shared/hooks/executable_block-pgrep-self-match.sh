@@ -105,6 +105,14 @@ readonly -a SELF_TEST_CASES=(
   $'if pgrep --full "java -jar app" > /dev/null; then echo up; fi\twarn'
   $'! pgrep --full java\twarn'
   $'if ! pgrep -f java; then echo down; fi\twarn'
+
+  # F7 -- everything after a bare `--` end-of-options terminator is a pattern,
+  # not a flag. A displayed one-shot with no consuming context is still a
+  # silent allow, same as any other bare full-match invocation; the case that
+  # actually changes is a bracket class recognised only once `-x` is no
+  # longer swallowed as a flag.
+  $'pgrep --full -- -x\tallow'
+  $'until ! pgrep --full -- "[u]nittest discover"; do sleep 5; done\tallow'
 )
 
 # @description Tokenize a command, masking quoted regions.
@@ -172,6 +180,8 @@ function run_scanner_tests() {
     "$(pattern_probe 'pgrep --full --delimiter , java')" || failures=$((failures + 1))
   assert_equals 'operand ignores a redirection target' 'x' \
     "$(pattern_probe 'pgrep --full x > /tmp/out')" || failures=$((failures + 1))
+  assert_equals 'operand after -- is not swallowed as a flag' '-x' \
+    "$(pattern_probe 'pgrep --full -- -x')" || failures=$((failures + 1))
 
   assert_equals 'bracket alone holds' 'yes' \
     "$(bracket_probe 'pgrep --full "[u]nittest discover"')" || failures=$((failures + 1))
@@ -497,18 +507,33 @@ readonly -a PGREP_VALUE_OPTIONS=(
 )
 
 # @description Extract the search pattern: the last argument that is neither a flag, a flag's value,
-#              nor a redirection. Sliced out of the raw command by offset so the original quoting
-#              survives, then one surrounding quote pair is stripped.
+#              nor a redirection. Once a bare -- end-of-options terminator is seen, every later token
+#              is a pattern candidate regardless of a leading dash -- only an exact redirection
+#              operator is still excluded. Sliced out of the raw command by offset so the original
+#              quoting survives, then one surrounding quote pair is stripped.
 # @arg $1 command the raw command string
 # @arg $2 args newline-separated "<offset>\t<token>" lines
 # @stdout the operand with surrounding quotes removed, or empty
 function pattern_operand() {
   local -r command="$1" args="$2"
-  local operand_offset='' operand_length=0 skip=0 offset token value_option
+  local operand_offset='' operand_length=0 skip=0 past_terminator=0 offset token value_option
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
     if ((skip == 1)); then
       skip=0
+      continue
+    fi
+    if ((past_terminator == 1)); then
+      if [[ "${token}" == '>' || "${token}" == '<' || "${token}" == '>>' ]]; then
+        skip=1
+      else
+        operand_offset="${offset}"
+        operand_length="${#token}"
+      fi
+      continue
+    fi
+    if [[ "${token}" == '--' ]]; then
+      past_terminator=1
       continue
     fi
     case "${token}" in
