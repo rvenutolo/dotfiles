@@ -34,13 +34,26 @@ readonly -a SELF_TEST_CASES=(
   $'pgrep -af java\tallow'
   $'pgrep --list-full --full java\tallow'
   # NEW rows covering the review findings
+  # A valid silent-allow case, but a stray `&` alone does not exercise the
+  # redirection-target guard in result_is_consumed (amp only reaches 1).
   $'pgrep -af java > /tmp/x 2>&1\tallow'
   $'until [ -z "$(pgrep --full x)" ]; do sleep 5; done\tdeny:loop'
   $'echo hi\nuntil ! pgrep --full x\ndo sleep 5\ndone\tdeny:loop'
   $'pgrep --full x &\tallow'
   # Backtick command substitution, both quoted and unquoted (Task 2 regression).
+  # The quoted row pins the context-stack special-casing; the unquoted row pins
+  # the tokenizer's operator set -- removing the backtick from either breaks it.
   $'until [ -z "`pgrep --full x`" ]; do sleep 5; done\tdeny:loop'
   $'until [ -z `pgrep --full x` ]; do sleep 5; done\tdeny:loop'
+  # Command substitution into kill: same session-killing effect as pkill --full.
+  $'kill $(pgrep --full x)\tdeny:kill'
+  $'kill -9 $(pgrep --full x)\tdeny:kill'
+  $'sudo kill $(pgrep --full x)\tdeny:kill'
+  # A substitution feeding something harmless is still only a warn.
+  $'echo $(pgrep --full x)\twarn'
+  # Exercises the redirection-target guard: a real pipe followed by a redirect
+  # into a file literally named `wc` must not read as "piped into wc".
+  $'pgrep --full x | sort > wc\tallow'
 )
 
 # @description Tokenize a command, masking quoted regions.
@@ -529,16 +542,20 @@ function emit_deny() {
   }'
 }
 
-# @description True when an invocation's output is piped into a kill.
+# @description True when an invocation's output is piped into a kill, or when the invocation is
+#              itself substituted into a kill's argument list (`kill $(pgrep ...)` and the backtick
+#              equivalent).
 # @arg $1 tokens the token stream from scan_command
 # @arg $2 target index of the invocation token
 # @exitcode 0 output feeds a kill
 # @exitcode 1 it does not
 function feeds_a_kill() {
   local -r tokens="$1" target="$2"
+  local -a seq=()
   local idx=0 seen=0 piped=0 offset token
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
+    seq+=("${token}")
     if ((idx == target)); then
       seen=1
       idx=$((idx + 1))
@@ -548,11 +565,25 @@ function feeds_a_kill() {
       case "${token}" in
         '|') piped=1 ;;
         'kill') ((piped == 1)) && return 0 ;;
-        ';' | '<NL>') break ;;
+        ';' | '<NL>') seen=2 ;;
       esac
     fi
     idx=$((idx + 1))
   done <<< "${tokens}"
+
+  # Backward form: `kill $(pgrep ...)`, `kill -9 $(pgrep ...)`, and the backtick
+  # equivalent. Here `kill` precedes the invocation, so the forward scan cannot
+  # see it. Skip the substitution punctuation and any flags on the way back.
+  local k=$((target - 1))
+  while ((k >= 0)); do
+    case "${seq[k]}" in
+      '$' | '(' | '`') ;;
+      -*) ;;
+      'kill') return 0 ;;
+      *) return 1 ;;
+    esac
+    k=$((k - 1))
+  done
   return 1
 }
 
