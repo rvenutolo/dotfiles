@@ -113,6 +113,11 @@ readonly -a SELF_TEST_CASES=(
   # longer swallowed as a flag.
   $'pgrep --full -- -x\tallow'
   $'until ! pgrep --full -- "[u]nittest discover"; do sleep 5; done\tallow'
+
+  # F8 -- an array literal's `(` restores command position for legitimate
+  # reasons (grouping, subshells), but `arr=(...)` is not one of them: `kill`
+  # immediately inside an array literal is a string element, never invoked.
+  $'arr=(kill $(pgrep --full x))\twarn'
 )
 
 # @description Tokenize a command, masking quoted regions.
@@ -693,7 +698,10 @@ function emit_deny() {
 #              itself substituted into a kill's argument list (`kill $(pgrep ...)` and the backtick
 #              equivalent). The forward pipeline scan requires `kill` to head a pipeline segment, or
 #              to follow an `xargs` that heads one, with flags and prefix words allowed in between:
-#              `pgrep --full x | grep -i kill` merely searches for the word and kills nothing.
+#              `pgrep --full x | grep -i kill` merely searches for the word and kills nothing. The
+#              backward scan's `(` check also excludes an array literal (`arr=(kill $(...))`): the
+#              `(` there opens a list of words rather than a subshell, so `kill` inside it is never
+#              invoked.
 # @arg $1 tokens the token stream from scan_command
 # @arg $2 target index of the invocation token
 # @exitcode 0 output feeds a kill
@@ -757,6 +765,14 @@ function feeds_a_kill() {
           if is_prefix_command "${seq[m]##*/}"; then
             m=$((m - 1))
             continue
+          fi
+          # `(` restores command position for a real subshell or grouping
+          # construct, but `name=(...)` is an array literal: the `(` merely
+          # opens a list of words, and a `kill` immediately inside it is
+          # never invoked. The token right before the `(` ending in `=` is
+          # what tells the two apart.
+          if [[ "${seq[m]}" == '(' ]] && ((m > 0)) && [[ "${seq[m - 1]}" == *= ]]; then
+            return 1
           fi
           if is_operator "${seq[m]}" || is_keyword "${seq[m]}"; then return 0; fi
           return 1
