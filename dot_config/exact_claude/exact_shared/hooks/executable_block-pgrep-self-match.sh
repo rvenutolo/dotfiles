@@ -1027,6 +1027,26 @@ readonly -a SELF_TEST_CASES=(
   $'echo in $(pgrep -f java); while true; do kill 1; done\twarn'
 )
 
+# Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
+# (permissionDecisionReason of a deny) or context (additionalContext of a
+# warn). These guard the copy and its field wiring (#151, #152); verdicts are
+# owned by SELF_TEST_CASES.
+readonly -a MESSAGE_TEST_CASES=(
+  # Kill denial via pkill: targeting advice, tool named correctly, no polling diagnosis.
+  $'pkill --full java\treason\tlacks\tPolling is the root cause'
+  $'pkill --full java\treason\tcontains\tKill by PID, not by pattern'
+  $'pkill --full java\treason\tcontains\tpkill --ignore-ancestors'
+  $'pkill --full java\treason\tlacks\tpgrep --ignore-ancestors'
+  # Kill denial via pgrep piped into kill: examples keep naming pgrep.
+  $'pgrep --full x | xargs kill\treason\tcontains\tpgrep --ignore-ancestors'
+  $'pgrep --full x | xargs kill\treason\tcontains\tKill by PID, not by pattern'
+  # Loop denial: anti-polling advice stays, and a mitigation is named.
+  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\tDo not poll'
+  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\t--ignore-ancestors'
+  # Warn: the inflated-count explanation reaches additionalContext.
+  $'pgrep --full x | wc -l\tcontext\tcontains\tinflated by one'
+)
+
 # @description Assert helper used by the scanner unit checks.
 # @arg $1 label description
 # @arg $2 expected expected value
@@ -1276,6 +1296,48 @@ function terminator_probe() {
   if body_has_terminator "${tokens}" "${idx}"; then printf 'yes\n'; else printf 'no\n'; fi
 }
 
+# @description Run the message-content table end-to-end: feed real PreToolUse
+#              JSON through main and assert substrings of the emitted
+#              permissionDecisionReason / additionalContext. An empty
+#              extracted field fails the row regardless of mode, so a lacks
+#              row cannot pass vacuously against a missing message or the
+#              wrong field.
+# @noargs
+# @exitcode 0 all rows matched
+# @exitcode 1 at least one row mismatched
+function run_message_tests() {
+  if ! command -v jq > /dev/null 2>&1; then
+    printf 'FAIL(message): jq missing; message cases not run\n' >&2
+    return 1
+  fi
+  local failures=0
+  local case_line command field mode needle json out text ok
+  for case_line in "${MESSAGE_TEST_CASES[@]}"; do
+    IFS=$'\t' read -r command field mode needle <<< "${case_line}"
+    json="$(jq --null-input --arg cmd "${command}" '{tool_name: "Bash", tool_input: {command: $cmd}}')"
+    out="$(main <<< "${json}")"
+    if [[ "${field}" == 'reason' ]]; then
+      text="$(jq --raw-output '.hookSpecificOutput.permissionDecisionReason // ""' <<< "${out}")"
+    else
+      text="$(jq --raw-output '.hookSpecificOutput.additionalContext // ""' <<< "${out}")"
+    fi
+    ok=1
+    if [[ -z "${text}" ]]; then
+      ok=0
+    elif [[ "${mode}" == 'contains' && "${text}" != *"${needle}"* ]]; then
+      ok=0
+    elif [[ "${mode}" == 'lacks' && "${text}" == *"${needle}"* ]]; then
+      ok=0
+    fi
+    if ((ok == 0)); then
+      printf 'FAIL(message): %s\n  field: %s  mode: %s  needle: %s\n' \
+        "${command}" "${field}" "${mode}" "${needle}" >&2
+      failures=$((failures + 1))
+    fi
+  done
+  ((failures == 0))
+}
+
 # @description Run the built-in case table.
 # @noargs
 # @exitcode 0 all cases matched
@@ -1283,6 +1345,9 @@ function terminator_probe() {
 function run_self_test() {
   local failures=0
   if ! run_scanner_tests; then
+    failures=$((failures + 1))
+  fi
+  if ! run_message_tests; then
     failures=$((failures + 1))
   fi
   local case_line expected actual command
@@ -1303,7 +1368,8 @@ function run_self_test() {
     printf '%d self-test failure(s)\n' "${failures}" >&2
     return 1
   fi
-  printf 'all %d self-test cases passed\n' "${#SELF_TEST_CASES[@]}"
+  printf 'all %d self-test cases and %d message cases passed\n' \
+    "${#SELF_TEST_CASES[@]}" "${#MESSAGE_TEST_CASES[@]}"
 }
 
 main "$@"
