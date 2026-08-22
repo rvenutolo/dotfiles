@@ -163,3 +163,17 @@ repos:
         # A hook that silently stops matching is worse than no hook, so the case
         # table is the regression guard. `files` covers the awk scanner too: a
         # change there breaks classification without touching the bash script.
+      - id: pin-digest-provenance-test
+        name: self-test the pin digest provenance gate
+        language: system
+        entry: .dev/check-pin-digest-provenance.test.sh
+        files: '^\.dev/check-pin-digest-provenance(\.test)?\.sh$'
+        pass_filenames: false
+        # Only the SUITE runs here. The gate itself is a diff against the PR's
+        # base ref, which is meaningless on a local commit — on main the base
+        # IS the commit, so it would pass trivially and read as coverage that
+        # is not there. The real run lives in the pin-provenance CI job.
+        #
+        # The suite is the regression guard for a gate whose whole job is to
+        # notice one specific thing; several of its cases exist because a
+        # mutation of the checker slipped past an earlier version of them.

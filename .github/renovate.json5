@@ -25,13 +25,24 @@
   // Saturday runs rather than the moment a check turns green.
   //
   // This deliberately replaces the earlier policy of hand-reviewing external
-  // SHA bumps, pre-commit revs, and GitHub Actions digest re-points. Note what
-  // is given up: on an action already pinned to a SHA, a digest-only bump
-  // means the upstream tag was repointed to different code at the same
-  // version — the mutable-tag substitution that SHA pinning exists to catch.
-  // That now merges on its own once it is a week old and CI is green. The
-  // quarantine is the remaining defence; the Dependency Dashboard is where to
-  // watch for it.
+  // SHA bumps, pre-commit revs, and GitHub Actions digest re-points. The last
+  // of those is the one that needed a replacement rather than just a decision:
+  // on an action already pinned to a SHA, a digest-only bump means the
+  // upstream tag was repointed to different code at the same version — the
+  // mutable-tag substitution SHA pinning exists to catch.
+  //
+  // The quarantine below does NOT hold that class. Renovate ages a `digest`
+  // update against the release timestamp of the matched version, and that
+  // version shipped months ago, so a repointed tag clears the window
+  // instantly. Renovate's own docs are explicit: "Datasources whose timestamps
+  // reflect when the matched version was first released (such as github-tags
+  // for digest-pinned GitHub Actions) cannot detect re-published content."
+  //
+  // So the gate is .dev/check-pin-digest-provenance.sh, run by the
+  // pin-provenance CI job on every PR. It diffs each action pin and each
+  // pre-commit `rev:` against the base ref and fails any SHA that moved while
+  // its version label did not. CI green is a precondition of automerge, so
+  // that check is what actually blocks the repoint from merging itself.
   automerge: true,
   // `main` carries no branch protection, so there are no required checks for
   // GitHub's native auto-merge to wait on and the platform rejects arming it.

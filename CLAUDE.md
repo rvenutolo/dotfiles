@@ -149,12 +149,20 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   green.
 
   This is a deliberate reversal of the earlier "external SHA bumps and
-  pre-commit revs are reviewed by hand" policy, and it gives up one specific
-  check worth naming: a `digest` bump on an already-pinned action means the
-  upstream tag was repointed to different code at the same version — the
-  mutable-tag substitution SHA pinning exists to catch. That now merges
-  unattended once it is a week old. The quarantine is the remaining defence;
-  the Dependency Dashboard is where to watch for it.
+  pre-commit revs are reviewed by hand" policy. One class needed a replacement
+  gate rather than just a decision: a `digest` bump on an already-pinned action
+  means the upstream tag was repointed to different code at the same version —
+  the mutable-tag substitution SHA pinning exists to catch.
+
+  **`minimumReleaseAge` does not hold that class.** Renovate ages a `digest`
+  update against the release timestamp of the *matched version*, and that
+  version shipped months ago, so a repointed tag clears the 7-day window
+  immediately. Renovate's docs say so outright: "Datasources whose timestamps
+  reflect when the matched version was first released (such as `github-tags`
+  for digest-pinned GitHub Actions) cannot detect re-published content." Do not
+  reason about this from the quarantine's existence — it is the one update
+  shape the quarantine is blind to. The gate that does hold it is
+  `.dev/check-pin-digest-provenance.sh`, described under Scripts below.
 
   `minimumReleaseAge` is at the **top level** and `minimumReleaseAgeBehaviour`
   is left at its default `timestamp-required`, which fails closed. That is
@@ -344,6 +352,47 @@ otherwise hermetic CI run flaky; link rot also arrives without a commit, so a
 schedule is the fitting trigger. It authenticates with the job's `GITHUB_TOKEN`
 because most of the URLs are on github.com, which rate-limits anonymous
 requests hard enough to redden the run by itself.
+
+### Pin digest provenance
+
+`.dev/check-pin-digest-provenance.sh` is the gate on Renovate's automerge path.
+It diffs every GitHub Actions pin (`uses: owner/repo@<sha> # <version>`) and
+every pre-commit `rev:` (`<sha>  # frozen: <version>`) against the PR's base ref
+and fails any SHA that moved while its version label did not — a repointed
+released tag, which no legitimate release produces. It exists because
+`minimumReleaseAge` is blind to exactly that shape (see the `automerge` note
+above); with every update type automerging, this is the only automated check
+standing between a repointed tag and `main`.
+
+Facts worth keeping straight before editing it:
+
+- **It runs in CI only**, as the `pin-provenance` job, gated on
+  `github.event_name == 'pull_request'`. The check is a diff against a base
+  ref, so on a local commit or a push to main the base *is* the commit and it
+  would pass trivially — coverage that looks real and is not. The job needs its
+  own `git fetch` step; `actions/checkout` leaves no `refs/remotes/origin/*`.
+- The pre-commit hook `pin-digest-provenance-test` runs the **test suite**
+  (`.dev/check-pin-digest-provenance.test.sh`, 18 cases), not the gate.
+- **Keying is on `(pin identity, version)`, deliberately not on the file.** A
+  workflow renamed in the same PR that repoints a pin must still be caught
+  rather than read as an add plus a remove. There is a case for this.
+- **It is offline by design** — no GitHub API, no token. The cost is one false
+  positive: a pin naming an annotated tag *object* versus one naming the commit
+  that tag points at are the same release one dereference apart but compare as
+  a repoint. Renovate always writes the dereferenced commit, so only a hand-edit
+  can produce it. Loud false positive, not a silent gap.
+- **Exit 2 is not exit 1.** A pin shape it cannot parse, an unresolvable base
+  ref, or an unreadable base file exits 2 (could not run), never 0. A gate that
+  cannot read the base must never report OK.
+- Floating-major labels (`# v7`) retarget legitimately, and telling that from a
+  repoint needs an upstream reachability probe this offline gate does not do, so
+  a moved SHA under one is reported rather than guessed at. Nothing here uses
+  that shape; `CLAUDE.md` requires exact `# vX.Y.Z` labels.
+
+Several test cases exist because a mutation of the checker slipped past an
+earlier version of the suite — notably the git-ref base path (`git ls-tree` /
+`git show`), which the directory-fixture cases do not reach even though it is
+the path CI actually uses. Keep those cases when refactoring.
 
 Two hooks lint the CI plumbing itself:
 

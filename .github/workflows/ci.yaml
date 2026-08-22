@@ -82,6 +82,35 @@ jobs:
         if: always()
         run: pre-commit gc
 
+  pin-provenance:
+    # The gate on Renovate's automerge path. `.github/renovate.json5` automerges
+    # every update type, and a `digest` bump on an already-pinned action means
+    # the upstream tag was repointed to different code at the same version —
+    # the exact substitution SHA pinning exists to catch. minimumReleaseAge does
+    # NOT hold it: Renovate ages a digest update against the matched version's
+    # original release timestamp, which is months old, so it clears the
+    # quarantine immediately. This diff is what stands in its place.
+    #
+    # Its own job, not a step in lint, so it reports as a separately named
+    # status rather than hiding inside a lint log. Skipped on push to main,
+    # where the base ref is the commit itself and the diff is empty by
+    # construction; every automerge goes through a PR, so nothing is lost.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Fetch the base ref to diff against
+        # actions/checkout leaves no refs/remotes/origin/* behind, so without
+        # this the checker exits 2 (loud red) rather than passing silently.
+        # depth=1 is enough: only the tree at that commit is read.
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: git fetch --no-tags --depth=1 origin "$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH"
+      - name: Check pin digest provenance
+        env:
+          BASE_REF: refs/remotes/origin/${{ github.base_ref }}
+        run: .dev/check-pin-digest-provenance.sh
+
   render:
     runs-on: ubuntu-latest
     strategy:
