@@ -399,14 +399,83 @@ function emit_deny() {
   }'
 }
 
+# @description True when the do/done body belonging to the `for`/`select`/`while`/`until` head at
+#              head_idx contains `kill` in command position. Covers two idioms where `kill` is not
+#              adjacent to the invocation in the token stream at all, so the rest of this guard's
+#              kill detection (which looks for `kill` next to or piped from the invocation) cannot
+#              see it: `for pid in $(pgrep -f java); do kill "$pid"; done` (head_idx is the `in`
+#              token, invoked from the backward scan) and `pgrep -f java | while read -r p; do kill
+#              "$p"; done` (head_idx is the `while` token itself, invoked from the forward pipeline
+#              scan). Either way this walks forward past the head's condition/iterable list to find
+#              the matching `do`, then scans that body (respecting nested do/done depth, the way
+#              body_has_terminator does) for a command-position `kill`. A loop whose body never
+#              kills (`for f in $(pgrep -f java); do echo "$f"; done`) must return 1 so the caller
+#              falls through to the ordinary warn path.
+# @arg $1 tokens_var name of the caller's token array
+# @arg $2 head_idx index of the `in`/`while`/`until` token whose body's `do` follows
+# @exitcode 0 the loop body kills
+# @exitcode 1 it does not, or no body was found
+function loop_body_has_kill() {
+  local -n toks="$1"
+  local -r head_idx="$2"
+  local idx=$((head_idx + 1)) token found_do=0 body_depth=1 at_cmd=1
+  local -a pstack=()
+
+  # Walk the condition/iterable list to the `do` that opens this loop's body,
+  # tracking any nested `$(...)`/backtick/subshell depth so a `do` inside one
+  # of those (a real nested loop, or just literal text) is not mistaken for
+  # this loop's.
+  while ((idx < ${#toks[@]})); do
+    token="${toks[idx]}"
+    case "${token}" in
+      '(') pstack+=('p') ;;
+      ')') ((${#pstack[@]} > 0)) && unset 'pstack[${#pstack[@]}-1]' ;;
+      '`')
+        if ((${#pstack[@]} > 0)) && [[ "${pstack[${#pstack[@]} - 1]}" == 'b' ]]; then
+          unset 'pstack[${#pstack[@]}-1]'
+        else
+          pstack+=('b')
+        fi
+        ;;
+    esac
+    if ((${#pstack[@]} == 0)) && [[ "${token}" == 'do' ]]; then
+      found_do=1
+      idx=$((idx + 1))
+      break
+    fi
+    idx=$((idx + 1))
+  done
+  ((found_do == 1)) || return 1
+
+  while ((idx < ${#toks[@]})); do
+    token="${toks[idx]}"
+    if ((at_cmd == 1)); then
+      case "${token}" in
+        'do') body_depth=$((body_depth + 1)) ;;
+        'done')
+          body_depth=$((body_depth - 1))
+          ((body_depth == 0)) && return 1
+          ;;
+        'kill') return 0 ;;
+      esac
+    fi
+    if is_operator "${token}" || is_keyword "${token}"; then at_cmd=1; else at_cmd=0; fi
+    idx=$((idx + 1))
+  done
+  return 1
+}
+
 # @description True when an invocation's output is piped into a kill, or when the invocation is
 #              itself substituted into a kill's argument list (`kill $(pgrep ...)` and the backtick
 #              equivalent). The forward pipeline scan requires `kill` to head a pipeline segment, or
 #              to follow an `xargs` that heads one, with flags and prefix words allowed in between:
-#              `pgrep --full x | grep -i kill` merely searches for the word and kills nothing. The
+#              `pgrep --full x | grep -i kill` merely searches for the word and kills nothing. A
+#              pipeline segment headed by `while`/`until` (`pgrep -f java | while read -r p; do kill
+#              "$p"; done`) defers to loop_body_has_kill rather than being written off as `other`. The
 #              backward scan's `(` check also excludes an array literal (`arr=(kill $(...))`): the
 #              `(` there opens a list of words rather than a subshell, so `kill` inside it is never
-#              invoked.
+#              invoked. Its `in` case defers to loop_body_has_kill the same way, for `for pid in
+#              $(pgrep -f java); do kill "$pid"; done`.
 # @arg $1 tokens_var name of the caller's token array (built once by classify_command; every
 #              invocation in the same command reuses it rather than re-parsing the token stream)
 # @arg $2 target index of the invocation token
@@ -428,6 +497,9 @@ function feeds_a_kill() {
               return 0
             elif [[ "${word}" == 'xargs' ]]; then
               segment='xargs'
+            elif [[ "${word}" == 'while' || "${word}" == 'until' ]]; then
+              loop_body_has_kill "$1" "${idx}" && return 0
+              segment='other'
             elif ! is_prefix_command "${word}"; then
               segment='other'
             fi
@@ -435,6 +507,8 @@ function feeds_a_kill() {
           xargs)
             if [[ "${word}" == 'kill' ]]; then
               return 0
+            elif [[ "${word}" == '{' || "${word}" == '}' ]]; then
+              : # `-I{}` placeholder braces, not a new command word
             elif [[ "${word}" != -* ]] && ! is_prefix_command "${word}"; then
               segment='other'
             fi
@@ -448,7 +522,11 @@ function feeds_a_kill() {
   # equivalent. Here `kill` precedes the invocation, so the forward scan cannot
   # see it. Skip the substitution punctuation and any flags on the way back, then
   # require the `kill` to be in command position -- otherwise `echo kill $(...)`,
-  # where `kill` is merely an argument word, would be denied.
+  # where `kill` is merely an argument word, would be denied. A value word that
+  # belongs to a preceding `-s`/`--signal` (`kill -s TERM $(pgrep ...)`) is also
+  # skipped rather than treated as an unrecognized stop word: it is recognized by
+  # peeking at the token immediately before it, since scanning backward means the
+  # value is reached before its flag.
   local k=$((target - 1)) m
   while ((k >= 0)); do
     word="${toks[k]##*/}"
@@ -475,7 +553,18 @@ function feeds_a_kill() {
         done
         return 0
         ;;
-      *) return 1 ;;
+      'in')
+        loop_body_has_kill "$1" "${k}" && return 0
+        return 1
+        ;;
+      *)
+        if ((k > 0)) \
+          && { [[ "${toks[k - 1]##*/}" == '-s' ]] || [[ "${toks[k - 1]##*/}" == '--signal' ]]; }; then
+          : # signal-name value word for -s/--signal, not a stop word
+        else
+          return 1
+        fi
+        ;;
     esac
     k=$((k - 1))
   done
@@ -873,6 +962,21 @@ readonly -a SELF_TEST_CASES=(
   $'LC_ALL=C pgrep --full x | xargs kill\tdeny:kill'
   $'FOO=bar pkill --full java\tdeny:kill'
   $'env FOO=bar pkill --full java\tdeny:kill'
+
+  # F10 -- three kill idioms that used to reach only warn: the backward scan's
+  # bare `in` used to abort instead of checking the for-loop body; `{`/`}`
+  # (an xargs -I{} placeholder) used to reset the xargs segment to `other`
+  # before the `kill` that followed it; and a `-s`/`--signal` value word (a
+  # signal name, not punctuation) used to abort the backward scan before it
+  # ever reached `kill`.
+  $'for pid in $(pgrep -f java); do kill "$pid"; done\tdeny:kill'
+  $'pgrep -f java | xargs -I{} kill {}\tdeny:kill'
+  $'kill -s TERM $(pgrep -f java)\tdeny:kill'
+
+  # F11 -- a pipeline segment headed by `while`/`until` used to be written off
+  # as `other` on sight, so a kill in the loop body was never seen even though
+  # it is at least as common as the already-denied `| xargs kill` form.
+  $'pgrep -f java | while read -r p; do kill "$p"; done\tdeny:kill'
 )
 
 # @description Assert helper used by the scanner unit checks.
