@@ -465,6 +465,34 @@ function loop_body_has_kill() {
   return 1
 }
 
+# xargs options that take their value as a SEPARATE word, so that word is data
+# rather than the command xargs will run. Only options whose argument is
+# mandatory belong here. GNU spells three of these with an OPTIONAL argument
+# (`-e`, `-i`, `-l`), which the shell can only attach (`-i%`), never separate --
+# so `xargs -i kill {}` runs kill, and listing them would swallow the very
+# command word this scan exists to find. Over-consuming hides a kill; under-
+# consuming only costs a warn, so the doubtful cases stay out.
+# `-J` is BSD/macOS-only and has no GNU meaning, so it is safe to carry here.
+readonly -a XARGS_VALUE_OPTIONS=(
+  '-a' '--arg-file' '-d' '--delimiter' '-E' '-I' '-J' '-L' '-n' '--max-args'
+  '-P' '--max-procs' '-s' '--max-chars' '--process-slot-var'
+)
+
+# @description True when a token is an xargs option that consumes the following word as its value.
+#              Matches the exact option only: an attached spelling (`-n1`, `--max-args=1`) carries
+#              its own value and must not also eat the next word.
+# @arg $1 token the token to test
+# @exitcode 0 the token is such an option
+# @exitcode 1 it is not
+function is_xargs_value_option() {
+  local -r token="$1"
+  local option
+  for option in "${XARGS_VALUE_OPTIONS[@]}"; do
+    [[ "${token}" == "${option}" ]] && return 0
+  done
+  return 1
+}
+
 # @description True when an invocation's output is piped into a kill, or when the invocation is
 #              itself substituted into a kill's argument list (`kill $(pgrep ...)` and the backtick
 #              equivalent). The forward pipeline scan requires `kill` to head a pipeline segment, or
@@ -486,11 +514,14 @@ function loop_body_has_kill() {
 function feeds_a_kill() {
   local -n toks="$1"
   local -r target="$2"
-  local idx segment='none' word
+  local idx segment='none' word xargs_skip=0
   for ((idx = target + 1; idx < ${#toks[@]}; idx++)); do
     word="${toks[idx]##*/}"
     case "${word}" in
-      '|') segment='head' ;;
+      '|')
+        segment='head'
+        xargs_skip=0
+        ;;
       ';' | '<NL>') break ;;
       *)
         case "${segment}" in
@@ -499,6 +530,7 @@ function feeds_a_kill() {
               return 0
             elif [[ "${word}" == 'xargs' ]]; then
               segment='xargs'
+              xargs_skip=0
             elif [[ "${word}" == 'while' || "${word}" == 'until' ]]; then
               loop_body_has_kill "$1" "${idx}" && return 0
               segment='other'
@@ -507,10 +539,15 @@ function feeds_a_kill() {
             fi
             ;;
           xargs)
-            if [[ "${word}" == 'kill' ]]; then
+            if ((xargs_skip == 1)); then
+              # Value word belonging to the option before it, not a command.
+              xargs_skip=0
+            elif [[ "${word}" == 'kill' ]]; then
               return 0
             elif [[ "${word}" == '{' || "${word}" == '}' ]]; then
               : # `-I{}` placeholder braces, not a new command word
+            elif is_xargs_value_option "${word}"; then
+              xargs_skip=1
             elif [[ "${word}" != -* ]] && ! is_prefix_command "${word}"; then
               segment='other'
             fi
@@ -629,21 +666,66 @@ function invocation_is_captured() {
   return 1
 }
 
+# @description True when the command immediately after an invocation, in the same list, reads `$?`.
+#              That is a consumption of the exit status exactly like `&&` or an enclosing `if`, and
+#              the forward scan in result_is_consumed cannot see it because it stops at the `;` or
+#              newline that ends the invocation's own simple command.
+#
+#              The `$?` test runs against the RAW command text rather than the token stream, because
+#              the scanner masks a double-quoted `$?` (`echo "exit=$?"`) down to filler -- the very
+#              shape #155 recorded -- and the tokens would show nothing. What the tokens do supply,
+#              and a raw substring search could not, are mask-aware separator offsets: only a `;` or
+#              newline the scanner saw as real code delimits the segment, so a `;` inside a quoted
+#              pattern cannot split it.
+#
+#              Scope is deliberately one command, not the rest of the list: in `pgrep --full x; echo
+#              hi; rc=$?` the status belongs to `echo`, and warning there would be wrong. The cost of
+#              reading raw text is a single-quoted literal `$?` counting as a read; that direction
+#              only over-warns, and no realistic command writes one right after a pgrep.
+# @arg $1 command the raw command string
+# @arg $2 tokens the token stream from scan_command
+# @arg $3 target index of the invocation token
+# @exitcode 0 the following command reads the exit status
+# @exitcode 1 it does not
+function next_command_reads_status() {
+  local -r command="$1" tokens="$2" target="$3"
+  local idx=0 offset token start=-1 end=-1
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    if ((idx > target)) && { [[ "${token}" == ';' ]] || [[ "${token}" == '<NL>' ]]; }; then
+      if ((start < 0)); then
+        start=$((offset + 1))
+      else
+        end="${offset}"
+        break
+      fi
+    fi
+    idx=$((idx + 1))
+  done <<< "${tokens}"
+  ((start < 0)) && return 1
+  ((end < 0)) && end="${#command}"
+  ((end <= start)) && return 1
+  [[ "${command:start:end-start}" == *'$?'* ]]
+}
+
 # @description True when an invocation's result is read as a boolean, a count, or captured into a
 #              variable, rather than merely displayed. Only then can the silent off-by-one produce a
-#              wrong conclusion. Four shapes count: pgrep's own `--count` / `-c`; an enclosing `if`
+#              wrong conclusion. Five shapes count: pgrep's own `--count` / `-c`; an enclosing `if`
 #              or `elif`, or a leading `!`, which read the exit status as a boolean; a following
-#              `&&`, `||`, `| wc` or `| xargs`; and sitting inside a command substitution. A
+#              `&&`, `||`, `| wc` or `| xargs`; sitting inside a command substitution; and the next
+#              command in the list reading `$?`, which next_command_reads_status handles. A
 #              redirection target is not consumption: `2>&1` tokenizes as `2>`, `&`, `1`, and a lone
 #              trailing `&` is backgrounding rather than a boolean operator.
 # @arg $1 tokens_var name of the caller's token array, built once by classify_command
 # @arg $2 target index of the invocation token
 # @arg $3 args the invocation's argument lines
+# @arg $4 command the raw command string, for the `$?` check
+# @arg $5 tokens the token stream from scan_command, for the `$?` check
 # @exitcode 0 the result is consumed
 # @exitcode 1 the result is only displayed
 function result_is_consumed() {
   local -n toks="$1"
-  local -r target="$2" args="$3"
+  local -r target="$2" args="$3" command="$4" tokens="$5"
   local offset token
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
@@ -689,6 +771,9 @@ function result_is_consumed() {
 
   # `p=$(pgrep ...)`: the output is captured rather than printed.
   invocation_is_captured "$1" "${target}" && return 0
+
+  # `pgrep --full x; rc=$?`: the status is read by the next command in the list.
+  next_command_reads_status "${command}" "${tokens}" "${target}" && return 0
   return 1
 }
 
@@ -803,14 +888,14 @@ function classify_command() {
         return 0
         ;;
       body)
-        if result_is_consumed CMD_TOKENS "${idx}" "${args}" \
+        if result_is_consumed CMD_TOKENS "${idx}" "${args}" "${command}" "${tokens}" \
           && body_has_terminator "${tokens}" "${idx}"; then
           printf 'deny:loop\t%s\n' "${name}"
           return 0
         fi
         ;;
     esac
-    result_is_consumed CMD_TOKENS "${idx}" "${args}" && verdict='warn'
+    result_is_consumed CMD_TOKENS "${idx}" "${args}" "${command}" "${tokens}" && verdict='warn'
   done <<< "$(find_invocations "${tokens}")"
   printf '%s\n' "${verdict}"
 }
@@ -1025,6 +1110,41 @@ readonly -a SELF_TEST_CASES=(
   # cross the `;` boundary and misattribute an unrelated later loop's kill
   # to this substitution.
   $'echo in $(pgrep -f java); while true; do kill 1; done\twarn'
+
+  # F14 (#155 entry 6) -- an xargs option and its value written as two words.
+  # The xargs segment state tolerates any `-flag`, but the value word that
+  # follows a separated option is a bare word, which used to reset the segment
+  # to `other` and lose the `kill` behind it. The attached spellings
+  # (`-n1`, `--max-args=1`) never had the problem, which is what made the gap
+  # look narrower than it is: `xargs -n 1 kill` is an ordinary thing to write.
+  $'pgrep -f java | xargs -n 1 kill\tdeny:kill'
+  $'pgrep -f java | xargs --max-args 1 kill\tdeny:kill'
+  $'pgrep -f java | xargs -P 4 kill\tdeny:kill'
+  $'pgrep -f java | xargs -I % kill %\tdeny:kill'
+  $'pgrep -f java | xargs --replace=% kill %\tdeny:kill'
+  # The value word must be skipped, never treated as a command: a non-kill
+  # command after a separated option must still reach only warn.
+  $'pgrep -f java | xargs -n 1 echo\twarn'
+  $'pgrep -f java | xargs -n 1 grep -i kill\twarn'
+  # A flag that takes no value must not swallow the command word after it.
+  $'pgrep -f java | xargs -r kill\tdeny:kill'
+  $'pgrep -f java | xargs --no-run-if-empty kill\tdeny:kill'
+
+  # F15 (#155 entry 5) -- a following command that reads `$?` consumes the
+  # exit status just as surely as `&&` or an enclosing `if`, and the
+  # off-by-one corrupts exactly that reading. The status is most often read
+  # from the next command in the list, where the forward scan used to stop.
+  $'pgrep --full x > /dev/null; echo "exit=$?"\twarn'
+  $'pgrep --full x; rc=$?\twarn'
+  $'pgrep --full x\necho $?\twarn'
+  # Scoped to the command immediately after: a `$?` further down the list
+  # belongs to some other command's status, and must not warn.
+  $'pgrep --full x; echo hi\tallow'
+  $'pgrep --full x; echo hi; rc=$?\tallow'
+  # The `$?` poll loop this unlocks: a body-context invocation whose status is
+  # read into a variable and tested for a `break`. Every ingredient of
+  # deny:loop was present except the consumption test, so it used to allow.
+  $'while true; do pgrep --full x; rc=$?; [[ $rc -eq 0 ]] && break; sleep 5; done\tdeny:loop'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
