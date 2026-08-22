@@ -51,6 +51,18 @@ function is_prefix_command() {
   return 1
 }
 
+# @description True when a token is a shell variable-assignment word (`FOO=bar`, `LC_ALL=C`, ...).
+#              Tested against the raw token rather than its basename: unlike a prefix command, an
+#              assignment's value routinely contains a `/` (`PATH=/usr/bin cmd`), and stripping to
+#              the basename there would corrupt the match.
+# @arg $1 token the token to test
+# @exitcode 0 the token is a shell assignment word
+# @exitcode 1 it is not
+function is_assignment_word() {
+  local -r token="$1"
+  [[ "${token}" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]
+}
+
 # @description True when a token is a shell keyword after which the next word is again in
 #              command position.
 # @arg $1 token the token to test
@@ -88,7 +100,12 @@ function scan_command() {
 # @description Locate pgrep/pkill invocations that sit in command position. A quoted mention such as
 #              `grep -r "until ! pgrep --full"` yields nothing, because the scanner masked it. A
 #              leading run of prefix words (`sudo`, `command`, ...) keeps command position, and the
-#              token is matched on its basename so `/usr/bin/pgrep` counts.
+#              token is matched on its basename so `/usr/bin/pgrep` counts. A leading run of shell
+#              assignment words (`FOO=bar pgrep ...`, `LC_ALL=C env FOO=bar pkill ...`) does too:
+#              `NAME=value` in front of a command is ordinary shell, not an argument, and without
+#              this the assignment hides the invocation from the whole scan -- not just from the
+#              kill/loop tiers -- because `at_cmd` drops to 0 and the pgrep/pkill token itself is
+#              never recorded.
 # @arg $1 tokens newline-separated "<offset>\t<token>" records from scan_command
 # @stdout lines of "<index>\t<offset>\t<basename>"
 function find_invocations() {
@@ -102,9 +119,9 @@ function find_invocations() {
     fi
     if is_operator "${token}" || is_keyword "${token}"; then
       next_at_cmd=1
-    elif ((at_cmd == 1)) && is_prefix_command "${word}"; then
-      # Only a prefix that is itself in command position chains: in `git command x`
-      # the word `command` is an argument, not a prefix.
+    elif ((at_cmd == 1)) && { is_prefix_command "${word}" || is_assignment_word "${token}"; }; then
+      # Only a prefix or assignment that is itself in command position chains: in
+      # `git command x` the word `command` is an argument, not a prefix.
       next_at_cmd=1
     else
       next_at_cmd=0
@@ -848,6 +865,14 @@ readonly -a SELF_TEST_CASES=(
   # reasons (grouping, subshells), but `arr=(...)` is not one of them: `kill`
   # immediately inside an array literal is a string element, never invoked.
   $'arr=(kill $(pgrep --full x))\twarn'
+
+  # F9 -- a leading shell assignment word must not hide the invocation from
+  # find_invocations. Without the fix these all read as if pgrep/pkill were
+  # never called at all -- allow, not merely under-classified.
+  $'until ! FOO=bar pgrep --full x; do sleep 5; done\tdeny:loop'
+  $'LC_ALL=C pgrep --full x | xargs kill\tdeny:kill'
+  $'FOO=bar pkill --full java\tdeny:kill'
+  $'env FOO=bar pkill --full java\tdeny:kill'
 )
 
 # @description Assert helper used by the scanner unit checks.
