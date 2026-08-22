@@ -95,11 +95,3 @@ Rust language server (LSP) providing code intelligence for Rust projects.
 ### typescript-lsp
 
 TypeScript/JavaScript language server (LSP) providing code intelligence for TS/JS projects.
-
-## Deliberately kept
-
-- **`jdtls-lsp`** — the one language server that is enabled. Java is the language actually worked
-  in here; the other five LSP plugins above are not.
-- **`github`** — was installed in both profiles while absent from `enabledPlugins`, the
-  undeclared case that motivated `claude-plugins-check-drift`. Resolved by declaring it rather
-  than removing it: it is already on disk and complements the `github` MCP server.
