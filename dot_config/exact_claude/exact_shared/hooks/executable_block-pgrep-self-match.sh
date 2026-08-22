@@ -1025,6 +1025,41 @@ readonly -a SELF_TEST_CASES=(
   # cross the `;` boundary and misattribute an unrelated later loop's kill
   # to this substitution.
   $'echo in $(pgrep -f java); while true; do kill 1; done\twarn'
+
+  # F14 (#155 entry 6) -- an xargs option and its value written as two words.
+  # The xargs segment state tolerates any `-flag`, but the value word that
+  # follows a separated option is a bare word, which used to reset the segment
+  # to `other` and lose the `kill` behind it. The attached spellings
+  # (`-n1`, `--max-args=1`) never had the problem, which is what made the gap
+  # look narrower than it is: `xargs -n 1 kill` is an ordinary thing to write.
+  $'pgrep -f java | xargs -n 1 kill\tdeny:kill'
+  $'pgrep -f java | xargs --max-args 1 kill\tdeny:kill'
+  $'pgrep -f java | xargs -P 4 kill\tdeny:kill'
+  $'pgrep -f java | xargs -I % kill %\tdeny:kill'
+  $'pgrep -f java | xargs --replace=% kill %\tdeny:kill'
+  # The value word must be skipped, never treated as a command: a non-kill
+  # command after a separated option must still reach only warn.
+  $'pgrep -f java | xargs -n 1 echo\twarn'
+  $'pgrep -f java | xargs -n 1 grep -i kill\twarn'
+  # A flag that takes no value must not swallow the command word after it.
+  $'pgrep -f java | xargs -r kill\tdeny:kill'
+  $'pgrep -f java | xargs --no-run-if-empty kill\tdeny:kill'
+
+  # F15 (#155 entry 5) -- a following command that reads `$?` consumes the
+  # exit status just as surely as `&&` or an enclosing `if`, and the
+  # off-by-one corrupts exactly that reading. The status is most often read
+  # from the next command in the list, where the forward scan used to stop.
+  $'pgrep --full x > /dev/null; echo "exit=$?"\twarn'
+  $'pgrep --full x; rc=$?\twarn'
+  $'pgrep --full x\necho $?\twarn'
+  # Scoped to the command immediately after: a `$?` further down the list
+  # belongs to some other command's status, and must not warn.
+  $'pgrep --full x; echo hi\tallow'
+  $'pgrep --full x; echo hi; rc=$?\tallow'
+  # The `$?` poll loop this unlocks: a body-context invocation whose status is
+  # read into a variable and tested for a `break`. Every ingredient of
+  # deny:loop was present except the consumption test, so it used to allow.
+  $'while true; do pgrep --full x; rc=$?; [[ $rc -eq 0 ]] && break; sleep 5; done\tdeny:loop'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
