@@ -1028,9 +1028,11 @@ readonly -a SELF_TEST_CASES=(
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
-# (permissionDecisionReason of a deny) or context (additionalContext of a
-# warn). These guard the copy and its field wiring (#151, #152); verdicts are
-# owned by SELF_TEST_CASES.
+# (permissionDecisionReason of a deny), context (additionalContext of a
+# warn), or decision (permissionDecision, exact match via mode equals, with
+# "none" standing in for an absent field). These guard the copy, its field
+# wiring (#151, #152), and the decision wiring (#158); verdicts are owned by
+# SELF_TEST_CASES.
 readonly -a MESSAGE_TEST_CASES=(
   # Kill denial via pkill: targeting advice, tool named correctly, no polling diagnosis.
   $'pkill --full java\treason\tlacks\tPolling is the root cause'
@@ -1045,6 +1047,12 @@ readonly -a MESSAGE_TEST_CASES=(
   $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\t--ignore-ancestors'
   # Warn: the inflated-count explanation reaches additionalContext.
   $'pgrep --full x | wc -l\tcontext\tcontains\tinflated by one'
+  # Decision wiring (#158): the emitted permissionDecision per tier. Without
+  # these rows, flipping deny to allow in emit_deny keeps every other row
+  # green while the guard stops blocking. "none" asserts the {} passthrough.
+  $'pkill --full java\tdecision\tequals\tdeny'
+  $'pgrep --full x | wc -l\tdecision\tequals\tallow'
+  $'ls\tdecision\tequals\tnone'
 )
 
 # @description Assert helper used by the scanner unit checks.
@@ -1297,14 +1305,21 @@ function terminator_probe() {
 }
 
 # @description Run the message-content table end-to-end: feed real PreToolUse
-#              JSON through main and assert substrings of the emitted
-#              permissionDecisionReason / additionalContext. An empty
-#              extracted field fails the row regardless of mode, so a lacks
-#              row cannot pass vacuously against a missing message or the
-#              wrong field.
+#              JSON through main and assert on the emitted output. reason and
+#              context rows substring-match permissionDecisionReason /
+#              additionalContext; decision rows exact-match
+#              permissionDecision, with "none" standing in for an absent
+#              field. An empty extracted reason/context fails the row
+#              regardless of mode, so a lacks row cannot pass vacuously
+#              against a missing message or the wrong field. A malformed row
+#              (empty needle, unrecognised field or mode, or a field/mode
+#              pairing outside the grammar) fails instead of passing
+#              vacuously — IFS collapses consecutive tabs, so a blanked
+#              middle field surfaces here as a bad field/mode, not a silent
+#              pass.
 # @noargs
 # @exitcode 0 all rows matched
-# @exitcode 1 at least one row mismatched
+# @exitcode 1 at least one row mismatched or malformed
 function run_message_tests() {
   if ! command -v jq > /dev/null 2>&1; then
     printf 'FAIL(message): jq missing; message cases not run\n' >&2
@@ -1314,24 +1329,87 @@ function run_message_tests() {
   local case_line command field mode needle json out text ok
   for case_line in "${MESSAGE_TEST_CASES[@]}"; do
     IFS=$'\t' read -r command field mode needle <<< "${case_line}"
+    ok=1
+    if [[ -z "${needle}" ]]; then
+      ok=0
+    fi
+    case "${field}" in
+      reason | context | decision) ;;
+      *) ok=0 ;;
+    esac
+    case "${mode}" in
+      contains | lacks | equals) ;;
+      *) ok=0 ;;
+    esac
+    # equals is exclusively the decision mode and vice versa.
+    if [[ "${field}" == 'decision' && "${mode}" != 'equals' ]] \
+      || [[ "${field}" != 'decision' && "${mode}" == 'equals' ]]; then
+      ok=0
+    fi
+    if ((ok == 0)); then
+      printf 'FAIL(message): malformed row: %s\n' "${case_line//$'\t'/<TAB>}" >&2
+      failures=$((failures + 1))
+      continue
+    fi
     json="$(jq --null-input --arg cmd "${command}" '{tool_name: "Bash", tool_input: {command: $cmd}}')"
     out="$(main <<< "${json}")"
-    if [[ "${field}" == 'reason' ]]; then
-      text="$(jq --raw-output '.hookSpecificOutput.permissionDecisionReason // ""' <<< "${out}")"
-    else
-      text="$(jq --raw-output '.hookSpecificOutput.additionalContext // ""' <<< "${out}")"
-    fi
+    case "${field}" in
+      reason)
+        text="$(jq --raw-output '.hookSpecificOutput.permissionDecisionReason // ""' <<< "${out}")"
+        ;;
+      context)
+        text="$(jq --raw-output '.hookSpecificOutput.additionalContext // ""' <<< "${out}")"
+        ;;
+      decision)
+        text="$(jq --raw-output '.hookSpecificOutput.permissionDecision // "none"' <<< "${out}")"
+        ;;
+    esac
     ok=1
-    if [[ -z "${text}" ]]; then
+    if [[ "${field}" != 'decision' && -z "${text}" ]]; then
       ok=0
     elif [[ "${mode}" == 'contains' && "${text}" != *"${needle}"* ]]; then
       ok=0
     elif [[ "${mode}" == 'lacks' && "${text}" == *"${needle}"* ]]; then
       ok=0
+    elif [[ "${mode}" == 'equals' && "${text}" != "${needle}" ]]; then
+      ok=0
     fi
     if ((ok == 0)); then
-      printf 'FAIL(message): %s\n  field: %s  mode: %s  needle: %s\n' \
-        "${command}" "${field}" "${mode}" "${needle}" >&2
+      printf 'FAIL(message): %s\n  field: %s  mode: %s  needle: %s\n  text: %.120s\n' \
+        "${command}" "${field}" "${mode}" "${needle}" "${text}" >&2
+      failures=$((failures + 1))
+    fi
+  done
+  ((failures == 0))
+}
+
+# @description Sweep every deny-expected SELF_TEST_CASES row through main and
+#              assert the --ignore-ancestors mitigation is named in each
+#              permissionDecisionReason (#158). MESSAGE_TEST_CASES pins the
+#              full copy for representative commands; this guards the
+#              mitigation invariant across the whole deny surface.
+# @noargs
+# @exitcode 0 every deny reason names the mitigation
+# @exitcode 1 at least one deny reason omits it
+function run_deny_sweep() {
+  if ! command -v jq > /dev/null 2>&1; then
+    printf 'FAIL(sweep): jq missing; deny sweep not run\n' >&2
+    return 1
+  fi
+  local failures=0
+  local case_line command expected json out reason
+  for case_line in "${SELF_TEST_CASES[@]}"; do
+    command="${case_line%%$'\t'*}"
+    expected="${case_line##*$'\t'}"
+    if [[ "${expected}" != deny:* ]]; then
+      continue
+    fi
+    json="$(jq --null-input --arg cmd "${command}" '{tool_name: "Bash", tool_input: {command: $cmd}}')"
+    out="$(main <<< "${json}")"
+    reason="$(jq --raw-output '.hookSpecificOutput.permissionDecisionReason // ""' <<< "${out}")"
+    if [[ "${reason}" != *'--ignore-ancestors'* ]]; then
+      printf 'FAIL(sweep): deny reason lacks --ignore-ancestors: %s\n  text: %.120s\n' \
+        "${command//$'\n'/\\n}" "${reason}" >&2
       failures=$((failures + 1))
     fi
   done
@@ -1348,6 +1426,9 @@ function run_self_test() {
     failures=$((failures + 1))
   fi
   if ! run_message_tests; then
+    failures=$((failures + 1))
+  fi
+  if ! run_deny_sweep; then
     failures=$((failures + 1))
   fi
   local case_line expected actual command
@@ -1368,7 +1449,7 @@ function run_self_test() {
     printf '%d self-test failure(s)\n' "${failures}" >&2
     return 1
   fi
-  printf 'all %d self-test cases and %d message cases passed\n' \
+  printf 'all %d self-test cases, %d message cases, and the deny sweep passed\n' \
     "${#SELF_TEST_CASES[@]}" "${#MESSAGE_TEST_CASES[@]}"
 }
 
