@@ -55,7 +55,17 @@ BEGIN { RS = "\0"; ORS = "" }
 
       if (ch == "'") { ctx[depth] = "S"; out = "\001" }
       else if (ch == "\"") { ctx[depth] = "D"; out = "\001" }
-      else if (ch == "\\") { masked = masked "\001\001"; i += 2; continue }
+      else if (ch == "\\") {
+        # A backslash-newline is a line continuation: bash removes it outright,
+        # so the words on either side are separate. Two spaces keep the byte
+        # offsets aligned -- the bracket mitigation slices the raw command by
+        # them -- while making it a real token delimiter, which filler is not.
+        # Every other escaped character keeps its masking, so an escaped quote
+        # still cannot flip parity for the rest of the command.
+        if (substr(cmd, i + 1, 1) == "\n") { masked = masked "  " }
+        else { masked = masked "\001\001" }
+        i += 2; continue
+      }
     }
     if (ctx[depth] == "N_END") ctx[depth] = "N"
     masked = masked out
