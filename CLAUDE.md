@@ -124,23 +124,55 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   propose SHA bumps. Tracking a moving branch is allowed only with a justifying comment.
   Pinned URLs are immutable, so pinned entries use `refreshPeriod = '0'`; a SHA
   bump changes the URL, which busts the cache and refetches on the next apply.
+
+  Those comments say `datasource=github-digest`, **not `git-refs`** — keep it
+  that way when adding an entry. `git-refs` resolves the same branch head but
+  reports no release timestamp, and the repo-wide `minimumReleaseAge` fails
+  closed on a missing timestamp, so a `git-refs` entry would stop receiving
+  PRs entirely rather than fail loudly. `github-digest` derives a timestamp
+  from the commit date, which is what puts externals under the quarantine.
+  Note its `depName` is the bare `owner/repo`, not the repo URL `git-refs`
+  wanted.
 - `.github/workflows/ci.yaml` — the lint + render CI workflow. The same
   supply-chain policy applies: every `uses:` is pinned to a 40-hex commit SHA
   with the version in a trailing comment (`@<sha> # v7.0.1`), because a tag is
   mutable and can be repointed by its owner. Renovate's `github-actions`
-  manager reads that comment and automerges `pin`/`digest`/`patch` bumps; the
-  `no-unpinned-actions` pre-commit hook stops a floating tag from creeping back.
-  Note `digest` updates are excluded from that automerge rule: on an
-  already-pinned action a digest-only bump means the upstream tag was
-  repointed to different code at the same version, which is the exact attack
-  SHA pinning exists to stop. Those always get human review.
+  manager reads that comment to propose SHA bumps; the `no-unpinned-actions`
+  pre-commit hook stops a floating tag from creeping back.
 
-  Updates also sit behind a 7-day `minimumReleaseAge` cooldown, scoped by
-  manager in `.github/renovate.json5`. **Do not hoist that setting to the top
-  level** — `minimumReleaseAgeBehaviour` defaults to `timestamp-required` and
-  the `git-refs` datasource behind every external carries no release
-  timestamp, so a global setting would silently stop external SHA bumps
-  forever while remaining perfectly valid config.
+  **Everything Renovate opens automerges** — `automerge: true` sits at the top
+  level of `.github/renovate.json5` and covers all three managers and every
+  update type. Two gates precede it: CI must be green (`ignoreTests` is left
+  false, so Renovate will not merge a branch with failing checks), and the
+  update must clear a repo-wide 7-day `minimumReleaseAge` quarantine. Merges
+  land during the Saturday `schedule` window, not the moment a check goes
+  green.
+
+  This is a deliberate reversal of the earlier "external SHA bumps and
+  pre-commit revs are reviewed by hand" policy, and it gives up one specific
+  check worth naming: a `digest` bump on an already-pinned action means the
+  upstream tag was repointed to different code at the same version — the
+  mutable-tag substitution SHA pinning exists to catch. That now merges
+  unattended once it is a week old. The quarantine is the remaining defence;
+  the Dependency Dashboard is where to watch for it.
+
+  `minimumReleaseAge` is at the **top level** and `minimumReleaseAgeBehaviour`
+  is left at its default `timestamp-required`, which fails closed. That is
+  only safe because every datasource in use reports a release timestamp — the
+  externals were moved off `git-refs` onto `github-digest` for exactly this
+  reason. Introducing a timestamp-less datasource would silently stop its
+  updates forever while remaining perfectly valid config.
+
+  Externals also carry `internalChecksFilter: 'flexible'`, scoped to the
+  `custom.regex` manager. They track a moving branch, so the datasource offers
+  exactly one candidate release; the default `strict` filters a pending
+  release and skips the PR "unless a non-pending version is available", and a
+  single branch ref has no older version to fall back to. Every external whose
+  upstream committed within the last week would go silent. `flexible` opens
+  the PR immediately and leaves `renovate/stability-days` pending, so the
+  update stays visible and hand-mergeable while only the automerge waits. The
+  flapping that makes `flexible` a bad default elsewhere cannot occur here — a
+  branch head only moves forward.
 
   The lint job does **not** use `pre-commit/action`. It runs `pre-commit`
   directly behind an `actions/cache` step whose `restore-keys` supplies a
@@ -326,10 +358,11 @@ Two hooks lint the CI plumbing itself:
   no build, it just makes Renovate stop proposing those updates while the
   pinned externals quietly go stale.
 
-`renovatebot/pre-commit-hooks` releases track Renovate's own (several per
-week), so `.github/renovate.json5` carries a narrow rule automerging *that one
-repo's* patch/minor `rev:` bumps. It is the only exception to "pre-commit rev
-bumps are reviewed by hand" — do not widen it to other hook repos.
+`rev:` bumps automerge along with everything else (see the `automerge` note
+under `.github/workflows/ci.yaml` above) once CI is green and the 7-day
+quarantine has passed. `renovatebot/pre-commit-hooks` cuts a release for every
+Renovate release — several per week — and no longer needs the narrow
+per-repo automerge rule it once had.
 
 Every `rev:` in `.pre-commit-config.yaml` is a **40-hex commit SHA** with the
 version in a trailing `# frozen:` comment, under the same supply-chain policy
