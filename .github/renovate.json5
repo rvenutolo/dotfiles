@@ -11,70 +11,77 @@
   // state, not dependency manifests.
   enabledManagers: ['github-actions', 'pre-commit', 'custom.regex'],
   'pre-commit': { enabled: true },
+  // Everything Renovate opens automerges — GitHub Actions bumps of every
+  // update type, pre-commit `rev:` bumps, and third-party external SHA bumps
+  // alike. Two gates stand in front of it and neither is optional:
+  //
+  //   1. CI must be green. `ignoreTests` is left at its default of false, so
+  //      Renovate refuses to merge a branch whose status checks have not
+  //      passed. The lint + render jobs exercise the actions and re-render
+  //      every host, so a bump that breaks the repo does not merge itself.
+  //   2. The update must clear the 7-day quarantine below.
+  //
+  // Automerge happens inside the `schedule` window above, so merges land on
+  // Saturday runs rather than the moment a check turns green.
+  //
+  // This deliberately replaces the earlier policy of hand-reviewing external
+  // SHA bumps, pre-commit revs, and GitHub Actions digest re-points. Note what
+  // is given up: on an action already pinned to a SHA, a digest-only bump
+  // means the upstream tag was repointed to different code at the same
+  // version — the mutable-tag substitution that SHA pinning exists to catch.
+  // That now merges on its own once it is a week old and CI is green. The
+  // quarantine is the remaining defence; the Dependency Dashboard is where to
+  // watch for it.
+  automerge: true,
+  // `main` carries no branch protection, so there are no required checks for
+  // GitHub's native auto-merge to wait on and the platform rejects arming it.
+  // Renovate would fall back to merging through the API anyway, after a failed
+  // call and a warning per PR. Skipping straight to the fallback keeps the run
+  // logs readable. Turn this back on if branch protection is ever added.
+  platformAutomerge: false,
+  // Soak time: adopt only code that has been public for a week. Complements
+  // SHA pinning rather than duplicating it — pinning secures the version you
+  // are ON (an immutable ref cannot be repointed under you); this secures the
+  // version you are MOVING TO. It is also what makes `automerge` above
+  // defensible: per Renovate's docs, automerge + minimumReleaseAge still opens
+  // the PR immediately but blocks the merge behind a pending
+  // `renovate/stability-days` check, so nothing merges itself inside the
+  // window.
+  //
+  // `minimumReleaseAgeBehaviour` is left at its default of
+  // `timestamp-required`, which fails closed: an update whose datasource
+  // reports no release timestamp is never treated as stable, so it can never
+  // automerge. That is only safe because every datasource in use here reports
+  // one — github-tags and pre-commit's github-tags both do, and the externals
+  // were moved off `git-refs` (which reports nothing) onto `github-digest`
+  // (which derives a timestamp from the commit date) precisely so this setting
+  // could apply to them. If an external ever stops receiving PRs, check that
+  // its `# renovate:` comment still says `datasource=github-digest` before
+  // looking anywhere else — a silent stall is exactly what a missing timestamp
+  // looks like from in here, and the Dependency Dashboard is where it shows up.
+  minimumReleaseAge: '7 days',
   packageRules: [
     {
-      // Low-risk GitHub Actions updates automerge once CI is green;
-      // minor/major stay manual. External SHA bumps are always manual
-      // (unreviewed third-party code), as are pre-commit rev bumps with the
-      // single narrow exception in the rule below.
+      // Externals track a moving branch, so at any moment the datasource
+      // offers exactly one candidate release: that branch's head commit. Under
+      // the default `internalChecksFilter: 'strict'`, a pending release is
+      // filtered out and the PR is skipped "unless a non-pending version is
+      // available" — and for a single branch ref there is no older version to
+      // fall back to. Any external whose upstream committed within the last
+      // week would therefore go silent instead of opening a PR.
       //
-      // 'digest' is deliberately NOT in this list. For an action already
-      // pinned to a SHA, a digest-only update means the upstream tag was
-      // repointed to different code at the same version — which is precisely
-      // the mutable-tag attack that SHA pinning exists to stop. Automerging it
-      // would hand that attack back the automation it was meant to lose.
-      // Those bumps get human eyes, always.
-      matchManagers: ['github-actions'],
-      matchUpdateTypes: ['pin', 'patch'],
-      automerge: true,
-    },
-    {
-      // Soak time: adopt only releases that have survived a week of public
-      // scrutiny. Complements SHA pinning rather than duplicating it —
-      // pinning secures the version you are ON (an immutable ref cannot be
-      // repointed under you); this secures the version you are MOVING TO.
-      // It is also what makes the automerge rules above defensible: per
-      // Renovate's docs, automerge + minimumReleaseAge still opens the PR
-      // immediately but blocks the merge behind a renovate/stability-days
-      // pending check, so nothing merges itself within the window.
+      // `flexible` opens the PR with the highest pending version, leaving the
+      // `renovate/stability-days` check pending until the commit is a week
+      // old. The update stays visible and hand-mergeable the whole time; only
+      // the automerge waits.
       //
-      // SCOPED BY MANAGER ON PURPOSE — do not hoist this to the top level.
-      // minimumReleaseAgeBehaviour defaults to 'timestamp-required', and the
-      // git-refs datasource behind every .chezmoiexternal.toml.tmpl entry
-      // exposes no release timestamp (github-tags declares
-      // releaseTimestampSupport = true; git-refs declares nothing). A global
-      // setting would therefore mark every external permanently unstable and
-      // silently stop external SHA bumps forever. It would still be valid
-      // JSON5, so renovate-config-validator would not catch it.
-      //
-      // Externals lose nothing here: they are never automerged and always
-      // reviewed by hand.
-      //
-      // Fast releasers are fine: internalChecksFilter defaults to 'strict',
-      // which filters pending releases and proposes the newest one already
-      // older than the window — no clock-resetting, no PR flapping.
-      matchManagers: ['github-actions', 'pre-commit'],
-      minimumReleaseAge: '7 days',
-    },
-    {
-      // renovatebot/pre-commit-hooks cuts a release for every Renovate
-      // release — several per week — and the only hook used from it is
-      // renovate-config-validator, which parses .github/renovate.json5 and
-      // exits. Automerging patch+minor keeps the validator in step with the
-      // Renovate that actually runs this repo instead of generating a review
-      // chore every Saturday. Majors stay manual: they can tighten schema
-      // validation and break the lint job.
-      //
-      // Deliberate, narrow exception to "pre-commit rev bumps are manual":
-      // matchPackageNames scopes it to this one repo (the pre-commit manager
-      // sets both depName and packageName to the bare owner/repo), and
-      // matchDepTypes: ['repository'] scopes it to `rev:` bumps rather than a
-      // hook's additional_dependencies (depType pre-commit-node).
-      matchManagers: ['pre-commit'],
-      matchDepTypes: ['repository'],
-      matchPackageNames: ['renovatebot/pre-commit-hooks'],
-      matchUpdateTypes: ['patch', 'minor'],
-      automerge: true,
+      // The flapping that makes `flexible` a poor default elsewhere — a
+      // pending 1.0.3 later downgraded to 1.0.2 — cannot happen here. A branch
+      // head only moves forward, so there is no lower version to fall back to.
+      // Scoped to this manager on purpose: github-actions and pre-commit
+      // resolve real version lists and keep `strict`.
+      matchManagers: ['custom.regex'],
+      internalChecksFilter: 'flexible',
     },
   ],
   customManagers: [
