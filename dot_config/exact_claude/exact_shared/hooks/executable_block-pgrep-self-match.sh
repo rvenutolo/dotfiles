@@ -1207,6 +1207,35 @@ readonly -a SELF_TEST_CASES=(
   # the correct reading. Turning every escape into whitespace would split it
   # into `sudo` plus `pkill` and deny a command that kills nothing.
   $'sudo\\ pkill --full java\tallow'
+
+  # F18 (#155 entry 4) -- `bash -c '...'` runs its payload on THIS machine, so
+  # the payload is code the guard is responsible for, not opaque data. The
+  # single quotes still mask it from the outer scan, which is correct for the
+  # outer scan; the payload has to be handed to a scan of its own.
+  $'bash -c \'pkill --full java\'\tdeny:kill'
+  $'sudo bash -c \'pkill -f myapp\'\tdeny:kill'
+  $'sh -c \'until ! pgrep --full x; do sleep 5; done\'\tdeny:loop'
+  $'bash -c "pkill --full java"\tdeny:kill'
+  $'bash -lc \'pkill --full java\'\tdeny:kill'
+  # A payload that is fine on its own stays fine: the payload gets the SAME
+  # tiering as any other command, not a blanket deny for being a payload.
+  $'bash -c \'echo hi\'\tallow'
+  $'bash -c \'pgrep --ignore-ancestors -f java\'\tallow'
+  $'bash -c \'pgrep --full "[j]ava"\'\tallow'
+  $'bash -c \'pgrep -af java\'\tallow'
+  # The wrappers that run their payload SOMEWHERE ELSE keep their masking.
+  # This is the whole reason #155 accepted entry 4: the fix must key on which
+  # wrapper runs the payload locally, not on whether the payload is quoted.
+  $'ssh host \'pkill -f myapp\'\tallow'
+  $'docker exec c sh -c \'pkill -f myapp\'\tallow'
+  $'watch \'pgrep -c java\'\tallow'
+  $'ssh host bash -c \'pkill --full java\'\tallow'
+  # A payload is only a payload when the wrapper is in command position and the
+  # word actually follows a -c. Neither of these runs anything.
+  $'echo bash -c \'pkill --full java\'\tallow'
+  $'bash --version; echo \'pkill --full java\'\tallow'
+  # Nesting resolves rather than recursing forever.
+  $'bash -c \'bash -c "pkill --full java"\'\tdeny:kill'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
