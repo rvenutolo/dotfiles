@@ -701,10 +701,12 @@ status is being used for anything.'
 
 # @description Build the deny reason for a deny kind.
 # @arg $1 kind loop or kill
+# @arg $2 tool the tool of the denying invocation, pgrep or pkill; defaults to pgrep
 # @stdout the reason text
 function deny_message() {
   local -r kind="$1"
-  local preamble
+  local -r tool="${2:-pgrep}"
+  local preamble fixes
 
   case "${kind}" in
     loop)
@@ -724,8 +726,25 @@ the session shell.'
       ;;
   esac
 
-  # shellcheck disable=SC2016
-  printf '%s\n\n%s\n' "${preamble}" 'Three fixes, in order of preference:
+  if [[ "${kind}" == 'kill' ]]; then
+    # Kill denials get targeting advice, not anti-polling advice, and the
+    # examples name the tool that was actually invoked (#152).
+    # shellcheck disable=SC2016
+    fixes='Three fixes, in order of preference:
+
+1. Kill by PID, not by pattern. Use a PID recorded when the process was started (`kill "$pid"`, a
+   PID file), or probe liveness first with `kill -0 "$pid"`. Pattern-matching kills are the root
+   cause; the self-match is a symptom.
+2. `__TOOL__ --ignore-ancestors --full <pattern>` excludes the `bash -c` ancestor.
+3. `__TOOL__ --full "[p]attern"` hides the needle from its own regex, but only when the bare literal
+   appears NOWHERE ELSE in the same command. A second copy in the same call silently defeats it.
+
+If this command writes text that CONTAINS such an example rather than running one, use the Write tool
+instead of a heredoc; this guard only inspects Bash commands.'
+    fixes="${fixes//__TOOL__/${tool}}"
+  else
+    # shellcheck disable=SC2016
+    fixes='Three fixes, in order of preference:
 
 1. Do not poll. Use `kill -0 "$pid"`, a PID file, or let the background task notification wake you --
    completion re-invokes the model automatically. Polling is the root cause; this is a symptom.
@@ -735,11 +754,14 @@ the session shell.'
 
 If this command writes text that CONTAINS such an example rather than running one, use the Write tool
 instead of a heredoc; this guard only inspects Bash commands.'
+  fi
+
+  printf '%s\n\n%s\n' "${preamble}" "${fixes}"
 }
 
 # @description Classify a Bash command string.
 # @arg $1 command the command string
-# @stdout allow, warn, deny:loop, or deny:kill
+# @stdout allow, warn, or deny:loop / deny:kill followed by a tab and the invoked tool
 function classify_command() {
   local -r command="$1"
   if [[ "${command}" != *pgrep* && "${command}" != *pkill* ]]; then
@@ -771,19 +793,19 @@ function classify_command() {
     operand="$(pattern_operand "${command}" "${args}")"
     bracket_mitigation_holds "${command}" "${operand}" && continue
     if [[ "${name}" == 'pkill' ]] || feeds_a_kill CMD_TOKENS "${idx}"; then
-      printf 'deny:kill\n'
+      printf 'deny:kill\t%s\n' "${name}"
       return 0
     fi
     context="$(loop_context "${tokens}" "${idx}")"
     case "${context}" in
       cond)
-        printf 'deny:loop\n'
+        printf 'deny:loop\t%s\n' "${name}"
         return 0
         ;;
       body)
         if result_is_consumed CMD_TOKENS "${idx}" "${args}" \
           && body_has_terminator "${tokens}" "${idx}"; then
-          printf 'deny:loop\n'
+          printf 'deny:loop\t%s\n' "${name}"
           return 0
         fi
         ;;
@@ -847,11 +869,11 @@ function main() {
   local command
   command="$(printf '%b' "${command_escaped}")"
 
-  local decision
-  decision="$(classify_command "${command}")"
+  local decision deny_tool
+  IFS=$'\t' read -r decision deny_tool <<< "$(classify_command "${command}")"
   case "${decision}" in
     deny:*)
-      emit_deny "$(deny_message "${decision#deny:}")"
+      emit_deny "$(deny_message "${decision#deny:}" "${deny_tool}")"
       ;;
     warn)
       emit_warn "${WARN_MESSAGE}"
@@ -1268,6 +1290,9 @@ function run_self_test() {
     command="${case_line%%$'\t'*}"
     expected="${case_line##*$'\t'}"
     actual="$(classify_command "${command}")"
+    # Verdict rows assert the kind alone; the tool field after the tab is
+    # asserted end-to-end by MESSAGE_TEST_CASES, which fail if it is wrong.
+    actual="${actual%%$'\t'*}"
     if [[ "${actual}" != "${expected}" ]]; then
       printf 'FAIL: %s\n  expected: %s\n  actual:   %s\n' \
         "${command//$'\n'/\\n}" "${expected}" "${actual}" >&2
