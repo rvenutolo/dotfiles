@@ -475,7 +475,9 @@ function loop_body_has_kill() {
 #              backward scan's `(` check also excludes an array literal (`arr=(kill $(...))`): the
 #              `(` there opens a list of words rather than a subshell, so `kill` inside it is never
 #              invoked. Its `in` case defers to loop_body_has_kill the same way, for `for pid in
-#              $(pgrep -f java); do kill "$pid"; done`.
+#              $(pgrep -f java); do kill "$pid"; done` -- but only once it confirms the `in` actually
+#              heads a for/select construct, so an unrelated argument word `in` (`echo in $(...)`)
+#              cannot be mistaken for one and misattribute a later, unrelated loop's kill.
 # @arg $1 tokens_var name of the caller's token array (built once by classify_command; every
 #              invocation in the same command reuses it rather than re-parsing the token stream)
 # @arg $2 target index of the invocation token
@@ -556,7 +558,15 @@ function feeds_a_kill() {
         return 0
         ;;
       'in')
-        loop_body_has_kill "$1" "${k}" && return 0
+        # A bare `in` is only a for/select head -- and thus worth deferring to
+        # loop_body_has_kill -- when the token two back (past the loop
+        # variable) is actually `for`/`select`. Otherwise `in` is just an
+        # ordinary argument word (`echo in $(...)`), and the forward walk to
+        # a `do` in loop_body_has_kill could cross into an unrelated later
+        # loop's body and misattribute its kill to this invocation.
+        if ((k >= 2)) && { [[ "${toks[k - 2]}" == 'for' ]] || [[ "${toks[k - 2]}" == 'select' ]]; }; then
+          loop_body_has_kill "$1" "${k}" && return 0
+        fi
         return 1
         ;;
       *)
@@ -986,6 +996,13 @@ readonly -a SELF_TEST_CASES=(
   # substitution form escapes while the equivalent pkill form (F9) correctly
   # denies.
   $'FOO=bar kill $(pgrep -f java)\tdeny:kill'
+
+  # F13 -- the backward scan's bare `in` case must confirm it actually heads
+  # a for/select construct before deferring to loop_body_has_kill. Without
+  # the check, `in` as a plain argument word lets the forward walk to `do`
+  # cross the `;` boundary and misattribute an unrelated later loop's kill
+  # to this substitution.
+  $'echo in $(pgrep -f java); while true; do kill 1; done\twarn'
 )
 
 # @description Assert helper used by the scanner unit checks.
