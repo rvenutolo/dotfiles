@@ -124,6 +124,11 @@ cleanup = true
 # Replaces the disabled claude_code_plugins step; updates plugins in every
 # Claude profile (personal + work), not just the PWD-derived one
 "Claude Code Plugins" = "claude-plugins-update"
+# Runs after the update above: fails the step when a profile's installed plugins
+# or marketplaces have drifted from what settings.json declares. Installing a
+# plugin ad-hoc reddens this until enabledPlugins is updated to match -- that
+# pressure is the point. See shared/uninstalled-plugins.md
+"Claude Code Plugin Drift" = "claude-plugins-check-drift"
 
 
 [python]
