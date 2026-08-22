@@ -514,16 +514,24 @@ function is_xargs_value_option() {
 function feeds_a_kill() {
   local -n toks="$1"
   local -r target="$2"
-  local idx segment='none' word xargs_skip=0
+  local idx segment='none' word xargs_skip=0 prev='none'
   for ((idx = target + 1; idx < ${#toks[@]}; idx++)); do
     word="${toks[idx]##*/}"
     case "${word}" in
       '|')
         segment='head'
         xargs_skip=0
+        prev='|'
         ;;
-      ';' | '<NL>') break ;;
+      ';') break ;;
+      '<NL>')
+        # A newline after a trailing `|` continues the pipeline -- bash does
+        # not end the command there, and the kill is usually on the next line.
+        # A newline anywhere else does end it.
+        [[ "${prev}" == '|' ]] || break
+        ;;
       *)
+        prev="${word}"
         case "${segment}" in
           head)
             if [[ "${word}" == 'kill' ]]; then
@@ -749,7 +757,10 @@ function result_is_consumed() {
   for ((idx = target + 1; idx < ${#toks[@]}; idx++)); do
     token="${toks[idx]}"
     # A redirection target is not consumption: `2>&1` tokenizes as `2>` `&` `1`.
-    if [[ "${prev}" == *[\<\>] ]]; then
+    # The `<NL>` token is spelled with angle brackets and so ends in `>`: it has
+    # to be excluded by name, or the word after a newline-continued pipe reads
+    # as a redirection target and is skipped.
+    if [[ "${prev}" != '<NL>' && "${prev}" == *[\<\>] ]]; then
       prev="${token}"
       continue
     fi
@@ -763,7 +774,10 @@ function result_is_consumed() {
         ((pipe >= 2)) && return 0
         ;;
       'wc' | 'xargs') ((pipe >= 1)) && return 0 ;;
-      ';' | '<NL>') break ;;
+      ';') break ;;
+      # As in feeds_a_kill: a newline right after a trailing `|` continues the
+      # pipeline, so `| wc -l` on the next line is still consumption.
+      '<NL>') [[ "${prev}" == '|' ]] || break ;;
       *) amp=0 ;;
     esac
     prev="${token}"
@@ -1161,6 +1175,14 @@ readonly -a SELF_TEST_CASES=(
   # Continuing across the newline must not invent consumption on its own: a
   # single pipe into an ordinary filter is still only a display.
   $'pgrep --full x |\n  grep foo\tallow'
+  # The pipe has to be the LAST thing on the line for the newline to continue.
+  # Where a pipeline segment is still open at the line break but the pipe is
+  # not adjacent -- an xargs with no command yet, a bare prefix word -- the
+  # newline ends the command, and the `kill` on the next line is a separate
+  # command operating on a PID of its own. Reading it as part of the pipeline
+  # is a false deny, which is the direction that costs the most here.
+  $'pgrep -f java | xargs\nkill 123\twarn'
+  $'pgrep -f java | sudo\nkill 123\tallow'
 
   # F17 (#172 B) -- a `\` line continuation before the invocation word. Bash
   # removes the backslash-newline entirely, so the words on either side are
@@ -1179,6 +1201,12 @@ readonly -a SELF_TEST_CASES=(
   # parity for the rest of the command. If it did, the `'` below would open a
   # string and mask the real kill that follows into invisibility.
   $'echo don\\\'t; pgrep --full x | xargs kill\tdeny:kill'
+  # An escaped ordinary character must also still keep its word together. An
+  # escaped space is not a word break: `sudo\\ pkill` is one word, the name of
+  # a command that does not exist, and bash runs no pkill at all -- so allow is
+  # the correct reading. Turning every escape into whitespace would split it
+  # into `sudo` plus `pkill` and deny a command that kills nothing.
+  $'sudo\\ pkill --full java\tallow'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
@@ -1247,6 +1275,22 @@ function run_scanner_tests() {
 
   assert_equals 'newline survives as a literal token' \
     '<NL>' "$(scan_command "$(printf 'echo hi\nls')" | awk -F'\t' 'NR==3 {print $2}')" \
+    || failures=$((failures + 1))
+
+  # A `\`-newline is a line continuation, which bash removes outright, so the
+  # words on either side must come out separate. Masked as filler they fuse
+  # into one token and the invocation stops being recognised (#172 B).
+  assert_equals 'line continuation separates the words it joins' \
+    'pkill' "$(scan_command "$(printf 'sudo \\\npkill --full java')" \
+      | awk -F'\t' 'NR==2 {print $2}')" \
+    || failures=$((failures + 1))
+
+  # ...and it must consume exactly two bytes of masked output for the two bytes
+  # it covers. Emitting one would shift every later offset by one, and the
+  # operand is sliced out of the RAW command by those offsets -- the bracket
+  # mitigation reads whatever that slice returns.
+  assert_equals 'line continuation keeps later byte offsets aligned' \
+    'unittest discover' "$(pattern_probe "$(printf 'pgrep --full \\\n  "unittest discover"')")" \
     || failures=$((failures + 1))
 
   assert_equals 'long full flag' 'yes' "$(flag_probe 'pgrep --full x' '--full' 'f')" \
