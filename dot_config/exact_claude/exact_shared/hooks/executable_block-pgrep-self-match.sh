@@ -526,7 +526,9 @@ function feeds_a_kill() {
   # belongs to a preceding `-s`/`--signal` (`kill -s TERM $(pgrep ...)`) is also
   # skipped rather than treated as an unrecognized stop word: it is recognized by
   # peeking at the token immediately before it, since scanning backward means the
-  # value is reached before its flag.
+  # value is reached before its flag. Walking further back past `kill` to confirm
+  # command position also accepts a shell assignment word (`FOO=bar kill $(...)`),
+  # matching find_invocations's forward treatment of the same prefix.
   local k=$((target - 1)) m
   while ((k >= 0)); do
     word="${toks[k]##*/}"
@@ -536,7 +538,7 @@ function feeds_a_kill() {
       'kill')
         m=$((k - 1))
         while ((m >= 0)); do
-          if is_prefix_command "${toks[m]##*/}"; then
+          if is_prefix_command "${toks[m]##*/}" || is_assignment_word "${toks[m]}"; then
             m=$((m - 1))
             continue
           fi
@@ -977,6 +979,13 @@ readonly -a SELF_TEST_CASES=(
   # as `other` on sight, so a kill in the loop body was never seen even though
   # it is at least as common as the already-denied `| xargs kill` form.
   $'pgrep -f java | while read -r p; do kill "$p"; done\tdeny:kill'
+
+  # F12 -- a leading shell assignment word before `kill` in the backward
+  # substitution-kill scan must chain command position the same way
+  # find_invocations's forward scan already does for F9; without this the
+  # substitution form escapes while the equivalent pkill form (F9) correctly
+  # denies.
+  $'FOO=bar kill $(pgrep -f java)\tdeny:kill'
 )
 
 # @description Assert helper used by the scanner unit checks.
