@@ -1145,6 +1145,40 @@ readonly -a SELF_TEST_CASES=(
   # read into a variable and tested for a `break`. Every ingredient of
   # deny:loop was present except the consumption test, so it used to allow.
   $'while true; do pgrep --full x; rc=$?; [[ $rc -eq 0 ]] && break; sleep 5; done\tdeny:loop'
+
+  # F16 (#172 A) -- a newline after a trailing `|` continues the pipeline; it
+  # does not end the command. The forward walks used to stop at any `<NL>`, so
+  # everything past the line break -- including the kill -- was invisible.
+  # Every one of these is already correct when written on a single line, so
+  # the only variable is where the newline falls.
+  $'pgrep -f java |\n  xargs kill\tdeny:kill'
+  $'pgrep -f java |\n  xargs -n 1 kill\tdeny:kill'
+  $'pgrep -f java |\n  while read -r p; do kill "$p"; done\tdeny:kill'
+  $'pgrep --full x |\n  wc -l\twarn'
+  # A newline NOT preceded by a pipe still ends the command: the `kill` below
+  # is a separate command that never sees the invocation's output.
+  $'pgrep --full x\nkill 123\tallow'
+  # Continuing across the newline must not invent consumption on its own: a
+  # single pipe into an ordinary filter is still only a display.
+  $'pgrep --full x |\n  grep foo\tallow'
+
+  # F17 (#172 B) -- a `\` line continuation before the invocation word. Bash
+  # removes the backslash-newline entirely, so the words on either side are
+  # separate; masking it as filler fused the next word onto it and the
+  # invocation stopped being recognised at all.
+  $'sudo \\\npkill --full java\tdeny:kill'
+  $'while \\\n  pgrep --full x; do sleep 5; done\tdeny:loop'
+  $'kill \\\n  $(pgrep -f java)\tdeny:kill'
+  # A continuation AFTER the invocation word already worked, because the
+  # indent split the filler off into a token of its own. Keep it honest.
+  $'pgrep \\\n  --full x | xargs kill\tdeny:kill'
+  # Only the escaped NEWLINE changes. An escaped ordinary character stays
+  # masked, so #155 entry 1 stays closed as accepted...
+  $'until ! p\\grep --full x; do sleep 5; done\tallow'
+  # ...and, more importantly, an escaped quote must still not flip quote
+  # parity for the rest of the command. If it did, the `'` below would open a
+  # string and mask the real kill that follows into invisibility.
+  $'echo don\\\'t; pgrep --full x | xargs kill\tdeny:kill'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
