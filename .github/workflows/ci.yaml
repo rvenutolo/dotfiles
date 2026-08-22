@@ -102,4 +102,11 @@ jobs:
           ln --symbolic "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
           chezmoi init
       - name: Render every managed target (dry run)
+        env:
+          # The gitHubKeys template func (allowed_signers.tmpl,
+          # authorized_keys.tmpl) calls the GitHub API. Anonymous requests
+          # share a 60/hr quota per runner IP across all of GitHub's hosted
+          # runners, which 403s intermittently; chezmoi reads GITHUB_TOKEN and
+          # authenticates, switching to the job token's own 1000/hr quota.
+          GITHUB_TOKEN: ${{ github.token }}
         run: chezmoi apply --dry-run --no-tty --exclude encrypted,externals,scripts
