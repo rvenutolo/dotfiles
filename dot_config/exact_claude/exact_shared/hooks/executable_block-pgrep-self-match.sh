@@ -319,7 +319,16 @@ function loop_context() {
         if ((dollar == 1)); then stack+=('capture'); else stack+=('subshell'); fi
         ;;
       ')')
-        if ((${#stack[@]} > 0)); then unset 'stack[${#stack[@]}-1]'; fi
+        # Only a `)` that actually closes something pops. A case-pattern `)`
+        # terminates a pattern list and has no opener, so popping on it would
+        # discard whatever span encloses the `case` -- the loop body itself,
+        # for a `case` written inside one (#155 entry 2). Requiring a paren
+        # marker on top makes the distinction without parsing `case`/`esac`:
+        # a pattern's `)` finds a body/cond/head marker there, or nothing.
+        if ((${#stack[@]} > 0)) && [[ "${stack[${#stack[@]} - 1]}" == 'subshell' ||
+          "${stack[${#stack[@]} - 1]}" == 'capture' ]]; then
+          unset 'stack[${#stack[@]}-1]'
+        fi
         ;;
       '`')
         if ((${#stack[@]} > 0)) && [[ "${stack[${#stack[@]} - 1]}" == 'backtick' ]]; then
@@ -1446,6 +1455,13 @@ readonly -a SELF_TEST_CASES=(
   $'case x in y) :; esac; pgrep -af java\tallow'
   $'while :; do case x in y) :; esac; done; pgrep -af java\tallow'
   $'x=$(case y in z) echo hi;; esac); pgrep -af java\tallow'
+  # A `)` that DOES close a span still has to pop it. If it stops popping, the
+  # opener is left on the stack, the loop's own `do` finds it on top instead of
+  # the cond marker and cannot swap it out, and the cond survives the `done` --
+  # so the next invocation, outside every loop, reads as a loop condition and is
+  # denied. One row for each kind of opener.
+  $'while (echo hi); do sleep 1; done; pgrep --full x\tallow'
+  $'while [ -n "$(date)" ]; do sleep 1; done; pgrep --full x\tallow'
   $'echo hi;# while pgrep --full x; do sleep 5; done\tallow'
   # The whitespace-or-start precondition this widens is load-bearing and stays
   # that way: a `#` that does NOT start a word is an ordinary character, and
