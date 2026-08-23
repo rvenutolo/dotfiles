@@ -867,19 +867,47 @@ instead of a heredoc; this guard only inspects Bash commands.'
 # "is it quoted" is not the question (#155 entry 4).
 readonly -a LOCAL_SHELL_WRAPPERS=('bash' 'sh' 'zsh' 'dash' 'ksh')
 
+# The same, for the user-switching wrappers. `su -c` and `runuser -c` hand the
+# payload to a shell here, under this process tree, so a pgrep inside one matches
+# the same ancestor. They are listed apart from the shells only because of the
+# operand budget below.
+readonly -a LOCAL_USER_SWITCH_WRAPPERS=('su' 'runuser')
+
 # How many wrapper payloads deep to follow. `bash -c 'bash -c "..."'` resolves at
 # 2; the limit is a runaway backstop, not a judgement about nesting.
 readonly MAX_PAYLOAD_DEPTH=4
 
-# @description True when a token is a shell that runs a `-c` payload locally.
+# @description How many non-flag operands may precede a wrapper's `-c` before the wrapper stops
+#              owning the option. This is the whole difference between the two wrapper families.
+#
+#              A shell's own options end at its first operand: past that word it is running a
+#              SCRIPT, and a `-c` among the words after it is an argument being handed to that
+#              script. `bash deploy.sh -c '...'` runs deploy.sh; nothing executes the string, so
+#              reading it as a payload is a false deny. Budget 0.
+#
+#              `su`/`runuser` take the user name as an operand and still parse a `-c` after it --
+#              `su - user -c '...'` is the ordinary spelling and does run the payload. Exactly one,
+#              though: past the user name the words are arguments to the login shell, so a `-c`
+#              among them is not su's either. Budget 1. A bare `-` needs no budget, being already
+#              spelled like a flag.
 # @arg $1 token the token to test, already reduced to its basename
-# @exitcode 0 the token is such a shell
+# @stdout the operand budget, when the token names a local wrapper
+# @exitcode 0 the token is a local wrapper
 # @exitcode 1 it is not
-function is_local_shell_wrapper() {
+function wrapper_operand_budget() {
   local -r token="$1"
-  local shell
-  for shell in "${LOCAL_SHELL_WRAPPERS[@]}"; do
-    [[ "${token}" == "${shell}" ]] && return 0
+  local wrapper
+  for wrapper in "${LOCAL_SHELL_WRAPPERS[@]}"; do
+    if [[ "${token}" == "${wrapper}" ]]; then
+      printf '0'
+      return 0
+    fi
+  done
+  for wrapper in "${LOCAL_USER_SWITCH_WRAPPERS[@]}"; do
+    if [[ "${token}" == "${wrapper}" ]]; then
+      printf '1'
+      return 0
+    fi
   done
   return 1
 }
@@ -887,10 +915,12 @@ function is_local_shell_wrapper() {
 # @description Find the payloads of local shell wrappers and print each one's raw text, one per
 #              line, with any surrounding quotes stripped.
 #
-#              A payload counts only when all three hold: the wrapper is in command position (so
+#              A payload counts only when all four hold: the wrapper is in command position (so
 #              `ssh host bash -c ...` and a bare `echo bash -c ...` are both skipped, since neither
-#              runs the payload here); a `-c` precedes it, in the same simple command; and the raw
-#              slice is a single fully quoted word. That last condition is what keeps the recursion
+#              runs the payload here); a `-c` precedes it, in the same simple command, within the
+#              wrapper's operand budget (see wrapper_operand_budget -- this is what keeps `bash
+#              deploy.sh -c '...'`, where the `-c` belongs to the script, from being read as a
+#              payload); and the raw slice is a single fully quoted word. That last condition is what keeps the recursion
 #              honest -- a double-quoted payload containing a command substitution is NOT one opaque
 #              token, because the scanner deliberately re-enters code context inside `$(...)`, and
 #              the outer scan can already see the substitution for itself. Slicing a fragment of
@@ -903,7 +933,7 @@ function is_local_shell_wrapper() {
 # @stdout one payload per line, quotes stripped; nothing if there are none
 function shell_wrapper_payloads() {
   local -r command="$1" tokens="$2"
-  local at_cmd=1 in_wrapper=0 saw_c=0 offset token word next_at_cmd raw
+  local at_cmd=1 in_wrapper=0 saw_c=0 operands=0 offset token word next_at_cmd raw budget
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
     word="${token##*/}"
@@ -922,6 +952,15 @@ function shell_wrapper_payloads() {
       elif [[ "${word}" == -*c* && "${word}" != --* ]]; then
         # A short cluster, so `bash -lc '...'` counts as well as `bash -c '...'`.
         saw_c=1
+      elif [[ "${word}" != -* ]]; then
+        # An operand before any `-c`. Spend one from the budget, and once it is
+        # gone the wrapper no longer owns the options that follow.
+        if ((operands > 0)); then
+          operands=$((operands - 1))
+        else
+          in_wrapper=0
+          saw_c=0
+        fi
       fi
     fi
 
@@ -932,9 +971,10 @@ function shell_wrapper_payloads() {
     else
       next_at_cmd=0
     fi
-    if ((at_cmd == 1)) && is_local_shell_wrapper "${word}"; then
+    if ((at_cmd == 1)) && budget="$(wrapper_operand_budget "${word}")"; then
       in_wrapper=1
       saw_c=0
+      operands="${budget}"
     fi
     at_cmd="${next_at_cmd}"
   done <<< "${tokens}"
