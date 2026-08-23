@@ -313,13 +313,36 @@ All other rules — quoting, `${var}` braces, `function` keyword, `[[ ]]`, long 
 
 ### Pre-commit hooks
 
-`.pre-commit-config.yaml` enforces shellcheck/shfmt (including rendered
-`*.sh.tmpl`), gitleaks secret scanning, a guard against `env "FOO"` in
-templates, a guard against tag-pinned GitHub Actions, and schema validation
-of `.chezmoidata.yaml` against `.chezmoidata.schema.json` via a
-check-jsonschema hook, and spell checking via `typos`. Install once per clone
-with `just hooks`. CI runs the identical config, so a commit that passes
-locally passes the lint job.
+Install once per clone with `just hooks`. CI runs the identical config, so a
+commit that passes locally passes the lint job.
+
+`.pre-commit-config.yaml` currently configures nineteen hooks. Grouped by
+what they are for, rather than by the repo they come from:
+
+- **Shell** — `shellcheck` and `shfmt`, plus `render-lint-sh-tmpl`, which
+  renders `*.sh.tmpl` through chezmoi first because `{{ }}` is not valid bash.
+- **Secrets and hygiene** — `gitleaks`, `end-of-file-fixer`,
+  `trailing-whitespace`, `check-added-large-files`, `check-yaml`.
+- **Spelling** — `typos`, whose two settings must not be removed (below).
+- **Chezmoi data** — `check-jsonschema` validates `.chezmoidata.yaml` against
+  `.chezmoidata.schema.json`; `check-paths-git-repos` requires every
+  `git_repos` entry to have a matching `paths.<name>_dir`;
+  `no-env-template-func` forbids `env "FOO"` in templates.
+- **Supply chain** — `no-unpinned-actions`, `no-unpinned-precommit-revs` and
+  `check-renovate-digests` keep actions, `rev:`s and externals on commit SHAs
+  with a `# renovate:` comment.
+- **CI plumbing** — `actionlint` and `renovate-config-validator` (see below;
+  nothing else validates either file).
+- **Local test suites** — `pin-digest-provenance-test` runs
+  `.dev/check-pin-digest-provenance.test.sh`, and `pgrep-hook-self-test` runs
+  the `--self-test` table built into
+  `dot_config/exact_claude/exact_shared/hooks/executable_block-pgrep-self-match.sh`.
+  Both are the repo's own tests, not third-party linters; a change to either
+  script that breaks its suite fails the commit.
+
+Keep this list in step with the file. It has drifted before — it named seven
+hooks while the config had nineteen — and a hook nobody knows about is one
+nobody maintains.
 
 The `typos` hook carries two settings that must not be removed:
 
