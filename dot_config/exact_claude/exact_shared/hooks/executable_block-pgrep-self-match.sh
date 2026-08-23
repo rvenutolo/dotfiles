@@ -1433,6 +1433,19 @@ readonly -a SELF_TEST_CASES=(
   $'ls &# pkill --full java\tallow'
   $'ls &# for p in $(pgrep -f java); do kill "$p"; done\tallow'
   $'sleep 1 &# until ! pgrep --full x; do sleep 5; done\tallow'
+
+  # F21 (#155 entry 2) -- a case-pattern `)` is not a closing parenthesis. It
+  # used to pop whatever span was on top of the stack, and inside a loop body
+  # that is the body marker itself, so every invocation after an `esac` read as
+  # being outside the loop. `case` is ordinary shell -- argument parsing, state
+  # machines -- and a poll loop containing one is not a contrived shape.
+  $'while :; do case x in y) :; esac; pgrep --full x || break; done\tdeny:loop'
+  $'while true; do case "$1" in a) echo a ;; b) echo b ;; esac; pgrep --full x > /dev/null || break; sleep 5; done\tdeny:loop'
+  # The other direction has to hold too: a `case` must not leave a span behind
+  # that swallows a later invocation which is genuinely outside every loop.
+  $'case x in y) :; esac; pgrep -af java\tallow'
+  $'while :; do case x in y) :; esac; done; pgrep -af java\tallow'
+  $'x=$(case y in z) echo hi;; esac); pgrep -af java\tallow'
   $'echo hi;# while pgrep --full x; do sleep 5; done\tallow'
   # The whitespace-or-start precondition this widens is load-bearing and stays
   # that way: a `#` that does NOT start a word is an ordinary character, and
@@ -1586,6 +1599,16 @@ function run_scanner_tests() {
     || failures=$((failures + 1))
   assert_equals 'done as an argument does not close a span' 'body' \
     "$(context_probe 'while true; do echo done; pgrep --full x || break; done')" \
+    || failures=$((failures + 1))
+  # A case-pattern `)` closes nothing -- it terminates a pattern list. Popping
+  # on it discards the enclosing body span and the invocation reads as being
+  # outside the loop (#155 entry 2).
+  assert_equals 'a case pattern does not close the enclosing body span' 'body' \
+    "$(context_probe 'while true; do case x in y) :; esac; pgrep --full x || break; done')" \
+    || failures=$((failures + 1))
+  # ...while a real subshell `)` still does close its span.
+  assert_equals 'a subshell close still pops' 'body' \
+    "$(context_probe 'while true; do (echo hi); pgrep --full x || break; done')" \
     || failures=$((failures + 1))
   # A `done` inside a command substitution IS in command position -- unlike the
   # argument-word case above -- but it must still be unable to pop a span that
