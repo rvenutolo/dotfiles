@@ -858,11 +858,94 @@ instead of a heredoc; this guard only inspects Bash commands.'
   printf '%s\n\n%s\n' "${preamble}" "${fixes}"
 }
 
+# Wrappers that run their `-c` payload as code ON THIS MACHINE, in this process
+# tree, so the payload's `bash -c ...` ancestor is the same one a pgrep inside it
+# would match. `ssh`, `docker exec`, `kubectl exec`, `watch` and friends are
+# deliberately absent: their payload runs somewhere else (or under a different
+# ancestor), and the scanner's masking of it is correct rather than a gap. That
+# distinction -- who runs the payload -- is the whole content of this feature;
+# "is it quoted" is not the question (#155 entry 4).
+readonly -a LOCAL_SHELL_WRAPPERS=('bash' 'sh' 'zsh' 'dash' 'ksh')
+
+# How many wrapper payloads deep to follow. `bash -c 'bash -c "..."'` resolves at
+# 2; the limit is a runaway backstop, not a judgement about nesting.
+readonly MAX_PAYLOAD_DEPTH=4
+
+# @description True when a token is a shell that runs a `-c` payload locally.
+# @arg $1 token the token to test, already reduced to its basename
+# @exitcode 0 the token is such a shell
+# @exitcode 1 it is not
+function is_local_shell_wrapper() {
+  local -r token="$1"
+  local shell
+  for shell in "${LOCAL_SHELL_WRAPPERS[@]}"; do
+    [[ "${token}" == "${shell}" ]] && return 0
+  done
+  return 1
+}
+
+# @description Find the payloads of local shell wrappers and print each one's raw text, one per
+#              line, with any surrounding quotes stripped.
+#
+#              A payload counts only when all three hold: the wrapper is in command position (so
+#              `ssh host bash -c ...` and a bare `echo bash -c ...` are both skipped, since neither
+#              runs the payload here); a `-c` precedes it, in the same simple command; and the raw
+#              slice is a single fully quoted word. That last condition is what keeps the recursion
+#              honest -- a double-quoted payload containing a command substitution is NOT one opaque
+#              token, because the scanner deliberately re-enters code context inside `$(...)`, and
+#              the outer scan can already see the substitution for itself. Slicing a fragment of
+#              such a payload and recursing on it would classify text that is not a command.
+#
+#              Command position is tracked exactly as find_invocations tracks it, including the
+#              prefix-word chain, so `sudo bash -c ...` is reached.
+# @arg $1 command the raw command string
+# @arg $2 tokens the token stream from scan_command
+# @stdout one payload per line, quotes stripped; nothing if there are none
+function shell_wrapper_payloads() {
+  local -r command="$1" tokens="$2"
+  local at_cmd=1 in_wrapper=0 saw_c=0 offset token word next_at_cmd raw
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    word="${token##*/}"
+
+    if ((in_wrapper == 1)); then
+      if is_operator "${token}"; then
+        in_wrapper=0
+        saw_c=0
+      elif ((saw_c == 1)) && [[ "${word}" != -* ]]; then
+        raw="${command:offset:${#token}}"
+        if [[ ("${raw}" == \"*\" || "${raw}" == \'*\') && ${#raw} -ge 2 ]]; then
+          printf '%s\n' "${raw:1:${#raw}-2}"
+        fi
+        in_wrapper=0
+        saw_c=0
+      elif [[ "${word}" == -*c* && "${word}" != --* ]]; then
+        # A short cluster, so `bash -lc '...'` counts as well as `bash -c '...'`.
+        saw_c=1
+      fi
+    fi
+
+    if is_operator "${token}" || is_keyword "${token}"; then
+      next_at_cmd=1
+    elif ((at_cmd == 1)) && { is_prefix_command "${word}" || is_assignment_word "${token}"; }; then
+      next_at_cmd=1
+    else
+      next_at_cmd=0
+    fi
+    if ((at_cmd == 1)) && is_local_shell_wrapper "${word}"; then
+      in_wrapper=1
+      saw_c=0
+    fi
+    at_cmd="${next_at_cmd}"
+  done <<< "${tokens}"
+}
+
 # @description Classify a Bash command string.
 # @arg $1 command the command string
+# @arg $2 depth wrapper-payload recursion depth, 0 for the command the user actually ran
 # @stdout allow, warn, or deny:loop / deny:kill followed by a tab and the invoked tool
 function classify_command() {
-  local -r command="$1"
+  local -r command="$1" depth="${2:-0}"
   if [[ "${command}" != *pgrep* && "${command}" != *pkill* ]]; then
     printf 'allow\n'
     return 0
@@ -911,6 +994,25 @@ function classify_command() {
     esac
     result_is_consumed CMD_TOKENS "${idx}" "${args}" "${command}" "${tokens}" && verdict='warn'
   done <<< "$(find_invocations "${tokens}")"
+
+  # A `bash -c '...'` payload is code that runs here, so it gets the same
+  # classification the outer command just got. A deny inside wins outright; a
+  # warn inside only lifts an allow, so an outer warn is never downgraded.
+  if ((depth < MAX_PAYLOAD_DEPTH)); then
+    local payload payload_verdict
+    while IFS= read -r payload; do
+      [[ -z "${payload}" ]] && continue
+      payload_verdict="$(classify_command "${payload}" "$((depth + 1))")"
+      case "${payload_verdict}" in
+        deny:*)
+          printf '%s\n' "${payload_verdict}"
+          return 0
+          ;;
+        warn) verdict='warn' ;;
+      esac
+    done <<< "$(shell_wrapper_payloads "${command}" "${tokens}")"
+  fi
+
   printf '%s\n' "${verdict}"
 }
 
@@ -1207,6 +1309,51 @@ readonly -a SELF_TEST_CASES=(
   # the correct reading. Turning every escape into whitespace would split it
   # into `sudo` plus `pkill` and deny a command that kills nothing.
   $'sudo\\ pkill --full java\tallow'
+
+  # F18 (#155 entry 4) -- `bash -c '...'` runs its payload on THIS machine, so
+  # the payload is code the guard is responsible for, not opaque data. The
+  # single quotes still mask it from the outer scan, which is correct for the
+  # outer scan; the payload has to be handed to a scan of its own.
+  $'bash -c \'pkill --full java\'\tdeny:kill'
+  $'sudo bash -c \'pkill -f myapp\'\tdeny:kill'
+  $'sh -c \'until ! pgrep --full x; do sleep 5; done\'\tdeny:loop'
+  $'bash -c "pkill --full java"\tdeny:kill'
+  $'bash -lc \'pkill --full java\'\tdeny:kill'
+  # A payload that is fine on its own stays fine: the payload gets the SAME
+  # tiering as any other command, not a blanket deny for being a payload.
+  $'bash -c \'echo hi\'\tallow'
+  $'bash -c \'pgrep --ignore-ancestors -f java\'\tallow'
+  $'bash -c \'pgrep --full "[j]ava"\'\tallow'
+  $'bash -c \'pgrep -af java\'\tallow'
+  # The wrappers that run their payload SOMEWHERE ELSE keep their masking.
+  # This is the whole reason #155 accepted entry 4: the fix must key on which
+  # wrapper runs the payload locally, not on whether the payload is quoted.
+  $'ssh host \'pkill -f myapp\'\tallow'
+  $'docker exec c sh -c \'pkill -f myapp\'\tallow'
+  $'watch \'pgrep -c java\'\tallow'
+  $'ssh host bash -c \'pkill --full java\'\tallow'
+  # A payload is only a payload when the wrapper is in command position and the
+  # word actually follows a -c. Neither of these runs anything.
+  $'echo bash -c \'pkill --full java\'\tallow'
+  $'bash --version; echo \'pkill --full java\'\tallow'
+  # Nesting resolves rather than recursing forever.
+  $'bash -c \'bash -c "pkill --full java"\'\tdeny:kill'
+  # Without a -c there is no payload: bash reads that word as a SCRIPT FILE to
+  # open, so nothing in it is executed as the text it happens to contain.
+  $'bash \'pkill --full java\'\tallow'
+  $'bash --posix \'pkill --full java\'\tallow'
+  # An operator ends the wrapper's simple command. Without that, a later `-c`
+  # belonging to an unrelated program captures its argument as a payload, and
+  # `grep -c <pattern>` -- which counts matches and runs nothing -- is denied.
+  $'bash --version; grep -c \'pkill --full java\' /tmp/log\tallow'
+  # The payload must be one fully quoted word. A double-quoted string holding a
+  # command substitution is not: the scanner re-enters code context inside the
+  # `$(...)`, so the leading run of masked bytes is a FRAGMENT of the payload.
+  # Slicing it and classifying it is classifying text that is not a command.
+  $'bash -c "pkill --full java $(date)"\tallow'
+  # A payload's warn lifts an allow but must never overwrite an outer verdict:
+  # the pipeline below is warn-worthy on its own, whatever the payload says.
+  $'pgrep --full x | wc -l; bash -c \'echo hi\'\twarn'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
