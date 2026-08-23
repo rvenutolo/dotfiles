@@ -1420,6 +1420,32 @@ readonly -a SELF_TEST_CASES=(
   $'su - user -c \'echo hi\'\tallow'
   $'su - user -c \'pgrep --ignore-ancestors -f java\'\tallow'
   $'ssh host su - user -c \'pkill --full java\'\tallow'
+
+  # F20 (#155 entry 7) -- a `#` opens a comment at the start of a WORD, and a
+  # word starts after `;`, `&` or `|` just as surely as after a blank. The
+  # entry records this as a spurious warn; it is not bounded to that. A
+  # command substitution restores command position, so commented-out text
+  # containing one is read as code and can reach a full deny -- a deny on text
+  # bash never runs, which is the direction this guard can least afford.
+  $'echo hi ;# for p in $(pgrep -f java); do kill "$p"; done\tallow'
+  $'echo hi ;# until ! pgrep --full x; do sleep 5; done\tallow'
+  $'cat f |# if pgrep --full x; then echo up; fi\tallow'
+  $'ls &# pkill --full java\tallow'
+  $'ls &# for p in $(pgrep -f java); do kill "$p"; done\tallow'
+  $'sleep 1 &# until ! pgrep --full x; do sleep 5; done\tallow'
+  $'echo hi;# while pgrep --full x; do sleep 5; done\tallow'
+  # The whitespace-or-start precondition this widens is load-bearing and stays
+  # that way: a `#` that does NOT start a word is an ordinary character, and
+  # reading it as a comment would discard the rest of a real command. `${#a[@]}`
+  # is the case that motivated the precondition (already pinned in F2 above);
+  # `$#` and a mid-word `#` are the same rule. Only the three command separators
+  # are added -- not `(`, which would let `$(#` swallow the closing paren the
+  # depth tracking needs, and not `<`/`>`, where a `#` is a filename far more
+  # often than a comment.
+  $'echo $#; pkill --full java\tdeny:kill'
+  $'echo "count=${#a[@]}"; pkill --full java\tdeny:kill'
+  $'pkill --full a#b\tdeny:kill'
+  $'pgrep --full x#y | xargs kill\tdeny:kill'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
