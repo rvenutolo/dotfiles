@@ -1475,6 +1475,21 @@ readonly -a SELF_TEST_CASES=(
   $'echo "count=${#a[@]}"; pkill --full java\tdeny:kill'
   $'pkill --full a#b\tdeny:kill'
   $'pgrep --full x#y | xargs kill\tdeny:kill'
+
+  # F22 (#155 entry 3) -- a pattern that only exists at runtime. The operand is
+  # a variable, so it need not self-match, and the guard denies anyway. That is
+  # the accepted, deliberate direction: this guard's failure mode is a hung
+  # session, so it errs toward denying, and the deny names `--ignore-ancestors`,
+  # which genuinely resolves this shape. Nothing pinned it -- entry 1 has a row,
+  # entry 3 had none -- so a later change reasoning "the operand is not a
+  # literal, it cannot self-match, allow it" would loosen the guard in silence.
+  $'PAT=$(cat /tmp/p); while pgrep -f "$PAT" >/dev/null; do sleep 1; done\tdeny:loop'
+  $'until ! pgrep --full "${PAT}"; do sleep 5; done\tdeny:loop'
+  $'pkill --full "$PAT"\tdeny:kill'
+  $'kill $(pgrep --full "$PAT")\tdeny:kill'
+  # The remedy the deny message names has to work on this shape too, or the
+  # deny is a dead end rather than a conservative default.
+  $'until ! pgrep --ignore-ancestors --full "$PAT"; do sleep 5; done\tallow'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
