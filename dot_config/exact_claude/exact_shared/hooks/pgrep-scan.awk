@@ -37,9 +37,17 @@ BEGIN { RS = "\0"; ORS = "" }
       if (ch == "\\") { masked = masked "\001\001"; i += 2; continue }
       if (ch == "\"") ctx[depth] = "N_END"
     } else {
-      # The whitespace-or-start precondition is load-bearing: without it the `#`
-      # of `${#arr[@]}` would open a comment and mask the rest of the line.
-      if (ch == "#" && (i == 1 || prev == " " || prev == "\t" || prev == "\n")) {
+      # A `#` opens a comment only at the start of a WORD. The precondition is
+      # load-bearing: without it the `#` of `${#arr[@]}` would open a comment and
+      # mask the rest of the line. A word also starts after a command separator,
+      # so `cmd ;# note` is a comment to bash and has to be masked as one --
+      # left unmasked, a substitution in the commented text restores command
+      # position and the guard denies a command bash never runs (#155 entry 7).
+      # `(` is deliberately not a starter here: `$(#` would swallow the closing
+      # paren this scanner counts depth with. Nor are `<` and `>`, where a `#`
+      # is part of a filename far more often than it opens a comment.
+      if (ch == "#" && (i == 1 || prev == " " || prev == "\t" || prev == "\n" \
+          || prev == ";" || prev == "&" || prev == "|")) {
         while (i <= n && substr(cmd, i, 1) != "\n") { masked = masked "\001"; i++ }
         continue
       }

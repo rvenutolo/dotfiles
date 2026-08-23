@@ -1431,6 +1431,8 @@ readonly -a SELF_TEST_CASES=(
   $'echo hi ;# until ! pgrep --full x; do sleep 5; done\tallow'
   $'cat f |# if pgrep --full x; then echo up; fi\tallow'
   $'ls &# pkill --full java\tallow'
+  $'ls &# for p in $(pgrep -f java); do kill "$p"; done\tallow'
+  $'sleep 1 &# until ! pgrep --full x; do sleep 5; done\tallow'
   $'echo hi;# while pgrep --full x; do sleep 5; done\tallow'
   # The whitespace-or-start precondition this widens is load-bearing and stays
   # that way: a `#` that does NOT start a word is an ordinary character, and
