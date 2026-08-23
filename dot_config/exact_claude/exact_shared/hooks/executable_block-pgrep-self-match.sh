@@ -1354,6 +1354,32 @@ readonly -a SELF_TEST_CASES=(
   # A payload's warn lifts an allow but must never overwrite an outer verdict:
   # the pipeline below is warn-worthy on its own, whatever the payload says.
   $'pgrep --full x | wc -l; bash -c \'echo hi\'\twarn'
+
+  # F19a -- a shell's OWN options end at its first operand. Past that word the
+  # shell is running a script, and a -c belongs to the script's argument list,
+  # not to the shell: `bash deploy.sh -c '...'` runs deploy.sh and passes it
+  # `-c` and the string. Reading that as a payload is a false deny, and a false
+  # deny is the costly direction -- the hook has no override token.
+  $'bash script.sh -c \'pkill --full java\'\tallow'
+  $'bash /tmp/deploy.sh --verbose -c \'pkill --full java\'\tallow'
+  $'sh runner -c \'pkill --full java\'\tallow'
+
+  # F19b -- `su` runs its -c payload on this machine and in this process tree,
+  # so the payload's pgrep matches the same ancestor. It differs from a shell
+  # in argument shape only: exactly one operand, the user name, may precede the
+  # -c. `-` is spelled like a flag and needs no budget of its own.
+  $'su - user -c \'pkill --full java\'\tdeny:kill'
+  $'su user -c \'pkill --full java\'\tdeny:kill'
+  $'su -c \'pkill --full java\'\tdeny:kill'
+  $'sudo su - user -c \'until ! pgrep --full x; do sleep 5; done\'\tdeny:loop'
+  # One operand, not any number. Past the user name the words are arguments to
+  # the login shell, and a -c among them is not su's.
+  $'su - user extra -c \'pkill --full java\'\tallow'
+  # The same boundaries that hold for a shell hold here.
+  $'su - postgres -c \'psql --command "select 1"\'\tallow'
+  $'su - user -c \'echo hi\'\tallow'
+  $'su - user -c \'pgrep --ignore-ancestors -f java\'\tallow'
+  $'ssh host su - user -c \'pkill --full java\'\tallow'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
