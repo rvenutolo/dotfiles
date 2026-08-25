@@ -4,14 +4,19 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 trap 'echo "error: line ${LINENO} (exit $?): ${BASH_COMMAND}" >&2' ERR
 
-# Set $VISUAL's underlying GUI app as default handler for text/code MIME types.
-# Runs on every apply (run_ prefix, not run_onchange_): $VISUAL is read at
-# runtime from profile.sh, so a content-hash trigger on this script would miss
-# editor changes. xdg-mime default is idempotent and fast, so the cost is
-# trivial.
+# Set XDG default handlers for the browser, terminal, file manager, and editor.
 #
-# $VISUAL is resolved by sourcing profile.sh in a subshell so the rest of
-# this script's environment is not polluted by profile.sh side effects.
+# Runs on every apply (run_ prefix, not run_onchange_): the source variables
+# ($BROWSER, $TERMINAL, $FILE_MANAGER, $VISUAL) are read at runtime from
+# profile.sh, so a content-hash trigger on this script would miss changes to
+# them. xdg-mime default is idempotent and fast, so the cost is trivial.
+#
+# Source variables are resolved by sourcing profile.sh in a subshell so the
+# rest of this script's environment is not polluted by profile.sh side effects.
+#
+# Every failure mode is non-fatal: a missing variable, an unmapped binary, or
+# an absent .desktop file logs a WARN and skips that role. This script must
+# never fail an apply over a cosmetic default.
 
 readonly PROFILE_SH="${HOME}/.config/profile.sh"
 
