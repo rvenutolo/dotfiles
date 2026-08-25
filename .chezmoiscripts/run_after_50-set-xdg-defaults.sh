@@ -80,13 +80,15 @@ function log::info() { log 'INFO' "$*"; }
 function log::warn() { log 'WARN' "$*"; }
 function log::err() { log 'ERROR' "$*"; }
 
-# @description Read $VISUAL by sourcing profile.sh inside a subshell.
-# @stdout The value of $VISUAL (possibly empty).
-function read_visual() {
+# @description Read one variable's value by sourcing profile.sh in a subshell.
+# @arg $1 name The variable name, e.g. BROWSER.
+# @stdout The variable's value (possibly empty).
+function read_var() {
+  local -r name="$1"
   (
     # shellcheck source=/dev/null
     source "${PROFILE_SH}" > /dev/null 2>&1
-    printf '%s\n' "${VISUAL:-}"
+    printf '%s\n' "${!name:-}"
   )
 }
 
@@ -170,6 +172,33 @@ function resolve_desktop() {
   return 1
 }
 
+# @description Set one program as the default handler for a list of MIME types
+# or URI schemes. Every failure is non-fatal: log a WARN and return 0 without
+# applying anything.
+# @arg $1 role Human-readable role name, e.g. "browser".
+# @arg $2 varname Source variable name, e.g. BROWSER.
+# @arg $@ handlers One or more MIME types / x-scheme-handler/* entries.
+# @stdout The applied "<id>.desktop" on success; nothing on any skip.
+function apply_defaults() {
+  local -r role="$1"
+  local -r varname="$2"
+  shift 2
+  local -ra handlers=("$@")
+  local value desktop
+  value="$(read_var "${varname}")"
+  if [[ -z "${value}" ]]; then
+    log::warn "${role}: \$${varname} is unset after sourcing profile.sh; skipping"
+    return 0
+  fi
+  if ! desktop="$(resolve_desktop "${value}")"; then
+    log::warn "${role}: no usable .desktop for '${value}'; skipping"
+    return 0
+  fi
+  xdg-mime default "${desktop}" "${handlers[@]}"
+  log::info "${role}: set ${desktop} for ${#handlers[@]} handler(s)"
+  printf '%s\n' "${desktop}"
+}
+
 # @description Assert that a command's stdout equals an expected string.
 # @arg $1 desc Human-readable case description.
 # @arg $2 expected Expected stdout (may be multi-line).
@@ -247,6 +276,39 @@ Alacritty.desktop' \
     resolve_desktop 'kitty' || failures=$((failures + 1))
   unset -f desktop_exists
 
+  # apply_defaults short-circuits. xdg-mime is stubbed so nothing is applied.
+  # The stub MUST stay silent: assert_stdout captures stdout, and apply_defaults
+  # returns the applied desktop id on stdout, so any stub output corrupts it.
+  # shellcheck disable=SC2329 # invoked indirectly via apply_defaults, not by name
+  function xdg-mime() { return 0; }
+  # shellcheck disable=SC2329 # invoked indirectly via apply_defaults, not by name
+  function read_var() { printf '%s\n' "${STUB_VAR_VALUE:-}"; }
+  # shellcheck disable=SC2329 # invoked indirectly via apply_defaults, not by name
+  function desktop_exists() { [[ "$1" == 'firefox.desktop' ]]; }
+
+  STUB_VAR_VALUE=''
+  assert_stdout 'apply_defaults skips an unset variable' \
+    '' \
+    apply_defaults 'browser' 'BROWSER' 'text/html' || failures=$((failures + 1))
+
+  STUB_VAR_VALUE='definitely-not-an-app'
+  assert_stdout 'apply_defaults skips an unmapped bin' \
+    '' \
+    apply_defaults 'browser' 'BROWSER' 'text/html' || failures=$((failures + 1))
+
+  STUB_VAR_VALUE='chromium'
+  assert_stdout 'apply_defaults skips a mapped bin with no desktop file' \
+    '' \
+    apply_defaults 'browser' 'BROWSER' 'text/html' || failures=$((failures + 1))
+
+  STUB_VAR_VALUE='/usr/bin/firefox'
+  assert_stdout 'apply_defaults emits the applied desktop id' \
+    'firefox.desktop' \
+    apply_defaults 'browser' 'BROWSER' 'text/html' || failures=$((failures + 1))
+
+  unset -f xdg-mime read_var desktop_exists
+  unset STUB_VAR_VALUE
+
   if ((failures > 0)); then
     printf '\n%d case(s) failed\n' "${failures}"
     return 1
@@ -270,7 +332,7 @@ function main() {
   fi
 
   local visual
-  visual="$(read_visual)"
+  visual="$(read_var 'VISUAL')"
   if [[ -z "${visual}" ]]; then
     log::warn 'VISUAL is unset after sourcing profile.sh; skipping'
     exit 0
