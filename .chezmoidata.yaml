@@ -66,11 +66,11 @@ editors:
   # wrapper dirs) rather than `command -v`, and exported as an absolute path.
   #
   # Adding an entry here (or to `text`) also needs a matching arm in
-  # `desktop_for_visual()` in
-  # `.chezmoiscripts/run_after_50-set-default-editor.sh.tmpl`, which maps the
+  # `desktop_for_bin()` in
+  # `.chezmoiscripts/run_after_50-set-xdg-defaults.sh`, which maps the
   # binary to its `.desktop` id for xdg-mime. That table is deliberately not
   # data-driven (see CLAUDE.md > Editors); a missing arm is not fatal — apply
-  # logs "no known .desktop mapping; skipping" and leaves mime defaults alone.
+  # logs "no usable .desktop" and leaves mime defaults alone.
   visual:
     - bin: zed
       flatpak_id: dev.zed.Zed
@@ -79,6 +79,39 @@ editors:
     - bin: kate
       flatpak_id: org.kde.kate
       args: --block
+
+# Browser preference chain, most-preferred first. Probed with `__real_cmd`
+# (PATH stripped of the script-repo wrapper dirs and of AppImage mount dirs)
+# rather than `command -v`: on this host `zen`, `vivaldi`, `chromium`, and
+# `librewolf` all resolve to wrapper scripts in ${SCRIPTS_DIR}/interactive,
+# and only firefox is genuinely native.
+#
+# Adding an entry here also needs a matching arm in `desktop_for_bin()` in
+# `.chezmoiscripts/run_after_50-set-xdg-defaults.sh`. A missing arm is not
+# fatal — apply logs "no usable .desktop" and leaves mime defaults alone.
+#
+# Unlike `editors.text`, there is no unconditional final fallback: no browser
+# is universally present. If none resolve, $BROWSER stays unset and the
+# browser role is skipped.
+browsers:
+  - bin: firefox
+  - bin: zen
+    flatpak_id: app.zen_browser.zen
+  - bin: vivaldi
+    flatpak_id: com.vivaldi.Vivaldi
+  - bin: chromium
+    flatpak_id: org.chromium.Chromium
+
+# Terminal preference chain, most-preferred first. Drives $TERMINAL and the
+# x-scheme-handler/terminal default (Dolphin's F4, GNOME Files, xdg-terminal-exec).
+# ghostty is the primary (~/.local/bin/ghostty, AM/appman); konsole is the
+# distro fallback. Same no-unconditional-fallback rule as `browsers`.
+terminals:
+  - bin: ghostty
+  - bin: kitty
+  - bin: alacritty
+  - bin: wezterm
+  - bin: konsole
 
 pagers:
   - bin: moor
