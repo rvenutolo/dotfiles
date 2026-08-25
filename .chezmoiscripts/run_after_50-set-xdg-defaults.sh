@@ -21,9 +21,10 @@ trap 'echo "error: line ${LINENO} (exit $?): ${BASH_COMMAND}" >&2' ERR
 readonly PROFILE_SH="${HOME}/.config/profile.sh"
 
 # MIME types to route to the chosen GUI editor.
-# Deliberately excludes text/html and application/json (browser handles those).
+# text/html and application/xhtml+xml belong to the browser role below.
 readonly MIMES=(
   'application/javascript'
+  'application/json'
   'application/toml'
   'application/x-perl'
   'application/x-php'
@@ -35,6 +36,7 @@ readonly MIMES=(
   'text/css'
   'text/csv'
   'text/javascript'
+  'text/json'
   'text/markdown'
   'text/plain'
   'text/tab-separated-values'
@@ -58,6 +60,20 @@ readonly MIMES=(
   'text/x-shellscript'
   'text/x-sql'
 )
+
+# Handlers owned by the browser role. Excludes x-scheme-handler/mailto, which
+# is left to whatever the user has set.
+readonly BROWSER_HANDLERS=(
+  'application/xhtml+xml'
+  'text/html'
+  'x-scheme-handler/http'
+  'x-scheme-handler/https'
+)
+
+# "Open terminal here" — Dolphin's F4, GNOME Files, xdg-terminal-exec.
+readonly TERMINAL_HANDLERS=('x-scheme-handler/terminal')
+
+readonly FILE_MANAGER_HANDLERS=('inode/directory')
 
 # XDG application search paths (mirrors xdg-mime's own lookup order).
 readonly XDG_APP_DIRS=(
@@ -331,21 +347,20 @@ function main() {
     exit 0
   fi
 
-  local visual
-  visual="$(read_var 'VISUAL')"
-  if [[ -z "${visual}" ]]; then
-    log::warn 'VISUAL is unset after sourcing profile.sh; skipping'
-    exit 0
+  local browser_desktop
+  browser_desktop="$(apply_defaults 'browser' 'BROWSER' "${BROWSER_HANDLERS[@]}")"
+  if [[ -n "${browser_desktop}" ]] && command -v 'xdg-settings' > /dev/null 2>&1; then
+    # Some applications consult xdg-settings rather than mimeapps.list.
+    if xdg-settings set default-web-browser "${browser_desktop}" 2> /dev/null; then
+      log::info "browser: set ${browser_desktop} via xdg-settings"
+    else
+      log::warn "browser: xdg-settings rejected ${browser_desktop}; mime defaults still applied"
+    fi
   fi
 
-  local desktop
-  if ! desktop="$(resolve_desktop "${visual}")"; then
-    log::warn "VISUAL='${visual}' has no usable .desktop on this host; skipping"
-    exit 0
-  fi
-
-  xdg-mime default "${desktop}" "${MIMES[@]}"
-  log::info "Set ${desktop} as default for ${#MIMES[@]} MIME types"
+  apply_defaults 'terminal' 'TERMINAL' "${TERMINAL_HANDLERS[@]}" > /dev/null
+  apply_defaults 'file manager' 'FILE_MANAGER' "${FILE_MANAGER_HANDLERS[@]}" > /dev/null
+  apply_defaults 'editor' 'VISUAL' "${MIMES[@]}" > /dev/null
 }
 
 main "$@"
