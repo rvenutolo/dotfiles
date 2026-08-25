@@ -155,6 +155,21 @@ __real_cmd() {
     path_remove "${SCRIPTS_DIR}/misc"
     path_remove "${SCRIPTS_DIR}/non-interactive"
     path_remove "${SCRIPTS_DIR}/other"
+    # An AppImage prepends its own mount bin dir to PATH for child processes,
+    # so probing an app from inside itself resolves to /tmp/.mount_<app>*/bin,
+    # a path that does not survive a reboot. path_remove matches exact strings
+    # only, so filter these by pattern.
+    __filtered=''
+    __oldifs="${IFS}"
+    IFS=':'
+    for __dir in ${PATH}; do
+      case "${__dir}" in
+        /tmp/.mount_*) continue ;;
+      esac
+      __filtered="${__filtered:+${__filtered}:}${__dir}"
+    done
+    IFS="${__oldifs}"
+    PATH="${__filtered}"
     command -v "$1"
   )
 }
@@ -170,6 +185,26 @@ fi
   export VISUAL
 {{ end }}else
   export VISUAL="${EDITOR}"
+fi
+
+# browser
+{{ $first := true }}{{ range $e := .browsers }}{{ $args := "" }}{{ with (get $e "args") }}{{ $args = printf " %s" . }}{{ end }}{{ with (get $e "flatpak_id") }}{{ if $first }}if{{ else }}elif{{ end }}{{ $first = false }} __flatpak_installed '{{ . }}'; then
+  export BROWSER='flatpak run {{ . }}{{ $args }}'
+{{ end }}{{ if $first }}if{{ else }}elif{{ end }}{{ $first = false }} __real_cmd '{{ $e.bin }}' > /dev/null; then
+  BROWSER="$(__real_cmd '{{ $e.bin }}'){{ $args }}"
+  export BROWSER
+{{ end }}else
+  unset BROWSER
+fi
+
+# terminal
+{{ $first := true }}{{ range $e := .terminals }}{{ $args := "" }}{{ with (get $e "args") }}{{ $args = printf " %s" . }}{{ end }}{{ with (get $e "flatpak_id") }}{{ if $first }}if{{ else }}elif{{ end }}{{ $first = false }} __flatpak_installed '{{ . }}'; then
+  export TERMINAL='flatpak run {{ . }}{{ $args }}'
+{{ end }}{{ if $first }}if{{ else }}elif{{ end }}{{ $first = false }} __real_cmd '{{ $e.bin }}' > /dev/null; then
+  TERMINAL="$(__real_cmd '{{ $e.bin }}'){{ $args }}"
+  export TERMINAL
+{{ end }}else
+  unset TERMINAL
 fi
 unset -f __flatpak_installed __real_cmd
 
