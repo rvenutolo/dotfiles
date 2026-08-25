@@ -215,6 +215,33 @@ function apply_defaults() {
   printf '%s\n' "${desktop}"
 }
 
+# @description Report .desktop ids referenced by mimeapps.list that do not
+# exist on this host. Report-only by design: the script runs on every apply,
+# so pruning would fight any handler set in a GUI between applies, and cannot
+# tell rot from an app mid-reinstall. Never modifies the file.
+# @arg $1 file Optional path; defaults to ${HOME}/.config/mimeapps.list.
+# @exitcode 0 always.
+function scan_stale_handlers() {
+  local -r file="${1:-${HOME}/.config/mimeapps.list}"
+  if [[ ! -r "${file}" ]]; then
+    return 0
+  fi
+  local id
+  local stale=0
+  while IFS= read -r id; do
+    [[ -n "${id}" ]] || continue
+    if ! desktop_exists "${id}"; then
+      log::warn "stale handler in ${file}: ${id} (no .desktop found)"
+      stale=$((stale + 1))
+    fi
+  done < <(grep --only-matching --extended-regexp '[A-Za-z0-9._+-]+\.desktop' "${file}" \
+    | sort --unique || true)
+  if ((stale > 0)); then
+    log::warn "${stale} stale handler(s); prune by hand — this script never edits ${file}"
+  fi
+  return 0
+}
+
 # @description Assert that a command's stdout equals an expected string.
 # @arg $1 desc Human-readable case description.
 # @arg $2 expected Expected stdout (may be multi-line).
@@ -325,6 +352,50 @@ Alacritty.desktop' \
   unset -f xdg-mime read_var desktop_exists
   unset STUB_VAR_VALUE
 
+  # scan_stale_handlers is report-only: it must never modify the file.
+  local fixture
+  fixture="$(mktemp)"
+  cat > "${fixture}" << 'FIXTURE'
+[Default Applications]
+text/html=alive.desktop
+inode/directory=dead.desktop;
+x-scheme-handler/http=alive.desktop;alsodead.desktop;
+not a valid line at all
+FIXTURE
+  local -r fixture_before="$(cat "${fixture}")"
+  # shellcheck disable=SC2329 # invoked indirectly via scan_stale_handlers, not by name
+  function desktop_exists() { [[ "$1" == 'alive.desktop' ]]; }
+  local stale_output
+  stale_output="$(scan_stale_handlers "${fixture}" 2>&1 > /dev/null || true)"
+  if [[ "${stale_output}" == *'dead.desktop'* && "${stale_output}" == *'alsodead.desktop'* &&
+    "${stale_output}" != *'alive.desktop'* ]]; then
+    printf 'ok   scan_stale_handlers reports only dead handlers\n'
+  else
+    printf 'FAIL scan_stale_handlers reports only dead handlers\n  got: %q\n' "${stale_output}"
+    failures=$((failures + 1))
+  fi
+  if [[ "$(cat "${fixture}")" == "${fixture_before}" ]]; then
+    printf 'ok   scan_stale_handlers does not modify the file\n'
+  else
+    printf 'FAIL scan_stale_handlers modified the file\n'
+    failures=$((failures + 1))
+  fi
+  : > "${fixture}"
+  if scan_stale_handlers "${fixture}" 2> /dev/null; then
+    printf 'ok   scan_stale_handlers tolerates an empty file\n'
+  else
+    printf 'FAIL scan_stale_handlers failed on an empty file\n'
+    failures=$((failures + 1))
+  fi
+  if scan_stale_handlers "${fixture}.does-not-exist" 2> /dev/null; then
+    printf 'ok   scan_stale_handlers tolerates a missing file\n'
+  else
+    printf 'FAIL scan_stale_handlers failed on a missing file\n'
+    failures=$((failures + 1))
+  fi
+  rm --force "${fixture}"
+  unset -f desktop_exists
+
   if ((failures > 0)); then
     printf '\n%d case(s) failed\n' "${failures}"
     return 1
@@ -361,6 +432,8 @@ function main() {
   apply_defaults 'terminal' 'TERMINAL' "${TERMINAL_HANDLERS[@]}" > /dev/null
   apply_defaults 'file manager' 'FILE_MANAGER' "${FILE_MANAGER_HANDLERS[@]}" > /dev/null
   apply_defaults 'editor' 'VISUAL' "${MIMES[@]}" > /dev/null
+
+  scan_stale_handlers
 }
 
 main "$@"
