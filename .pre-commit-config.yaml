@@ -177,3 +177,9 @@ repos:
         # The suite is the regression guard for a gate whose whole job is to
         # notice one specific thing; several of its cases exist because a
         # mutation of the checker slipped past an earlier version of them.
+      - id: xdg-defaults-self-test
+        name: xdg defaults self-test
+        entry: bash .chezmoiscripts/run_after_50-set-xdg-defaults.sh --self-test
+        language: system
+        files: ^\.chezmoiscripts/run_after_50-set-xdg-defaults\.sh$
+        pass_filenames: false
