@@ -140,17 +140,24 @@ function desktop_for_bin() {
     'lapce') printf 'dev.lapce.lapce.desktop\n' ;;
     'micro' | 'vim' | 'nano' | 'nvim' | 'hx') printf '%s.desktop\n' "${bin}" ;;
     # browsers
-    'firefox') printf 'firefox.desktop\n' ;;
+    'firefox') printf 'firefox.desktop\norg.mozilla.firefox.desktop\n' ;;
+    'chromium') printf 'org.chromium.Chromium.desktop\nchromium.desktop\n' ;;
+    'google-chrome') printf 'com.google.Chrome.desktop\ngoogle-chrome.desktop\n' ;;
     'zen') printf 'app.zen_browser.zen.desktop\n' ;;
-    'vivaldi') printf 'com.vivaldi.Vivaldi.desktop\n' ;;
-    'chromium') printf 'org.chromium.Chromium.desktop\n' ;;
-    'librewolf') printf 'io.gitlab.librewolf-community.desktop\n' ;;
+    'librewolf') printf 'io.gitlab.librewolf-community.desktop\nlibrewolf.desktop\n' ;;
+    'brave') printf 'com.brave.Browser.desktop\nbrave-browser.desktop\nbrave.desktop\n' ;;
+    'vivaldi') printf 'com.vivaldi.Vivaldi.desktop\nvivaldi-stable.desktop\n' ;;
+    'opera') printf 'com.opera.Opera.desktop\nopera.desktop\n' ;;
+    # w3m and lynx are text-mode and have no desktop entry by design.
     # terminals
     'ghostty') printf 'ghostty-AM.desktop\ncom.mitchellh.ghostty.desktop\nghostty.desktop\n' ;;
     'kitty') printf 'kitty-AM.desktop\nkitty.desktop\n' ;;
-    'alacritty') printf 'alacritty-AM.desktop\nAlacritty.desktop\n' ;;
     'wezterm') printf 'wezterm-AM.desktop\norg.wezfurlong.wezterm.desktop\n' ;;
+    'alacritty') printf 'alacritty-AM.desktop\nAlacritty.desktop\n' ;;
     'konsole') printf 'org.kde.konsole.desktop\n' ;;
+    'gnome-terminal') printf 'org.gnome.Terminal.desktop\ngnome-terminal.desktop\n' ;;
+    'kgx') printf 'org.gnome.Console.desktop\nkgx.desktop\n' ;;
+    'xterm') printf 'xterm.desktop\ndebian-xterm.desktop\n' ;;
     # file managers
     'dolphin') printf 'org.kde.dolphin.desktop\n' ;;
     'nautilus') printf 'org.gnome.Nautilus.desktop\n' ;;
@@ -274,12 +281,17 @@ function self_test() {
   assert_stdout 'flatpak run without args' \
     'app.zen_browser.zen.desktop' \
     desktop_for_bin 'flatpak run app.zen_browser.zen' || failures=$((failures + 1))
-  assert_stdout 'native bin, single candidate' \
-    'firefox.desktop' \
+  assert_stdout 'native bin, flatpak-second candidates' \
+    'firefox.desktop
+org.mozilla.firefox.desktop' \
     desktop_for_bin 'firefox' || failures=$((failures + 1))
   assert_stdout 'path-qualified bin' \
-    'firefox.desktop' \
+    'firefox.desktop
+org.mozilla.firefox.desktop' \
     desktop_for_bin '/usr/bin/firefox' || failures=$((failures + 1))
+  assert_stdout 'single candidate arm' \
+    'app.zen_browser.zen.desktop' \
+    desktop_for_bin 'zen' || failures=$((failures + 1))
   assert_stdout 'bin with arguments' \
     'org.kde.kate.desktop' \
     desktop_for_bin 'kate --block' || failures=$((failures + 1))
@@ -308,6 +320,62 @@ Alacritty.desktop' \
   assert_stdout 'TUI file manager yields nothing' \
     '' \
     desktop_for_bin 'ranger' || failures=$((failures + 1))
+  assert_stdout 'browser: google-chrome' \
+    'com.google.Chrome.desktop
+google-chrome.desktop' \
+    desktop_for_bin 'google-chrome' || failures=$((failures + 1))
+  assert_stdout 'browser: brave three candidates' \
+    'com.brave.Browser.desktop
+brave-browser.desktop
+brave.desktop' \
+    desktop_for_bin 'brave' || failures=$((failures + 1))
+  assert_stdout 'browser: opera' \
+    'com.opera.Opera.desktop
+opera.desktop' \
+    desktop_for_bin 'opera' || failures=$((failures + 1))
+  assert_stdout 'browser: vivaldi' \
+    'com.vivaldi.Vivaldi.desktop
+vivaldi-stable.desktop' \
+    desktop_for_bin 'vivaldi' || failures=$((failures + 1))
+  assert_stdout 'browser: librewolf' \
+    'io.gitlab.librewolf-community.desktop
+librewolf.desktop' \
+    desktop_for_bin 'librewolf' || failures=$((failures + 1))
+  assert_stdout 'browser: chromium' \
+    'org.chromium.Chromium.desktop
+chromium.desktop' \
+    desktop_for_bin 'chromium' || failures=$((failures + 1))
+  assert_stdout 'text browser w3m yields nothing' \
+    '' \
+    desktop_for_bin 'w3m' || failures=$((failures + 1))
+  assert_stdout 'text browser lynx yields nothing' \
+    '' \
+    desktop_for_bin 'lynx' || failures=$((failures + 1))
+  assert_stdout 'terminal: wezterm' \
+    'wezterm-AM.desktop
+org.wezfurlong.wezterm.desktop' \
+    desktop_for_bin 'wezterm' || failures=$((failures + 1))
+  assert_stdout 'terminal: konsole' \
+    'org.kde.konsole.desktop' \
+    desktop_for_bin 'konsole' || failures=$((failures + 1))
+  assert_stdout 'terminal: gnome-terminal' \
+    'org.gnome.Terminal.desktop
+gnome-terminal.desktop' \
+    desktop_for_bin 'gnome-terminal' || failures=$((failures + 1))
+  assert_stdout 'terminal: kgx (GNOME Console)' \
+    'org.gnome.Console.desktop
+kgx.desktop' \
+    desktop_for_bin 'kgx' || failures=$((failures + 1))
+  assert_stdout 'terminal: xterm last resort' \
+    'xterm.desktop
+debian-xterm.desktop' \
+    desktop_for_bin 'xterm' || failures=$((failures + 1))
+  assert_stdout 'file manager: dolphin' \
+    'org.kde.dolphin.desktop' \
+    desktop_for_bin 'dolphin' || failures=$((failures + 1))
+  assert_stdout 'file manager: nautilus' \
+    'org.gnome.Nautilus.desktop' \
+    desktop_for_bin 'nautilus' || failures=$((failures + 1))
 
   # resolve_desktop picks the first candidate that exists.
   # shellcheck disable=SC2329 # invoked indirectly via resolve_desktop, not by name

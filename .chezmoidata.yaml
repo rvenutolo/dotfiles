@@ -80,11 +80,17 @@ editors:
       flatpak_id: org.kde.kate
       args: --block
 
-# Browser preference chain, most-preferred first. Probed with `__real_cmd`
+# Browser preference chain, most-preferred first. Each entry carries both a
+# flatpak_id and a bin; profile.sh.tmpl probes the flatpak FIRST and falls back
+# to the native binary, so flatpak is preferred per-app while the app ordering
+# below still wins overall.
+#
+# Probed with `__real_cmd`
 # (PATH stripped of the script-repo wrapper dirs and of AppImage mount dirs)
-# rather than `command -v`: on this host `zen`, `vivaldi`, `chromium`, and
-# `librewolf` all resolve to wrapper scripts in ${SCRIPTS_DIR}/interactive,
-# and only firefox is genuinely native.
+# rather than `command -v`: on this host every browser bin except firefox
+# (`chromium`, `google-chrome`, `zen`, `librewolf`, `brave`, `vivaldi`)
+# resolves to a wrapper script in ${SCRIPTS_DIR}/interactive, so the flatpak
+# half of each entry is what actually fires here.
 #
 # Adding an entry here also needs a matching arm in `desktop_for_bin()` in
 # `.chezmoiscripts/run_after_50-set-xdg-defaults.sh`. A missing arm is not
@@ -95,23 +101,49 @@ editors:
 # browser role is skipped.
 browsers:
   - bin: firefox
-  - bin: zen
-    flatpak_id: app.zen_browser.zen
-  - bin: vivaldi
-    flatpak_id: com.vivaldi.Vivaldi
+    flatpak_id: org.mozilla.firefox
   - bin: chromium
     flatpak_id: org.chromium.Chromium
+  - bin: google-chrome
+    flatpak_id: com.google.Chrome
+  - bin: zen
+    flatpak_id: app.zen_browser.zen
+  - bin: librewolf
+    flatpak_id: io.gitlab.librewolf-community
+  - bin: brave
+    flatpak_id: com.brave.Browser
+  - bin: vivaldi
+    flatpak_id: com.vivaldi.Vivaldi
+  - bin: opera
+    flatpak_id: com.opera.Opera
+  # Text-mode last resort for is_server hosts with no GUI browser at all.
+  # These keep $BROWSER useful over SSH; they have no .desktop entry, so
+  # desktop_for_bin yields nothing and the xdg-mime browser role is skipped
+  # with a WARN. Mirrors how `editors.text` ends in `vi`.
+  - bin: w3m
+  - bin: lynx
 
 # Terminal preference chain, most-preferred first. Drives $TERMINAL and the
 # x-scheme-handler/terminal default (Dolphin's F4, GNOME Files, xdg-terminal-exec).
-# ghostty is the primary (~/.local/bin/ghostty, AM/appman); konsole is the
-# distro fallback. Same no-unconditional-fallback rule as `browsers`.
+# ghostty is the primary (~/.local/bin/ghostty, AM/appman).
+#
+# Only wezterm and konsole ship a flathub package; ghostty, kitty, alacritty,
+# gnome-terminal, and kgx have none (verified against flathub 2026-08-25), so
+# those entries are bin-only rather than an oversight.
+#
+# xterm is the last resort: near-universal on any X host, so the chain almost
+# always resolves to something. Same role `vi` plays in `editors.text`.
 terminals:
   - bin: ghostty
   - bin: kitty
-  - bin: alacritty
   - bin: wezterm
+    flatpak_id: org.wezfurlong.wezterm
+  - bin: alacritty
   - bin: konsole
+    flatpak_id: org.kde.konsole
+  - bin: gnome-terminal
+  - bin: kgx
+  - bin: xterm
 
 pagers:
   - bin: moor
