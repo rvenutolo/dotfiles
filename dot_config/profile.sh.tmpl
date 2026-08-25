@@ -193,9 +193,7 @@ fi
 {{ end }}{{ if $first }}if{{ else }}elif{{ end }}{{ $first = false }} __real_cmd '{{ $e.bin }}' > /dev/null; then
   BROWSER="$(__real_cmd '{{ $e.bin }}'){{ $args }}"
   export BROWSER
-{{ end }}else
-  unset BROWSER
-fi
+{{ end }}fi
 
 # terminal
 {{ $first := true }}{{ range $e := .terminals }}{{ $args := "" }}{{ with (get $e "args") }}{{ $args = printf " %s" . }}{{ end }}{{ with (get $e "flatpak_id") }}{{ if $first }}if{{ else }}elif{{ end }}{{ $first = false }} __flatpak_installed '{{ . }}'; then
@@ -203,9 +201,7 @@ fi
 {{ end }}{{ if $first }}if{{ else }}elif{{ end }}{{ $first = false }} __real_cmd '{{ $e.bin }}' > /dev/null; then
   TERMINAL="$(__real_cmd '{{ $e.bin }}'){{ $args }}"
   export TERMINAL
-{{ end }}else
-  unset TERMINAL
-fi
+{{ end }}fi
 unset -f __flatpak_installed __real_cmd
 
 # pager

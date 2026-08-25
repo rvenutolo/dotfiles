@@ -210,7 +210,10 @@ function apply_defaults() {
     log::warn "${role}: no usable .desktop for '${value}'; skipping"
     return 0
   fi
-  xdg-mime default "${desktop}" "${handlers[@]}"
+  if ! xdg-mime default "${desktop}" "${handlers[@]}"; then
+    log::warn "${role}: xdg-mime rejected ${desktop}; skipping"
+    return 0
+  fi
   log::info "${role}: set ${desktop} for ${#handlers[@]} handler(s)"
   printf '%s\n' "${desktop}"
 }
@@ -317,6 +320,11 @@ Alacritty.desktop' \
   assert_stdout 'resolve_desktop yields nothing when none exist' \
     '' \
     resolve_desktop 'kitty' || failures=$((failures + 1))
+  # This removes the REAL desktop_exists, not just the stub — bash has no
+  # "restore previous definition". Harmless here because every later case
+  # re-stubs it, but a case appended after this point that calls
+  # resolve_desktop/scan_stale_handlers without re-stubbing first will hit
+  # "desktop_exists: command not found" rather than the real function.
   unset -f desktop_exists
 
   # apply_defaults short-circuits. xdg-mime is stubbed so nothing is applied.
@@ -410,11 +418,11 @@ function main() {
     exit $?
   fi
   if [[ ! -r "${PROFILE_SH}" ]]; then
-    log::warn "${PROFILE_SH} not readable; skipping default-editor setup"
+    log::warn "${PROFILE_SH} not readable; skipping XDG defaults setup"
     exit 0
   fi
   if ! command -v 'xdg-mime' > /dev/null 2>&1; then
-    log::warn 'xdg-mime not installed; skipping default-editor setup'
+    log::warn 'xdg-mime not installed; skipping XDG defaults setup'
     exit 0
   fi
 
