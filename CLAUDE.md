@@ -47,15 +47,15 @@ baked at `chezmoi init` time — hosts must re-init to pick up changes.
 
 ## Standard Env Vars
 
-Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, git repo list, editor/pager chains, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.editors.*`, `.pagers`, `.age.*`, `.weather.*`.
+Canonical source of truth: `.chezmoidata.yaml` (hostnames, paths, git repo list, editor/pager/browser/terminal chains, age public key, weather city). Chezmoi loads this automatically; values are available in any `.tmpl` as `.hostnames.*`, `.paths.*`, `.editors.*`, `.pagers`, `.browsers`, `.terminals`, `.age.*`, `.weather.*`.
 
 Shell consumers get the same values via `dot_config/profile.sh.tmpl`, which renders `export FOO=...` lines from `.chezmoidata.yaml` and lands at `${XDG_CONFIG_HOME}/profile.sh` on target. Both shell and chezmoi templates therefore share one source — no need to source profile.sh before `chezmoi init` on a fresh machine.
 
 Paths in `.chezmoidata.yaml` are home-relative (no leading slash). Join with `.chezmoi.homeDir` when an absolute path is needed.
 
-The `EDITOR` / `VISUAL` / `PAGER` **preference chains** live in
-`.chezmoidata.yaml` (`editors.text`, `editors.visual`, `pagers`), ordered
-most-preferred first. `profile.sh.tmpl` renders them into the same runtime
+The `EDITOR` / `VISUAL` / `PAGER` / `BROWSER` / `TERMINAL` **preference
+chains** live in `.chezmoidata.yaml` (`editors.text`, `editors.visual`,
+`pagers`, `browsers`, `terminals`), ordered most-preferred first. `profile.sh.tmpl` renders them into the same runtime
 probe chain as before (`command -v` / `__flatpak_installed` / `__real_cmd`), so
 resolution still happens in the shell and a missing binary still degrades
 gracefully — the *data* moved, the *behavior* did not. Templates that need only
@@ -82,10 +82,47 @@ for another template to reuse.
   not invest in feature parity with micro. hx intentionally ships no config.
 - `VISUAL` is a separate GUI chain (`editors.visual`: zed → lite-xl → kate,
   flatpak-aware — each entry probes `flatpak_id` before `bin`) that falls back
-  to `$EDITOR`; `.chezmoiscripts/run_after_50-set-default-editor.sh.tmpl` reads
-  it at runtime to set xdg-mime defaults. That script's `bin` → `.desktop`
-  table is deliberately NOT data-driven: it maps a different fact, and covers
-  editors (code, codium, lapce) that are in no chain.
+  to `$EDITOR`; `.chezmoiscripts/run_after_50-set-xdg-defaults.sh` reads it at
+  runtime to set xdg-mime defaults. That script's `bin` → `.desktop` table is
+  merged across all four roles (editor, browser, terminal, file manager) and is
+  deliberately NOT data-driven: it maps a different fact, and covers apps
+  (code, codium, lapce) that are in no chain. Each `bin` maps to a *prioritized
+  list* of candidate ids — first one that exists on the host wins — because
+  AM/appman and the distro ship duplicate ids for the same binary
+  (`kitty.desktop` vs `kitty-AM.desktop`).
+
+### Browsers and terminals
+
+`browsers` and `terminals` are programChains like the editor ones, driving
+`$BROWSER` / `$TERMINAL` in `profile.sh.tmpl` and the xdg-mime defaults set by
+`.chezmoiscripts/run_after_50-set-xdg-defaults.sh`.
+
+- **Every browser entry carries both a `flatpak_id` and a `bin`.**
+  `profile.sh.tmpl` probes the flatpak first and falls back to the native
+  binary, so flatpak is preferred *per app* while the app ordering still wins
+  overall. Reorder the list to change preference; do not edit the rendered
+  chain.
+- **Most terminals are bin-only.** Only `wezterm` and `konsole` ship a flathub
+  package; `ghostty`, `kitty`, `alacritty`, `gnome-terminal`, and `kgx` have
+  none (verified 2026-08-25). Those entries are bin-only by necessity, not
+  oversight — do not "fix" them by inventing a `flatpak_id`.
+- **Neither chain has an unconditional final fallback** in the sense
+  `editors.text` does. No browser is universally present, so `browsers` ends in
+  `w3m` / `lynx`, which keep `$BROWSER` useful on `is_server` hosts but have no
+  `.desktop` — the xdg-mime browser role simply skips with a WARN. `terminals`
+  ends in `xterm`, which is near-universal on any X host.
+- Browsers are probed with `__real_cmd`, never `command -v`: on a host with the
+  personal scripts repo on `PATH`, most browser bins resolve to wrapper scripts
+  that `__real_cmd` strips. `__real_cmd` also strips `/tmp/.mount_*/bin`,
+  because an AppImage prepends its own mount dir to `PATH` for child processes
+  and would otherwise make an app probe resolve to its own transient path.
+- Adding an entry to either chain also needs a matching arm in
+  `desktop_for_bin()` and a self-test case. A missing arm is not fatal — apply
+  logs "no usable .desktop" and leaves mime defaults alone — but it is silent,
+  so the test is what catches it.
+
+`x-scheme-handler/mailto` is deliberately owned by no role; it is left at
+whatever the user has set.
 
 ### Usage policy
 
@@ -244,8 +281,9 @@ chezmoi update
 Check for drift between source and target (exit code reflects status). Two
 deliberate always-run scripts (`run_before_02-validate-env.sh.tmpl`, a
 preflight that re-checks the baked distro flags, and
-`run_after_50-set-default-editor.sh.tmpl`, which re-reads the runtime
-`$VISUAL` on every apply) always report as pending, so
+`run_after_50-set-xdg-defaults.sh`, which re-reads the runtime
+`$BROWSER` / `$TERMINAL` / `$FILE_MANAGER` / `$VISUAL` on every apply) always
+report as pending, so
 bare `chezmoi verify` exits 1 even with zero real drift. Use
 `--exclude=scripts` for a real drift signal (the justfile recipes already do):
 
