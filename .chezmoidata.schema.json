@@ -3,7 +3,7 @@
   "title": "chezmoidata",
   "type": "object",
   "additionalProperties": false,
-  "required": ["hostnames", "paths", "git_repos", "editors", "pagers", "age", "checksums", "weather"],
+  "required": ["hostnames", "paths", "git_repos", "editors", "browsers", "terminals", "pagers", "age", "checksums", "weather"],
   "properties": {
     "hostnames": {
       "type": "object",
@@ -35,6 +35,8 @@
         "visual": { "$ref": "#/$defs/programChain" }
       }
     },
+    "browsers": { "$ref": "#/$defs/programChain" },
+    "terminals": { "$ref": "#/$defs/programChain" },
     "pagers": { "$ref": "#/$defs/programChain" },
     "age": {
       "type": "object",
