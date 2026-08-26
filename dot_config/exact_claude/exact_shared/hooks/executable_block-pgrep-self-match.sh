@@ -815,8 +815,9 @@ readonly WRITE_TOOL_LEAD='If this command WRITES text that contains such an exam
 a file) rather than running one, use the Write tool instead; this guard only inspects Bash commands.'
 
 # @description Build the deny reason for a deny kind.
-# @arg $1 kind loop or kill
-# @arg $2 detail for kill, the tool of the denying invocation (pgrep or pkill; defaults to pgrep)
+# @arg $1 kind loop, kill, or task-poll
+# @arg $2 detail the tool for kill (pgrep or pkill; defaults to pgrep), or the polled path for
+#         task-poll
 # @stdout the reason text: the Write-tool lead, a preamble, and a fixes list
 function deny_message() {
   local -r kind="$1"
@@ -861,6 +862,23 @@ the session shell.'
 3. `__TOOL__ --full "[p]attern"` hides the needle from its own regex, but only when the bare literal
    appears NOWHERE ELSE in the same command. A second copy in the same call silently defeats it.'
       fixes="${fixes//__TOOL__/${detail}}"
+      ;;
+    task-poll)
+      # The path is interpolated by concatenation so the backticks stay literal.
+      # shellcheck disable=SC2016
+      preamble='This loop polls a harness task-output file (`'"${detail}"'`). Background tasks are
+tracked by the harness itself: when one finishes you are re-invoked with a task notification naming
+that path, so polling it from a shell only wastes the wait -- and if the task is killed the file may
+never change, so the loop never exits.'
+      # shellcheck disable=SC2016
+      fixes='Two fixes, in order of preference:
+
+1. Stop here. Read the file when the task notification arrives; nothing you run before then can
+   make it arrive sooner.
+2. If the result is needed before you can reply, call `TaskOutput` with `block: true` on the task
+   id -- one call returns the output and the exit code.
+
+A single `cat`, `grep`, or `test` of the file is fine; a loop on it is not.'
       ;;
     *)
       preamble='This pgrep matches its own ancestor process.'
@@ -993,13 +1011,77 @@ function shell_wrapper_payloads() {
   done <<< "${tokens}"
 }
 
+# A harness task-output file:
+# `${TMPDIR:-/tmp}/claude-<uid>/<project-slug>/<session-uuid>/tasks/<task-id>.output`.
+# No /tmp anchor, so a relocated TMPDIR still matches; the `/tasks/` segment
+# and the `.output` suffix are what tell it from the session scratchpad next
+# door. ERE, evaluated unquoted in [[ =~ ]] under LC_ALL=C.
+readonly TASK_OUTPUT_PATH_RE='claude-[0-9]+/[^[:space:]]*/tasks/[^[:space:]/]+\.output'
+
+# @description Find a while/until loop whose termination test reads a harness task-output file
+#              (Gap 2, 2026-08-26). The harness re-invokes the model when a task finishes, so a
+#              shell loop on that file only wastes the wait, and never exits if the task was
+#              killed. The scanner masks quoted text, so every token is examined through its RAW
+#              slice of the command -- the same byte-offset contract pattern_operand relies on --
+#              which is what makes a quoted path visible. A `NAME=<path>` assignment word binds
+#              NAME, and a later `$NAME` / `${NAME...}` counts as a reference to that path. Only
+#              cond position, or body position with a break/exit/return, is a poll: a lone read,
+#              a `while read ...; done < <path>` (the path sits after `done`), and an echoed loop
+#              (its keywords are masked, so loop_context sees no loop) all report nothing.
+# @arg $1 command the raw command string
+# @arg $2 tokens the token stream from scan_command
+# @stdout the polled path, starting at `claude-`, when one is found
+# @exitcode 0 a poll loop on a task-output file was found
+# @exitcode 1 none
+function task_poll_detected() {
+  local -r command="$1" tokens="$2"
+  local -a bound_names=() bound_paths=()
+  local idx=0 offset token raw path name i context is_ref ref_re
+  while IFS=$'\t' read -r offset token; do
+    [[ -z "${token}" ]] && continue
+    raw="${command:offset:${#token}}"
+    path=''
+    is_ref=0
+    if is_assignment_word "${token}"; then
+      if [[ "${raw}" =~ ${TASK_OUTPUT_PATH_RE} ]]; then
+        bound_names+=("${token%%=*}")
+        bound_paths+=("${BASH_REMATCH[0]}")
+      fi
+    elif [[ "${raw}" =~ ${TASK_OUTPUT_PATH_RE} ]]; then
+      path="${BASH_REMATCH[0]}"
+      is_ref=1
+    else
+      for i in "${!bound_names[@]}"; do
+        name="${bound_names[i]}"
+        ref_re='\$\{?'"${name}"'([^A-Za-z0-9_]|$)'
+        if [[ "${raw}" =~ ${ref_re} ]]; then
+          path="${bound_paths[i]}"
+          is_ref=1
+          break
+        fi
+      done
+    fi
+    if ((is_ref == 1)); then
+      context="$(loop_context "${tokens}" "${idx}")"
+      if [[ "${context}" == 'cond' ]] \
+        || { [[ "${context}" == 'body' ]] && body_has_terminator "${tokens}" "${idx}"; }; then
+        printf '%s\n' "${path}"
+        return 0
+      fi
+    fi
+    idx=$((idx + 1))
+  done <<< "${tokens}"
+  return 1
+}
+
 # @description Classify a Bash command string.
 # @arg $1 command the command string
 # @arg $2 depth wrapper-payload recursion depth, 0 for the command the user actually ran
-# @stdout allow, warn, or deny:loop / deny:kill followed by a tab and the invoked tool
+# @stdout allow, warn, or deny:loop / deny:kill / deny:task-poll followed by a tab and the invoked
+#         tool (or, for task-poll, the polled path)
 function classify_command() {
   local -r command="$1" depth="${2:-0}"
-  if [[ "${command}" != *pgrep* && "${command}" != *pkill* ]]; then
+  if [[ "${command}" != *pgrep* && "${command}" != *pkill* && "${command}" != *.output* ]]; then
     printf 'allow\n'
     return 0
   fi
@@ -1020,6 +1102,12 @@ function classify_command() {
 
   local verdict='allow'
   local idx offset name args operand context
+  # The pgrep tier only has work when the command names the tool; the token
+  # stream is still needed below for the task-poll tier.
+  local invocations=''
+  if [[ "${command}" == *pgrep* || "${command}" == *pkill* ]]; then
+    invocations="$(find_invocations "${tokens}")"
+  fi
   while IFS=$'\t' read -r idx offset name; do
     [[ -z "${idx}" ]] && continue
     args="$(invocation_args "${tokens}" "${idx}")"
@@ -1055,7 +1143,17 @@ function classify_command() {
     esac
     ((ignores_ancestors == 1)) && continue
     result_is_consumed CMD_TOKENS "${idx}" "${args}" "${command}" "${tokens}" && verdict='warn'
-  done <<< "$(find_invocations "${tokens}")"
+  done <<< "${invocations}"
+
+  # A loop on a harness task-output file is denied whatever the pgrep tier
+  # thought of the command; a pgrep deny above has already returned.
+  if [[ "${command}" == *.output* ]]; then
+    local polled
+    if polled="$(task_poll_detected "${command}" "${tokens}")"; then
+      printf 'deny:task-poll\t%s\n' "${polled}"
+      return 0
+    fi
+  fi
 
   # A `bash -c '...'` payload is code that runs here, so it gets the same
   # classification the outer command just got. A deny inside wins outright; a
@@ -1515,6 +1613,39 @@ readonly -a SELF_TEST_CASES=(
   $'pgrep -A -f x | wc -l\tallow'
   $'while [ -n "$p" ]; do p=$(pgrep -A --full x); sleep 5; done\tallow'
   $'sudo pgrep --ignore-ancestors --full x | xargs kill\tallow'
+
+  # Gap 2 (2026-08-26): a while/until loop whose termination test reads a
+  # harness task-output file. The harness re-invokes the model when the task
+  # finishes, so polling that path from a shell is always wrong. The
+  # discriminator is harness-tracked vs external, not loop vs not: a lone
+  # read is fine, and a loop on gh / S3 / a CI endpoint stays allowed.
+  $'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done\tdeny:task-poll'
+  $'until grep -qE "^(OK|FAILED)" /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output; do sleep 5; done\tdeny:task-poll'
+  $'until [ -s "/tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output" ]; do sleep 5; done\tdeny:task-poll'
+  $'until [ -n "$(cat /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output 2>/dev/null)" ]; do sleep 5; done\tdeny:task-poll'
+  $'F=/tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output; until [ -s "$F" ]; do sleep 5; done\tdeny:task-poll'
+  $'F="/tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output"; until [ -s "${F}" ]; do sleep 5; done\tdeny:task-poll'
+  $'while ! grep -q OK /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output; do sleep 2; done\tdeny:task-poll'
+  $'while true; do grep -q OK /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output && break; sleep 5; done\tdeny:task-poll'
+  $'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do :; done\tdeny:task-poll'
+  $'bash -c \'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done\'\tdeny:task-poll'
+  $'until [ -s /var/tmp/claude-1000/x/y/tasks/a1.output ]; do sleep 5; done\tdeny:task-poll'
+  $'cat /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output\tallow'
+  $'cat /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output | grep -c OK\tallow'
+  $'[ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ] && echo done\tallow'
+  $'test -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output; echo $?\tallow'
+  $'while read -r l; do echo "$l"; done < /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output\tallow'
+  $'echo "until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done"\tallow'
+  # F bound in an earlier Bash call is invisible (spec decision 16).
+  $'until [ -s "$F" ]; do sleep 5; done\tallow'
+  $'until [ -s /tmp/other/x.output ]; do sleep 5; done\tallow'
+  # The session scratchpad next door has no /tasks/ segment.
+  $'until [ -s /tmp/claude-1000/p/s/scratchpad/x.output ]; do sleep 5; done\tallow'
+  $'until gh pr checks 123 --watch; do sleep 30; done\tallow'
+  $'until aws s3api head-object --bucket b --key k; do sleep 10; done\tallow'
+  $'until curl --fail --silent https://ci.example/x; do sleep 5; done\tallow'
+  # Body position with no terminator is a read inside a loop, not its test.
+  $'while true; do cat /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output; sleep 5; done\tallow'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
@@ -1552,6 +1683,15 @@ readonly -a MESSAGE_TEST_CASES=(
   $'pkill --full java\tdecision\tequals\tdeny'
   $'pgrep --full x | wc -l\tdecision\tequals\tallow'
   $'ls\tdecision\tequals\tnone'
+
+  # task-poll denial: harness advice, the polled path, no pgrep diagnosis.
+  $'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done\treason\tcontains\tTaskOutput'
+  $'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done\treason\tcontains\tblock: true'
+  $'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done\treason\tcontains\ttask notification'
+  $'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done\treason\tcontains\ttasks/bcuxbdgc5.output'
+  $'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done\treason\tcontains\tIf this command WRITES'
+  $'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done\treason\tlacks\tPolling is the root cause'
+  $'until [ -s /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output ]; do sleep 5; done\tdecision\tequals\tdeny'
 )
 
 # @description Assert helper used by the scanner unit checks.
@@ -1938,6 +2078,7 @@ function run_deny_sweep() {
     case "${expected#deny:}" in
       kill) needle='--ignore-ancestors' ;;
       loop) needle='kill -0' ;;
+      task-poll) needle='TaskOutput' ;;
       *) needle='' ;;
     esac
     if [[ -z "${needle}" ]]; then
