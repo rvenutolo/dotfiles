@@ -951,7 +951,7 @@ function wrapper_operand_budget() {
 # @description Find the payloads of local shell wrappers and print each one's raw text,
 #              NUL-terminated, with any surrounding quotes stripped.
 #
-#              A `-c` payload counts only when all four hold: the wrapper is in command position
+#              A `-c` payload counts only when all three hold: the wrapper is in command position
 #              (so `ssh host bash -c ...` and a bare `echo bash -c ...` are both skipped, since
 #              neither runs the payload here); a `-c` precedes it, in the same simple command,
 #              within the wrapper's operand budget (see wrapper_operand_budget -- this is what
@@ -963,15 +963,23 @@ function wrapper_operand_budget() {
 #              substitution for itself. Slicing a fragment of such a payload and recursing on it
 #              would classify text that is not a command.
 #
-#              A heredoc feeding the wrapper (`bash <<'EOF'`, `sudo sh <<EOF`) is a payload too:
-#              the body is the script the wrapper runs, here (#184). It counts when the `<<`
-#              token is seen in the wrapper's simple command with no `-c` before it, and the
-#              simple command then ends without an operand spending the budget -- an operand
-#              makes the body that script's stdin instead. Both delimiter forms count: the body
-#              text is what runs either way, and a `$(...)` inside an unquoted body is seen by
-#              the outer scan and the recursion alike. The scanner announces each body with a
-#              `<HD:len>` marker at the body's first byte, in operator order, so a heredoc's
-#              ordinal among all `<<` tokens is its body's ordinal among the markers.
+#              A heredoc feeding the wrapper's stdin (`bash <<'EOF'`, `sudo sh <<EOF`, `0<<EOF
+#              bash`) is a payload too: the body is the script the wrapper runs, here (#184). A
+#              heredoc operator may carry an explicit fd like any other redirection (`0<<EOF`,
+#              `3<<-EOF`); only fd 0 -- explicit or, far more commonly, the implicit default --
+#              feeds the wrapper's stdin, so `bash 3<<EOF` is skipped: it redirects a different fd,
+#              not the one the wrapper reads its script from. A heredoc counts when its operator is
+#              seen in the wrapper's simple command with no `-c` before it and the simple command
+#              then ends without an operand spending the budget -- an operand makes the body that
+#              script's stdin instead. A redirection may precede the command word it attaches to
+#              (`<<EOF bash`, `sudo <<EOF bash`), so a stdin heredoc seen while still hunting for
+#              the command word is remembered and, once that word turns out to be a wrapper,
+#              counted as its payload exactly as one written after the word would be. Both
+#              delimiter forms count: the body text is what runs either way, and a `$(...)` inside
+#              an unquoted body is seen by the outer scan and the recursion alike. The scanner
+#              announces each body with a `<HD:len>` marker at the body's first byte, in operator
+#              order, so a heredoc's ordinal among all `<<` tokens -- fd-prefixed or not -- is its
+#              body's ordinal among the markers.
 #
 #              Payloads are NUL-terminated because a heredoc body is usually several lines and
 #              has to reach classify_command as one command.
@@ -984,24 +992,38 @@ function wrapper_operand_budget() {
 function shell_wrapper_payloads() {
   local -r command="$1" tokens="$2"
   local at_cmd=1 in_wrapper=0 saw_c=0 operands=0 offset token word next_at_cmd raw budget
-  local heredoc_seq=0 body_seq=0 pending='' wanted=' ' expect_delim=0 len
+  local heredoc_seq=0 body_seq=0 pending='' leading_pending='' wanted=' ' expect_delim=0 len fd
+  # A `<<` heredoc operator may carry a leading fd (`0<<`, `3<<-`), which is
+  # ordinary redirection syntax; only fd 0 (empty or explicit `0`) feeds the
+  # wrapper's stdin. `<<<` (and an fd-prefixed `0<<<`) is a here-string, not a
+  # heredoc, so the next byte after `<<` must not itself be `<`. ERE,
+  # evaluated unquoted in [[ =~ ]].
+  local -r heredoc_re='^([0-9]*)<<([^<]|$)' bare_heredoc_re='^[0-9]*<<-?$'
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
     word="${token##*/}"
 
-    # Heredoc bookkeeping. A bare `<<` / `<<-` token is followed by its
-    # delimiter as a separate word, which must not be spent as an operand.
+    # Heredoc bookkeeping. A bare `<<` / `<<-` token, fd-prefixed or not, is
+    # followed by its delimiter as a separate word, which must not be spent
+    # as an operand.
     if ((expect_delim == 1)); then
       expect_delim=0
       continue
     fi
-    if [[ "${token}" == '<<' || "${token}" == '<<-' ]]; then
+    if [[ "${token}" =~ ${bare_heredoc_re} ]]; then
       expect_delim=1
     fi
-    if [[ "${token}" == '<<'* && "${token}" != '<<<'* ]]; then
+    if [[ "${token}" =~ ${heredoc_re} ]]; then
       heredoc_seq=$((heredoc_seq + 1))
-      if ((in_wrapper == 1 && saw_c == 0)); then
-        pending="${heredoc_seq}"
+      fd="${BASH_REMATCH[1]}"
+      if [[ -z "${fd}" || "${fd}" == '0' ]]; then
+        if ((in_wrapper == 1 && saw_c == 0)); then
+          pending="${heredoc_seq}"
+        elif ((at_cmd == 1)); then
+          # Still hunting for the command word: remember this stdin heredoc
+          # in case that word turns out to be a wrapper.
+          leading_pending="${heredoc_seq}"
+        fi
       fi
       continue
     fi
@@ -1047,6 +1069,7 @@ function shell_wrapper_payloads() {
 
     if is_operator "${token}" || is_keyword "${token}"; then
       next_at_cmd=1
+      leading_pending=''
     elif ((at_cmd == 1)) && { is_prefix_command "${word}" || is_assignment_word "${token}"; }; then
       next_at_cmd=1
     else
@@ -1056,6 +1079,8 @@ function shell_wrapper_payloads() {
       in_wrapper=1
       saw_c=0
       operands="${budget}"
+      pending="${leading_pending}"
+      leading_pending=''
     fi
     at_cmd="${next_at_cmd}"
   done <<< "${tokens}"
@@ -1973,6 +1998,19 @@ readonly -a SELF_TEST_CASES=(
   $'sudo bash <<EOF\nuntil ! pgrep --full x; do sleep 5; done\nEOF\tdeny:loop'
   $'bash <<EOF script.sh\npkill --full x\nEOF\tallow'
   $'bash << EOF\npkill --full x\nEOF\tdeny:kill'
+
+  # Heredoc ordinal edge cases: two wrapper heredocs in one command (sequence
+  # must not desync), a `-c` payload that already consumed the wrapper so a
+  # trailing heredoc is inert, an explicit fd 0 (still stdin) vs. fd 3 (not
+  # stdin, so not a payload), an fd-prefixed heredoc on an EARLIER,
+  # non-wrapper command whose ordinal must not shift a LATER wrapper
+  # heredoc's, and a heredoc that precedes the wrapper word it feeds.
+  $'cat <<A; bash <<B\na-body\nA\npkill --full x\nB\tdeny:kill'
+  $'bash -c \'echo hi\' <<EOF\npkill --full x\nEOF\tallow'
+  $'bash 0<<EOF\npkill --full x\nEOF\tdeny:kill'
+  $'bash 3<<EOF\npkill --full x\nEOF\tallow'
+  $'cat 0<<A\nhello\nA\nbash <<B\npkill --full x\nB\tdeny:kill'
+  $'<<EOF bash\npkill --full x\nEOF\tdeny:kill'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
