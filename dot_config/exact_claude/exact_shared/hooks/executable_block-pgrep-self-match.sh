@@ -948,43 +948,87 @@ function wrapper_operand_budget() {
   return 1
 }
 
-# @description Find the payloads of local shell wrappers and print each one's raw text, one per
-#              line, with any surrounding quotes stripped.
+# @description Find the payloads of local shell wrappers and print each one's raw text,
+#              NUL-terminated, with any surrounding quotes stripped.
 #
-#              A payload counts only when all four hold: the wrapper is in command position (so
-#              `ssh host bash -c ...` and a bare `echo bash -c ...` are both skipped, since neither
-#              runs the payload here); a `-c` precedes it, in the same simple command, within the
-#              wrapper's operand budget (see wrapper_operand_budget -- this is what keeps `bash
-#              deploy.sh -c '...'`, where the `-c` belongs to the script, from being read as a
-#              payload); and the raw slice is a single fully quoted word. That last condition is what keeps the recursion
-#              honest -- a double-quoted payload containing a command substitution is NOT one opaque
-#              token, because the scanner deliberately re-enters code context inside `$(...)`, and
-#              the outer scan can already see the substitution for itself. Slicing a fragment of
-#              such a payload and recursing on it would classify text that is not a command.
+#              A `-c` payload counts only when all four hold: the wrapper is in command position
+#              (so `ssh host bash -c ...` and a bare `echo bash -c ...` are both skipped, since
+#              neither runs the payload here); a `-c` precedes it, in the same simple command,
+#              within the wrapper's operand budget (see wrapper_operand_budget -- this is what
+#              keeps `bash deploy.sh -c '...'`, where the `-c` belongs to the script, from being
+#              read as a payload); and the raw slice is a single fully quoted word. That last
+#              condition is what keeps the recursion honest -- a double-quoted payload containing
+#              a command substitution is NOT one opaque token, because the scanner deliberately
+#              re-enters code context inside `$(...)`, and the outer scan can already see the
+#              substitution for itself. Slicing a fragment of such a payload and recursing on it
+#              would classify text that is not a command.
+#
+#              A heredoc feeding the wrapper (`bash <<'EOF'`, `sudo sh <<EOF`) is a payload too:
+#              the body is the script the wrapper runs, here (#184). It counts when the `<<`
+#              token is seen in the wrapper's simple command with no `-c` before it, and the
+#              simple command then ends without an operand spending the budget -- an operand
+#              makes the body that script's stdin instead. Both delimiter forms count: the body
+#              text is what runs either way, and a `$(...)` inside an unquoted body is seen by
+#              the outer scan and the recursion alike. The scanner announces each body with a
+#              `<HD:len>` marker at the body's first byte, in operator order, so a heredoc's
+#              ordinal among all `<<` tokens is its body's ordinal among the markers.
+#
+#              Payloads are NUL-terminated because a heredoc body is usually several lines and
+#              has to reach classify_command as one command.
 #
 #              Command position is tracked exactly as find_invocations tracks it, including the
 #              prefix-word chain, so `sudo bash -c ...` is reached.
 # @arg $1 command the raw command string
 # @arg $2 tokens the token stream from scan_command
-# @stdout one payload per line, quotes stripped; nothing if there are none
+# @stdout one payload per NUL, quotes stripped; nothing if there are none
 function shell_wrapper_payloads() {
   local -r command="$1" tokens="$2"
   local at_cmd=1 in_wrapper=0 saw_c=0 operands=0 offset token word next_at_cmd raw budget
+  local heredoc_seq=0 body_seq=0 pending='' wanted=' ' expect_delim=0 len
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
     word="${token##*/}"
 
+    # Heredoc bookkeeping. A bare `<<` / `<<-` token is followed by its
+    # delimiter as a separate word, which must not be spent as an operand.
+    if ((expect_delim == 1)); then
+      expect_delim=0
+      continue
+    fi
+    if [[ "${token}" == '<<' || "${token}" == '<<-' ]]; then
+      expect_delim=1
+    fi
+    if [[ "${token}" == '<<'* && "${token}" != '<<<'* ]]; then
+      heredoc_seq=$((heredoc_seq + 1))
+      if ((in_wrapper == 1 && saw_c == 0)); then
+        pending="${heredoc_seq}"
+      fi
+      continue
+    fi
+    if [[ "${token}" == '<HD:'*'>' ]]; then
+      body_seq=$((body_seq + 1))
+      if [[ "${wanted}" == *" ${body_seq} "* ]]; then
+        len="${token#<HD:}"
+        len="${len%>}"
+        printf '%s\0' "${command:offset:len}"
+      fi
+      continue
+    fi
+
     if ((in_wrapper == 1)); then
       if is_operator "${token}"; then
+        [[ -n "${pending}" ]] && wanted+="${pending} "
         in_wrapper=0
         saw_c=0
+        pending=''
       elif ((saw_c == 1)) && [[ "${word}" != -* ]]; then
         raw="${command:offset:${#token}}"
         if [[ ("${raw}" == \"*\" || "${raw}" == \'*\') && ${#raw} -ge 2 ]]; then
-          printf '%s\n' "${raw:1:${#raw}-2}"
+          printf '%s\0' "${raw:1:${#raw}-2}"
         fi
         in_wrapper=0
         saw_c=0
+        pending=''
       elif [[ "${word}" == -*c* && "${word}" != --* ]]; then
         # A short cluster, so `bash -lc '...'` counts as well as `bash -c '...'`.
         saw_c=1
@@ -996,6 +1040,7 @@ function shell_wrapper_payloads() {
         else
           in_wrapper=0
           saw_c=0
+          pending=''
         fi
       fi
     fi
@@ -1387,12 +1432,13 @@ function classify_command() {
     fi
   fi
 
-  # A `bash -c '...'` payload is code that runs here, so it gets the same
-  # classification the outer command just got. A deny inside wins outright; a
-  # warn inside only lifts an allow, so an outer warn is never downgraded.
+  # A `bash -c '...'` payload, or a heredoc body fed to `bash`, is code that
+  # runs here, so it gets the same classification the outer command just got.
+  # A deny inside wins outright; a warn inside only lifts an allow, so an
+  # outer warn is never downgraded.
   if ((depth < MAX_PAYLOAD_DEPTH)); then
     local payload payload_verdict
-    while IFS= read -r payload; do
+    while IFS= read -r -d '' payload; do
       [[ -z "${payload}" ]] && continue
       payload_verdict="$(classify_command "${payload}" "$((depth + 1))")"
       case "${payload_verdict}" in
@@ -1402,7 +1448,7 @@ function classify_command() {
           ;;
         warn) verdict='warn' ;;
       esac
-    done <<< "$(shell_wrapper_payloads "${command}" "${tokens}")"
+    done < <(shell_wrapper_payloads "${command}" "${tokens}")
   fi
 
   printf '%s\n' "${verdict}"
@@ -1917,6 +1963,16 @@ readonly -a SELF_TEST_CASES=(
   $'cat <<EOF\n$(pkill --full x)\nEOF\tdeny:kill'
   $'cat <<\'EOF\'\nuntil ! pgrep --full x; do sleep 5; done\nEOF\tallow'
   $'cat <<-EOF\n\tpkill --full x\n\tEOF\tallow'
+
+  # A heredoc fed to a LOCAL shell wrapper in command position is code that
+  # runs here, exactly like `bash -c '...'`; the hook slices the body and
+  # classifies it. `ssh host bash` runs it elsewhere. An operand after the
+  # heredoc (`bash <<EOF script.sh`) makes the body the script's stdin.
+  $'bash <<\'EOF\'\npkill --full x\nEOF\tdeny:kill'
+  $'ssh host bash <<\'EOF\'\npkill --full x\nEOF\tallow'
+  $'sudo bash <<EOF\nuntil ! pgrep --full x; do sleep 5; done\nEOF\tdeny:loop'
+  $'bash <<EOF script.sh\npkill --full x\nEOF\tallow'
+  $'bash << EOF\npkill --full x\nEOF\tdeny:kill'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
