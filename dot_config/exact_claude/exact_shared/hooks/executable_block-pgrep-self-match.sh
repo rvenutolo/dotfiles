@@ -881,8 +881,13 @@ never change, so the loop never exits.'
 A single `cat`, `grep`, or `test` of the file is fine; a loop on it is not.'
       ;;
     *)
+      # Unreachable stub: every kind classify_command can emit (loop, kill,
+      # task-poll, repeat) has its own arm above, and run_deny_sweep fails
+      # the build on an unknown kind. Kept so an unmatched kind still
+      # produces a message instead of an unbound `case` fallthrough, and
+      # `fixes` is non-empty so the output never has a trailing empty block.
       preamble='This pgrep matches its own ancestor process.'
-      fixes=''
+      fixes='(no fixes: unknown deny kind)'
       ;;
   esac
 
@@ -1023,17 +1028,27 @@ readonly TASK_OUTPUT_PATH_RE='claude-[0-9]+/[^[:space:]]*/tasks/[^[:space:]/]+\.
 # loop with the model as the sleep. Per session, per target.
 readonly REPEAT_THRESHOLD=3
 readonly REPEAT_WINDOW_SECONDS=300
+# The hook has a 5 s timeout budget; a state file large enough to read line by
+# line can blow it on its own (measured: 200,000 lines took 19.2 s), and a
+# deny returns before the write that would otherwise prune it, so an oversized
+# file can never heal itself past this point. Bail out (allow) instead of
+# reading past this many lines in one call.
+readonly REPEAT_MAX_ENTRIES=5000
 
-# @description Find a while/until loop whose termination test reads a harness task-output file
-#              (Gap 2, 2026-08-26). The harness re-invokes the model when a task finishes, so a
-#              shell loop on that file only wastes the wait, and never exits if the task was
-#              killed. The scanner masks quoted text, so every token is examined through its RAW
-#              slice of the command -- the same byte-offset contract pattern_operand relies on --
-#              which is what makes a quoted path visible. A `NAME=<path>` assignment word binds
-#              NAME, and a later `$NAME` / `${NAME...}` counts as a reference to that path. Only
-#              cond position, or body position with a break/exit/return, is a poll: a lone read,
-#              a `while read ...; done < <path>` (the path sits after `done`), and an echoed loop
-#              (its keywords are masked, so loop_context sees no loop) all report nothing.
+# @description Find a loop -- while, until, or for -- whose termination test reads a harness
+#              task-output file (Gap 2, 2026-08-26). The harness re-invokes the model when a task
+#              finishes, so a shell loop on that file only wastes the wait, and never exits if the
+#              task was killed. The scanner masks quoted text, so every token is examined through
+#              its RAW slice of the command -- the same byte-offset contract pattern_operand
+#              relies on -- which is what makes a quoted path visible. A `NAME=<path>` assignment
+#              word binds NAME, and a later `$NAME` / `${NAME...}` counts as a reference to that
+#              path; a later reassignment of the same NAME to something else is not tracked, so
+#              `F=<task>; F=/other; until [ -s "$F" ]; do sleep 5; done` still reports the first
+#              path (accepted limit -- rebinding a poll target mid-script to dodge this is not a
+#              pattern worth chasing). Only cond position, or body position with a
+#              break/exit/return, is a poll: a lone read, a `while read ...; done < <path>` (the
+#              path sits after `done`), and an echoed loop (its keywords are masked, so
+#              loop_context sees no loop) all report nothing.
 # @arg $1 command the raw command string
 # @arg $2 tokens the token stream from scan_command
 # @stdout the polled path, starting at `claude-`, when one is found
@@ -1098,6 +1113,9 @@ function probe_keys() {
       raw="${command:offset:${#token}}"
       [[ "${raw}" =~ ${TASK_OUTPUT_PATH_RE} ]] || continue
       key="task:${BASH_REMATCH[0]}"
+      # A state line is `<epoch>\t<key>\n`; a key carrying either byte would
+      # forge a line boundary or field boundary once written.
+      [[ "${key}" == *[$'\n\t']* ]] && continue
       if [[ $'\n'"${keys}" != *$'\n'"${key}"$'\n'* ]]; then
         keys+="${key}"$'\n'
       fi
@@ -1110,6 +1128,9 @@ function probe_keys() {
       operand="$(pattern_operand "${command}" "${args}")"
       [[ -z "${operand}" ]] && continue
       key="pgrep:${operand}"
+      # Same reasoning as the task-key site above: a state line is
+      # `<epoch>\t<key>\n`, so a key carrying either byte would forge one.
+      [[ "${key}" == *[$'\n\t']* ]] && continue
       if [[ $'\n'"${keys}" != *$'\n'"${key}"$'\n'* ]]; then
         keys+="${key}"$'\n'
       fi
@@ -1159,8 +1180,15 @@ session the same way. The limit is ${REPEAT_THRESHOLD} probes per target per ${R
 #              entries older than the window (or unparsable) are dropped on every write, and a
 #              denied command is not recorded. This is the one stateful rule in the guard, so it
 #              fails open harder than the rest: every filesystem step is guarded, and any failure
-#              -- no dir, unreadable, not a regular file, unwritable -- returns silently (allow)
-#              without reaching the ERR trap.
+#              -- no dir, unreadable, not a regular file, unwritable, not owned by us, a symlinked
+#              dir, or an oversized file -- returns silently (allow) without reaching the ERR
+#              trap. The /tmp fallback can be a directory shared with other local users:
+#              `mkdir -p` on an EXISTING dir changes neither its owner nor its mode, so `dir` and
+#              `file` must both be independently confirmed as ours (a co-tenant who pre-creates
+#              or replaces either could otherwise plant state that forces a false deny, or point
+#              the write somewhere they control), and the write itself goes through `mktemp`
+#              rather than a predictable `${file}.$$` name so a planted symlink at the temp name
+#              can't turn it into a truncate-and-write-elsewhere primitive.
 # @arg $1 session_id the session id, already validated as a plain file name
 # @arg $2 keys the probe keys from probe_keys
 # @stdout the deny reason when a key reaches the threshold; nothing otherwise
@@ -1174,8 +1202,16 @@ function repeat_check() {
   # intermediate ever missing here is a hand-set BLOCK_PGREP_STATE_DIR /
   # TMPDIR, which the caller owns the mode of.
   if ! mkdir --parents --mode=0700 "${dir}" 2> /dev/null; then return 0; fi
+  # `mkdir -p` on a dir that already exists changes neither its owner nor its
+  # mode, so under the /tmp fallback another local user who pre-creates this
+  # directory (or replaces it with a symlink to one they control) would
+  # otherwise be trusted just as much as one we created ourselves.
+  [[ -O "${dir}" && ! -L "${dir}" ]] || return 0
   if ! printf -v now '%(%s)T' -1 2> /dev/null; then return 0; fi
   if [[ -e "${file}" && ! -f "${file}" ]]; then return 0; fi
+  # Same reasoning as the dir check above, one level down: a pre-planted file
+  # we don't own is not state we can trust to prune, count, or overwrite.
+  if [[ -f "${file}" && ! -O "${file}" ]]; then return 0; fi
 
   local kept='' epoch key content
   if [[ -f "${file}" ]]; then
@@ -1204,7 +1240,16 @@ function repeat_check() {
     # A leading-zero epoch (`08`) would otherwise pass this regex and then
     # trip `(( ))`'s octal parser on the arithmetic test below, so the
     # anchor excludes it: a valid epoch never starts with 0.
+    local read_count=0
     while IFS=$'\t' read -r epoch key; do
+      # REPEAT_MAX_ENTRIES caps the work this call can do: a file large
+      # enough to read line by line can blow the hook's own timeout on its
+      # own, and a deny (or even an allow that falls through to the write
+      # below) never happens once we bail here, so an oversized file is left
+      # exactly as it was rather than processed at all -- it cannot prune or
+      # heal itself past this point, but it also never wedges a real probe.
+      read_count=$((read_count + 1))
+      ((read_count > REPEAT_MAX_ENTRIES)) && return 0
       [[ "${epoch}" =~ ^[1-9][0-9]{0,11}$ && -n "${key}" ]] || continue
       ((epoch <= now && now - epoch <= REPEAT_WINDOW_SECONDS)) || continue
       kept+="${epoch}"$'\t'"${key}"$'\n'
@@ -1228,27 +1273,35 @@ function repeat_check() {
     kept+="${now}"$'\t'"${probe_key}"$'\n'
   done <<< "${keys}"
 
-  local -r tmp="${file}.$$"
   if [[ -z "${kept}" ]]; then
     # `|| true` so a bare rm failure (e.g. the directory lost write
     # permission after the mkdir check above) can never trip errexit here --
     # this line is not itself guarded by an enclosing if/||, unlike every
-    # other filesystem step in this function.
-    rm -f "${file}" 2> /dev/null || true
+    # other filesystem step in this function. `--` guards a session id that
+    # happens to start with `-`.
+    rm --force -- "${file}" 2> /dev/null || true
     return 0
   fi
+  local tmp
+  # `mktemp`, not a hand-rolled `${file}.$$` name: a predictable temp name in
+  # a shared /tmp lets another local user pre-plant a symlink there, turning
+  # the write below into a truncate-and-write-through-the-symlink primitive.
+  # mktemp both picks an unpredictable name and creates the file itself
+  # (it will not follow an existing symlink at that name), so there is
+  # nothing left for a planted symlink to redirect.
+  tmp="$(mktemp "${file}.XXXXXX" 2> /dev/null)" || return 0
   # `2> /dev/null` sits before `>` so a failed open reports nothing: with the
   # reverse order bash still applies `>` first, so the open failure prints
   # to the ORIGINAL stderr before the stderr redirect ever takes effect.
   if ! printf '%s' "${kept}" 2> /dev/null > "${tmp}"; then
-    rm -f "${tmp}" 2> /dev/null
+    rm --force -- "${tmp}" 2> /dev/null
     return 0
   fi
-  if ! mv -f "${tmp}" "${file}" 2> /dev/null; then
+  if ! mv --force -- "${tmp}" "${file}" 2> /dev/null; then
     # Last command of this if-body, so unlike the sibling rm above its exit
     # status would otherwise become the if's status -- `|| true` for the
     # same reason.
-    rm -f "${tmp}" 2> /dev/null || true
+    rm --force -- "${tmp}" 2> /dev/null || true
   fi
   return 0
 }
@@ -2360,6 +2413,14 @@ function run_repeat_tests() {
     return 1
   fi
   local failures=0
+  # This suite drives BLOCK_PGREP_STATE_DIR for its own throwaway dir; save
+  # whatever the caller's environment already had (set or not) so it can be
+  # restored exactly, rather than clobbered, when the suite finishes.
+  local had_orig_state_dir=0 orig_state_dir=''
+  if [[ -n "${BLOCK_PGREP_STATE_DIR+x}" ]]; then
+    had_orig_state_dir=1
+    orig_state_dir="${BLOCK_PGREP_STATE_DIR}"
+  fi
   local state_dir
   state_dir="$(mktemp --directory "${TMPDIR:-/tmp}/block-pgrep-self-test.XXXXXX")"
   export BLOCK_PGREP_STATE_DIR="${state_dir}"
@@ -2372,14 +2433,15 @@ function run_repeat_tests() {
   for i in 1 2 3; do
     assert_probe "repeat: no session id, probe ${i}" 'none' '' "cat ${p}" || failures=$((failures + 1))
   done
-  if [[ -n "$(ls -A "${state_dir}")" ]]; then
+  if [[ -n "$(find "${state_dir}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
     printf 'FAIL(repeat): state written without a session id\n' >&2
     failures=$((failures + 1))
   fi
   # 10: a session id that is not a plain file name is rejected, not joined.
   assert_probe 'repeat: traversal session id' 'none' '../escape' "cat ${p}" || failures=$((failures + 1))
   assert_probe 'repeat: slash session id' 'none' 'a/b' "cat ${p}" || failures=$((failures + 1))
-  if [[ -e "${state_dir}/../escape" || -n "$(ls -A "${state_dir}")" ]]; then
+  if [[ -e "${state_dir}/../escape" ||
+    -n "$(find "${state_dir}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
     printf 'FAIL(repeat): state written for an invalid session id\n' >&2
     failures=$((failures + 1))
   fi
@@ -2427,7 +2489,7 @@ function run_repeat_tests() {
   printf 'garbage\n\tno-epoch\n12x\ttask:foo\n08\ttask:foo\n' > "${state_dir}/s6"
   assert_probe 'repeat: corrupt state allows' 'none' 's6' "cat ${p}" || failures=$((failures + 1))
   if [[ ! "$(cat "${state_dir}/s6")" =~ ^[0-9]+$'\t'"${p_key}"$ ]]; then
-    printf 'FAIL(repeat): corrupt state not healed: %s\n' "$(cat "${state_dir}/s6" | tr '\n' '|')" >&2
+    printf 'FAIL(repeat): corrupt state not healed: %s\n' "$(tr '\n' '|' < "${state_dir}/s6")" >&2
     failures=$((failures + 1))
   fi
 
@@ -2441,7 +2503,7 @@ function run_repeat_tests() {
   # the case is reported as skipped there rather than failed.
   chmod 500 "${state_dir}"
   if [[ -w "${state_dir}" ]] && touch "${state_dir}/.probe" 2> /dev/null; then
-    rm -f "${state_dir}/.probe"
+    rm --force -- "${state_dir}/.probe"
     printf 'note(repeat): unwritable-dir case skipped (running as root)\n' >&2
   else
     for i in 1 2 3; do
@@ -2481,8 +2543,68 @@ function run_repeat_tests() {
   assert_equals 'repeat: one entry for duplicate keys' '1' "$(wc --lines < "${state_dir}/s14")" \
     || failures=$((failures + 1))
 
+  # 15: a state dir that is itself a symlink is refused, not followed --
+  # ownership of the link is not enough, since `mkdir -p` never inspects the
+  # target of an existing path. The temporary env override applies only to
+  # this one probe; the suite's own state dir is restored right after.
+  ln --symbolic "${state_dir}" "${state_dir}.link"
+  BLOCK_PGREP_STATE_DIR="${state_dir}.link" \
+    assert_probe 'repeat: symlinked state dir refused' 'none' 's15' "cat ${p}" \
+    || failures=$((failures + 1))
+  if [[ -e "${state_dir}/s15" ]]; then
+    printf 'FAIL(repeat): state written through a symlinked dir\n' >&2
+    failures=$((failures + 1))
+  fi
+  rm --force -- "${state_dir}.link"
+  # The dir/file "not owned by us" half of the same guard needs a second uid
+  # to construct (chown) and can't be exercised in this suite at all, root or
+  # not -- unlike case 8's skip, there is no condition to gate a note on, so
+  # this is a source comment, not a runtime message (the self-test's stderr
+  # is asserted empty on the happy path). The happy path this guard protects
+  # -- we DO own dir and file -- is exercised throughout the rest of the suite.
+
+  # 16: a state file large enough to blow the hook's timeout budget is
+  # refused outright rather than processed -- REPEAT_MAX_ENTRIES caps the
+  # read, and bailing there never reaches the write, so the file is left
+  # exactly as seeded.
+  {
+    for ((i = 0; i < 6000; i++)); do
+      printf '%s\t%s\n' "${now}" "${p_key}"
+    done
+  } > "${state_dir}/s16"
+  assert_probe 'repeat: oversized state file allows' 'none' 's16' "cat ${p}" || failures=$((failures + 1))
+  assert_equals 'repeat: oversized state file left as-is' '6000' "$(wc --lines < "${state_dir}/s16")" \
+    || failures=$((failures + 1))
+
+  # 17: pkill is never a probe key -- it's a kill, not a read -- even under
+  # --ignore-ancestors, which only lifts the stateless kill verdict and has
+  # no bearing on what the repeat tier considers a probe.
+  for i in 1 2 3; do
+    assert_probe "repeat: pkill never a key, probe ${i}" 'none' 's17' \
+      'pkill --ignore-ancestors --full java' || failures=$((failures + 1))
+  done
+  if [[ -e "${state_dir}/s17" ]]; then
+    printf 'FAIL(repeat): pkill recorded as a probe key\n' >&2
+    failures=$((failures + 1))
+  fi
+
+  # 18: a pgrep hidden inside a wrapper payload is invisible to the repeat
+  # tier -- probe_keys, unlike classify_command, does not descend into
+  # shell_wrapper_payloads (documented limit; pinning it here, not changing it).
+  for i in 1 2 3; do
+    assert_probe "repeat: wrapper payload not descended, probe ${i}" 'none' 's18' \
+      "bash -c 'pgrep -f java'" || failures=$((failures + 1))
+  done
+  if [[ -e "${state_dir}/s18" ]]; then
+    printf 'FAIL(repeat): wrapper-payload pgrep recorded as a probe key\n' >&2
+    failures=$((failures + 1))
+  fi
+
   unset BLOCK_PGREP_STATE_DIR
-  rm -rf "${state_dir}"
+  if ((had_orig_state_dir == 1)); then
+    export BLOCK_PGREP_STATE_DIR="${orig_state_dir}"
+  fi
+  rm --force --recursive -- "${state_dir}"
   ((failures == 0))
 }
 

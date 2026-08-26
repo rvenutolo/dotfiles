@@ -381,7 +381,7 @@ what they are for, rather than by the repo they come from:
   those scripts that breaks its suite fails the commit.
 
   The pgrep hook denies four kinds — `kill`, `loop`, `task-poll` (a
-  `while`/`until` on a harness `…/tasks/<id>.output` file), and `repeat`
+  loop on a harness `…/tasks/<id>.output` file), and `repeat`
   (the third probe of one target in 300 s). `repeat` is the hook's only
   stateful rule: one file per session at
   `${XDG_RUNTIME_DIR}/block-pgrep-self-match/<session_id>` (override with
