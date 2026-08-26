@@ -57,8 +57,10 @@ function is_prefix_command() {
 #              option's value rather than the command. `--opt=value` needs no entry: an attached
 #              value is a single word.
 #
-#              An option missing from this table leaks -- its value is read as the prefix's operand,
-#              which ends the chain and hides the command word (#188). That is the fail-open
+#              An option missing from this table leaks -- with no operand budget to absorb it, its
+#              value is read as the command word itself, which ends the chain and hides the real
+#              command behind it (#188). The eleven `sudo` entries are its whole synopsis, checked
+#              against the man page rather than recalled. That leak is the fail-open
 #              direction, and it is the deliberate trade: an operand budget generous enough to
 #              swallow an unknown option's value would read the `pkill` of `sudo deploy.sh pkill x`
 #              as a command and deny one bash never runs.
@@ -71,9 +73,9 @@ function prefix_value_option() {
   case "${prefix}" in
     'sudo')
       case "${word}" in
-        '-u' | '-g' | '-p' | '-C' | '-D' | '-h' | '-U' | '-r' | '-t' | '--user' | '--group' | \
-          '--prompt' | '--close-from' | '--chdir' | '--host' | '--other-user' | '--role' | \
-          '--type')
+        '-u' | '-g' | '-p' | '-C' | '-D' | '-h' | '-R' | '-r' | '-T' | '-t' | '-U' | '--user' | \
+          '--group' | '--prompt' | '--close-from' | '--chdir' | '--host' | '--chroot' | \
+          '--role' | '--command-timeout' | '--type' | '--other-user')
           return 0
           ;;
         *) return 1 ;;
@@ -125,6 +127,10 @@ function prefix_operand_budget() {
 #              are not in command position. `command -v pkill` prints a path and `sudo -l pkill`
 #              reports whether a rule allows it; neither runs anything. Without this, teaching the
 #              chain to see past a prefix's flags would turn both of those allows into false denies.
+#
+#              The table is deliberately partial: it holds the spellings a person actually types.
+#              Every omission (`sudo -K`, `env --help`, ...) costs a false deny, never a false
+#              allow, so completeness here buys much less than it does in prefix_value_option.
 # @arg $1 prefix the prefix command
 # @arg $2 word the option word to test
 # @exitcode 0 the option ends the chain
@@ -171,7 +177,9 @@ function prefix_breaks_chain() {
 function prefix_chain_step() {
   local -r token="$1" word="$2" at_cmd="$3"
   # Namerefs must not share a name with the caller's variable, or bash refuses
-  # the assignment as a circular reference, so each carries a _ref suffix.
+  # the assignment as a circular reference, so each carries a _ref suffix. The
+  # positional locals are equally unsafe as caller names: never pass a variable
+  # called token, word, or at_cmd to this function by name.
   local -n chain_ref="$4" skip_ref="$5" operands_ref="$6"
   if is_operator "${token}"; then
     chain_ref=''
@@ -188,7 +196,17 @@ function prefix_chain_step() {
   # test runs before the keyword test because `time` is both, and only the
   # prefix reading understands its `-o file`.
   if ((at_cmd == 1)) && is_prefix_command "${word}"; then
-    chain_ref="${word}"
+    # Bare `time` is bash's reserved word whatever follows it -- `time -o f cmd`
+    # runs `-o`, not GNU time -- so only a path spelling (`/usr/bin/time`) gets
+    # the option table. The sentinel keeps the reserved word's own `-p` in
+    # command position while matching no arm of either table. `env time -o f`
+    # does reach GNU time and is read as the reserved word here; modelling that
+    # would mean resolving what `env` execs, which this guard does not do.
+    if [[ "${token}" == 'time' ]]; then
+      chain_ref='time-builtin'
+    else
+      chain_ref="${word}"
+    fi
     skip_ref=0
     operands_ref="$(prefix_operand_budget "${word}")"
     return 0
@@ -210,20 +228,27 @@ function prefix_chain_step() {
     return 1
   fi
   if [[ "${token}" == '--' ]]; then
+    # Past the terminator nothing is a flag any more, so `timeout -- -k 5 cmd`
+    # runs `-k`, not a kill-after option. The chain stays open because the
+    # operands the prefix is entitled to still come first: `timeout -- 5 cmd`
+    # runs cmd. The sentinel matches no arm of either table.
+    chain_ref='--'
     return 0
   fi
-  if prefix_breaks_chain "${chain_ref}" "${word}"; then
-    chain_ref=''
-    return 1
-  fi
-  if [[ "${word}" == -* ]]; then
-    # A flag's value is never itself in command position, but the word after it
-    # is; a flag that takes no value keeps command position directly.
-    if prefix_value_option "${chain_ref}" "${word}"; then
-      skip_ref=1
+  if [[ "${chain_ref}" != '--' ]]; then
+    if prefix_breaks_chain "${chain_ref}" "${word}"; then
+      chain_ref=''
       return 1
     fi
-    return 0
+    if [[ "${word}" == -* ]]; then
+      # A flag's value is never itself in command position, but the word after
+      # it is; a flag that takes no value keeps command position directly.
+      if prefix_value_option "${chain_ref}" "${word}"; then
+        skip_ref=1
+        return 1
+      fi
+      return 0
+    fi
   fi
   if ((operands_ref > 0)); then
     operands_ref=$((operands_ref - 1))
@@ -1183,8 +1208,9 @@ function wrapper_operand_budget() {
 function shell_wrapper_payloads() {
   local -r command="$1" tokens="$2"
   local at_cmd=1 in_wrapper=0 saw_c=0 saw_s=0 saw_s_operand=0 operands=0
+  local offset token word next_at_cmd raw budget
   # shellcheck disable=SC2034 # written through prefix_chain_step's namerefs, which shellcheck cannot follow
-  local offset token word next_at_cmd raw budget chain='' chain_skip=0 chain_operands=0
+  local chain='' chain_skip=0 chain_operands=0
   local heredoc_seq=0 body_seq=0 pending='' leading_pending='' wanted=' ' expect_delim=0 len fd
   local expect_redir_target=0
   # A `<<` heredoc operator may carry a leading fd (`0<<`, `3<<-`), which is
