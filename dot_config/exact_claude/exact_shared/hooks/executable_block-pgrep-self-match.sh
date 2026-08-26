@@ -973,7 +973,10 @@ function wrapper_operand_budget() {
 #              then ends without an operand spending the budget -- an operand makes the body that
 #              script's stdin instead, unless a `-s` in a short flag cluster already said stdin IS
 #              the script, in which case the operands are its positional parameters and the body
-#              still runs here. Any other redirection in the same simple command (`bash <<EOF >
+#              still runs here -- and, once `-s` has taken an operand, so is a later `-c`, which is
+#              then just another positional word and starts no payload.
+#
+#              Any other redirection in the same simple command (`bash <<EOF >
 #              /tmp/log`, `bash <<EOF 2>&1`) is neither an operand nor a flag: it leaves both the
 #              budget and the pending heredoc alone.
 #
@@ -1002,7 +1005,8 @@ function wrapper_operand_budget() {
 # @stdout one payload per NUL, quotes stripped; nothing if there are none
 function shell_wrapper_payloads() {
   local -r command="$1" tokens="$2"
-  local at_cmd=1 in_wrapper=0 saw_c=0 saw_s=0 operands=0 offset token word next_at_cmd raw budget
+  local at_cmd=1 in_wrapper=0 saw_c=0 saw_s=0 saw_s_operand=0 operands=0
+  local offset token word next_at_cmd raw budget
   local heredoc_seq=0 body_seq=0 pending='' leading_pending='' wanted=' ' expect_delim=0 len fd
   local expect_redir_target=0
   # A `<<` heredoc operator may carry a leading fd (`0<<`, `3<<-`), which is
@@ -1012,13 +1016,15 @@ function shell_wrapper_payloads() {
   # evaluated unquoted in [[ =~ ]].
   local -r heredoc_re='^([0-9]*)<<([^<]|$)' bare_heredoc_re='^[0-9]*<<-?$'
   # Any other redirection: an optional fd, then `>`/`<`, `>>`/`<>`, or `&>`.
-  # Reached only after the heredoc branches above have continued, so a `<<`
-  # never lands here; the newline token `<NL>` does match and is excluded by
-  # name, since it is an operator that has to reach the flush below.
+  # Two other token shapes match it and must therefore stay ABOVE it: a `<<`
+  # heredoc operator, and a `<HD:5>` body marker -- both branches above
+  # `continue`, so neither ever reaches here. The newline token `<NL>` matches
+  # too and cannot be handled that way, since it is an operator that has to
+  # reach the flush below, so it is excluded by name.
   # `redir_bare_re` says the operator carries no attached target (`> f` rather
   # than `>f`), in which case the next token is the target and is not an
   # operand either.
-  local -r redir_re='^[0-9]*(\&?[\<\>]|[\<\>]{2})' redir_bare_re='^[0-9]*[\<\>\&\|]+$'
+  local -r redir_re='^[0-9]*(&?[<>]|[<>]{2})' redir_bare_re='^[0-9]*[<>&|]+$'
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
     word="${token##*/}"
@@ -1086,6 +1092,7 @@ function shell_wrapper_payloads() {
         in_wrapper=0
         saw_c=0
         saw_s=0
+        saw_s_operand=0
         pending=''
       elif ((saw_c == 1)) && [[ "${word}" != -* ]]; then
         raw="${command:offset:${#token}}"
@@ -1095,15 +1102,22 @@ function shell_wrapper_payloads() {
         in_wrapper=0
         saw_c=0
         saw_s=0
+        saw_s_operand=0
         pending=''
-      elif [[ "${word}" == -*c* && "${word}" != --* ]]; then
+      elif [[ "${word}" == -*c* && "${word}" != --* ]] && ((saw_s_operand == 0)); then
         # A short cluster, so `bash -lc '...'` counts as well as `bash -c '...'`.
+        # Once `-s` has taken an operand the wrapper's own option list is over:
+        # in `bash -s arg -c '...'` the `-c` and the string after it are $2 and
+        # $3 of the body, and nothing here runs that string.
         saw_c=1
       elif [[ "${word}" != -* ]]; then
         # An operand before any `-c`. Spend one from the budget, and once it is
         # gone the wrapper no longer owns the options that follow -- unless
         # `-s` already said stdin is the script, in which case no operand ever
         # displaces the body.
+        if ((saw_s == 1)); then
+          saw_s_operand=1
+        fi
         if ((operands > 0)); then
           operands=$((operands - 1))
         elif ((saw_s == 0)); then
@@ -1126,6 +1140,7 @@ function shell_wrapper_payloads() {
       in_wrapper=1
       saw_c=0
       saw_s=0
+      saw_s_operand=0
       operands="${budget}"
       pending="${leading_pending}"
       leading_pending=''
@@ -2072,8 +2087,10 @@ readonly -a SELF_TEST_CASES=(
   $'bash <<EOF 2>&1\npkill --full x\nEOF\tdeny:kill'
 
   # `-s` says stdin IS the script, so operands after it are that script's
-  # positional parameters ($1...) and the body still runs here.
+  # positional parameters ($1...) and the body still runs here. A `-c` AFTER
+  # such an operand is positional too -- nothing here runs the string.
   $'bash -s arg <<EOF\npkill --full x\nEOF\tdeny:kill'
+  $'bash -s arg -c "pkill --full x"\tallow'
   # ...but with no `-s` an operand still wins over a redirection: the body is
   # the script's stdin, not code the wrapper runs.
   $'bash <<EOF >/tmp/log script.sh\npkill --full x\nEOF\tallow'
@@ -2081,6 +2098,12 @@ readonly -a SELF_TEST_CASES=(
   # Two stdin heredocs before the wrapper word: bash applies the last, so the
   # body sliced must be B's, not A's.
   $'<<A <<B bash\nnote\nA\npkill --full x\nB\tdeny:kill'
+
+  # `<<''` is legal bash: the body ends at the first BLANK line. Left unmasked
+  # the body was scanned as code and the apostrophe in "it's" flipped quote
+  # parity, hiding the real pkill that follows it.
+  $'cat <<\'\'\nit\'s fine\n\npkill --full x\tdeny:kill'
+  $'cat <<\'\'\nit\'s fine\npkill --full x\n\necho done\tallow'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
@@ -2304,6 +2327,16 @@ function run_scanner_tests() {
   # because the trailing newline is the whole point and $() strips it.
   assert_equals 'a body at end of input still emits a zero-length marker' \
     $'10\t<HD:0>' "$(scan_command $'cat <<EOF\n' | grep '<HD:' || true)" \
+    || failures=$((failures + 1))
+  # A quoted EMPTY delimiter is legal bash -- the body runs to the first blank
+  # line -- so it is enqueued like any other and its body is masked. Skipping
+  # it left the body as code, where the apostrophe in "it's" flipped quote
+  # parity and hid the pkill after the blank line altogether.
+  assert_equals 'a quoted empty delimiter ends its body at a blank line' \
+    '1' "$(scan_command "$(printf "cat <<''\nit's fine\n\npkill --full x")" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  assert_equals 'a quoted empty delimiter masks its body until that blank line' \
+    '0' "$(scan_command "$(printf "cat <<''\nit's fine\npkill --full x\n\necho done")" | grep --count '\bpkill$' || true)" \
     || failures=$((failures + 1))
   # An unterminated quote ends the delimiter word at the newline. Read on past
   # it and the next line's bytes are glued onto the delimiter, so the real
