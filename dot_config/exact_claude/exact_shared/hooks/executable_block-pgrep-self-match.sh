@@ -2355,6 +2355,13 @@ readonly -a SELF_TEST_CASES=(
   $'nohup time -o /tmp/t pkill --full x\tdeny:kill'
   $'sudo -u bob time -o /tmp/t pkill --full x\tdeny:kill'
   $'FOO=1 time -o /tmp/t pkill --full x\tdeny:kill'
+  # `time` prefixes the FIRST command of a pipeline only, so past a `|` it is
+  # another word PATH resolves to GNU time -- `|&` included.
+  $'echo hi | time -o /tmp/t pkill --full x\tdeny:kill'
+  $'echo hi |& time -o /tmp/t pkill --full x\tdeny:kill'
+  $'echo hi | time -p pkill --full x\tdeny:kill'
+  $'echo hi | pkill --full x\tdeny:kill'
+  $'echo hi | sudo -u bob pkill --full x\tdeny:kill'
   # sudo's own synopsis lists eleven options that take a separate value; -R and
   # -T are as ordinary as -u and were missed by writing the table from memory.
   $'sudo -R /chroot pkill --full x\tdeny:kill'
