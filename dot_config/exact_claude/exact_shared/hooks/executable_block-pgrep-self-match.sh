@@ -2173,6 +2173,23 @@ function run_scanner_tests() {
   assert_equals 'byte offsets stay aligned across a heredoc body' \
     'a b' "$(pattern_probe "$(printf "cat <<'EOF'\nx\nEOF\npgrep --full \"a b\"")")" \
     || failures=$((failures + 1))
+  # A body line ending in a backslash is literal text, not a continuation:
+  # masking the backslash together with the newline it precedes would
+  # swallow the terminator's own newline and mask to end of input (#184
+  # fix round 1).
+  assert_equals 'a body line ending in a backslash does not swallow the terminator' \
+    '1' "$(scan_command "$(printf 'cat <<EOF\nfoo \\\nEOF\npkill --full x')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # An explicit grouping paren inside `$((...))` must nest its own arithmetic
+  # level, or its `)` pops the whole arithmetic early and a `<<` later in the
+  # expression reads as a heredoc operator.
+  # shellcheck disable=SC2016
+  assert_equals 'a parenthesised shift inside arithmetic is not a heredoc' \
+    '1' "$(scan_command "$(printf 'echo $(( (1) << 2 ))\npkill --full x')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  assert_equals 'a shift inside an arithmetic command is not a heredoc' \
+    '1' "$(scan_command "$(printf '(( x << 2 ))\npkill --full x')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
 
   # A guard that dies quietly is worse than no guard, so both missing-dependency
   # branches are exercised against a real end-to-end run of a copy of this script.
