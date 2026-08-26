@@ -1018,6 +1018,12 @@ function shell_wrapper_payloads() {
 # door. ERE, evaluated unquoted in [[ =~ ]] under LC_ALL=C.
 readonly TASK_OUTPUT_PATH_RE='claude-[0-9]+/[^[:space:]]*/tasks/[^[:space:]/]+\.output'
 
+# The repeat rule (Gap 3, 2026-08-26): the first read of a target is always
+# legitimate, the second is defensible, the third inside the window is a poll
+# loop with the model as the sleep. Per session, per target.
+readonly REPEAT_THRESHOLD=3
+readonly REPEAT_WINDOW_SECONDS=300
+
 # @description Find a while/until loop whose termination test reads a harness task-output file
 #              (Gap 2, 2026-08-26). The harness re-invokes the model when a task finishes, so a
 #              shell loop on that file only wastes the wait, and never exits if the task was
@@ -1072,6 +1078,146 @@ function task_poll_detected() {
     idx=$((idx + 1))
   done <<< "${tokens}"
   return 1
+}
+
+# @description The targets a command probes, one key per line, deduplicated in first-seen order:
+#              `task:<path>` for every harness task-output path in the raw command (quoted or
+#              not -- raw slices, as in task_poll_detected; the key starts at `claude-`, so a
+#              /tmp and a $TMPDIR spelling of one file share a key), and `pgrep:<operand>` for
+#              every pgrep in command position that has a pattern operand -- any pgrep, not only
+#              --full. pkill is a kill, not a probe. Wrapper payloads are not descended.
+# @arg $1 command the raw command string
+# @arg $2 tokens the token stream from scan_command
+# @stdout the keys, newline-terminated; nothing when there are none
+function probe_keys() {
+  local -r command="$1" tokens="$2"
+  local keys='' offset token raw key idx name args operand
+  if [[ "${command}" == *.output* ]]; then
+    while IFS=$'\t' read -r offset token; do
+      [[ -z "${token}" ]] && continue
+      raw="${command:offset:${#token}}"
+      [[ "${raw}" =~ ${TASK_OUTPUT_PATH_RE} ]] || continue
+      key="task:${BASH_REMATCH[0]}"
+      if [[ $'\n'"${keys}" != *$'\n'"${key}"$'\n'* ]]; then
+        keys+="${key}"$'\n'
+      fi
+    done <<< "${tokens}"
+  fi
+  if [[ "${command}" == *pgrep* ]]; then
+    while IFS=$'\t' read -r idx offset name; do
+      [[ -z "${idx}" || "${name}" != 'pgrep' ]] && continue
+      args="$(invocation_args "${tokens}" "${idx}")"
+      operand="$(pattern_operand "${command}" "${args}")"
+      [[ -z "${operand}" ]] && continue
+      key="pgrep:${operand}"
+      if [[ $'\n'"${keys}" != *$'\n'"${key}"$'\n'* ]]; then
+        keys+="${key}"$'\n'
+      fi
+    done <<< "$(find_invocations "${tokens}")"
+  fi
+  printf '%s' "${keys}"
+}
+
+# @description Build the deny reason for a repeat denial. Built here rather than in deny_message
+#              because it carries state (the count and the ages of the earlier probes).
+# @arg $1 key the probe key, `task:<path>` or `pgrep:<operand>`
+# @arg $2 count this probe's ordinal within the window
+# @arg $3 ages the earlier probes' ages, e.g. "42 s ago, 15 s ago"
+# @stdout the reason text
+function repeat_message() {
+  local -r key="$1" count="$2" ages="$3"
+  local preamble fixes
+  preamble="This is probe ${count} of \`${key}\` within ${REPEAT_WINDOW_SECONDS} s (earlier: ${ages}).
+Repeating a one-shot check by hand is a poll loop with the model as the \`sleep\`, and it hangs the
+session the same way. The limit is ${REPEAT_THRESHOLD} probes per target per ${REPEAT_WINDOW_SECONDS} s, per session."
+  case "${key}" in
+    task:*)
+      # shellcheck disable=SC2016
+      fixes='Two fixes, in order of preference:
+
+1. Stop here. The task notification names this path when the task finishes; Read it then.
+2. If the result is needed before you can reply, call `TaskOutput` with `block: true` on the task
+   id -- one call returns the output and the exit code.'
+      ;;
+    *)
+      # shellcheck disable=SC2016
+      fixes='Two fixes, in order of preference:
+
+1. Do not poll. If this is a background task, its notification re-invokes you when it finishes --
+   stop here, or call `TaskOutput` with `block: true` on the task id for the result now.
+2. For any other process, probe a PID, not a pattern: `kill -0 "$pid"` on a PID recorded when it
+   started (`$!`, a PID file), inside a loop with a `sleep`, not by hand.'
+      ;;
+  esac
+  printf '%s\n\n%s\n\n%s\n' "${WRITE_TOOL_LEAD}" "${preamble}" "${fixes}"
+}
+
+# @description The per-session repeat rule. State is one file per session,
+#              `<dir>/<session_id>`, of `<epoch>\t<key>` lines, where <dir> is
+#              BLOCK_PGREP_STATE_DIR, else $XDG_RUNTIME_DIR/block-pgrep-self-match, else the same
+#              under $TMPDIR or /tmp. It is read and rewritten only by commands that carry a key,
+#              entries older than the window (or unparsable) are dropped on every write, and a
+#              denied command is not recorded. This is the one stateful rule in the guard, so it
+#              fails open harder than the rest: every filesystem step is guarded, and any failure
+#              -- no dir, unreadable, not a regular file, unwritable -- returns silently (allow)
+#              without reaching the ERR trap.
+# @arg $1 session_id the session id, already validated as a plain file name
+# @arg $2 keys the probe keys from probe_keys
+# @stdout the deny reason when a key reaches the threshold; nothing otherwise
+# @exitcode 0 always
+function repeat_check() {
+  local -r session_id="$1" keys="$2"
+  local -r dir="${BLOCK_PGREP_STATE_DIR:-${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/block-pgrep-self-match}"
+  local -r file="${dir}/${session_id}"
+  local now
+  # shellcheck disable=SC2174 # -m only binds the deepest dir; the only
+  # intermediate ever missing here is a hand-set BLOCK_PGREP_STATE_DIR /
+  # TMPDIR, which the caller owns the mode of.
+  if ! mkdir --parents --mode=0700 "${dir}" 2> /dev/null; then return 0; fi
+  if ! printf -v now '%(%s)T' -1 2> /dev/null; then return 0; fi
+  if [[ -e "${file}" && ! -f "${file}" ]]; then return 0; fi
+
+  local kept='' epoch key
+  if [[ -f "${file}" ]]; then
+    if [[ ! -r "${file}" ]]; then return 0; fi
+    # `|| [[ -n ... ]]` keeps a final line that lacks a trailing newline.
+    while IFS=$'\t' read -r epoch key || [[ -n "${epoch}" ]]; do
+      [[ "${epoch}" =~ ^[0-9]{1,12}$ && -n "${key}" ]] || continue
+      ((epoch <= now && now - epoch <= REPEAT_WINDOW_SECONDS)) || continue
+      kept+="${epoch}"$'\t'"${key}"$'\n'
+    done < "${file}"
+  fi
+
+  local probe_key count ages
+  while IFS= read -r probe_key; do
+    [[ -z "${probe_key}" ]] && continue
+    count=0
+    ages=''
+    while IFS=$'\t' read -r epoch key; do
+      [[ -z "${epoch}" || "${key}" != "${probe_key}" ]] && continue
+      count=$((count + 1))
+      ages+="$((now - epoch)) s ago, "
+    done <<< "${kept}"
+    if ((count >= REPEAT_THRESHOLD - 1)); then
+      repeat_message "${probe_key}" "$((count + 1))" "${ages%, }"
+      return 0
+    fi
+    kept+="${now}"$'\t'"${probe_key}"$'\n'
+  done <<< "${keys}"
+
+  local -r tmp="${file}.$$"
+  if [[ -z "${kept}" ]]; then
+    rm -f "${file}" 2> /dev/null
+    return 0
+  fi
+  if ! printf '%s' "${kept}" > "${tmp}" 2> /dev/null; then
+    rm -f "${tmp}" 2> /dev/null
+    return 0
+  fi
+  if ! mv -f "${tmp}" "${file}" 2> /dev/null; then
+    rm -f "${tmp}" 2> /dev/null
+  fi
+  return 0
 }
 
 # @description Classify a Bash command string.
@@ -1218,10 +1364,12 @@ function main() {
   # `\t`, `\n`, `\r`) as a single left-to-right pass, which is what makes it
   # safe: every backslash jq emits is already paired, so there is no separate
   # unescape step that could reinterpret a decoded literal backslash.
+  # session_id rides along in the same @tsv record.
   local tsv_line
-  tsv_line="$(jq --raw-output '[(.tool_name // ""), (.tool_input.command // "")] | @tsv' <<< "${input}")"
-  local tool_name command_escaped
-  IFS=$'\t' read -r tool_name command_escaped <<< "${tsv_line}"
+  tsv_line="$(jq --raw-output \
+    '[(.tool_name // ""), (.tool_input.command // ""), (.session_id // "")] | @tsv' <<< "${input}")"
+  local tool_name command_escaped session_id
+  IFS=$'\t' read -r tool_name command_escaped session_id <<< "${tsv_line}"
   if [[ "${tool_name}" != 'Bash' ]]; then
     emit_allow
     return 0
@@ -1230,12 +1378,33 @@ function main() {
   local command
   command="$(printf '%b' "${command_escaped}")"
 
-  local decision deny_tool
-  IFS=$'\t' read -r decision deny_tool <<< "$(classify_command "${command}")"
+  local decision deny_detail
+  IFS=$'\t' read -r decision deny_detail <<< "$(classify_command "${command}")"
+  if [[ "${decision}" == deny:* ]]; then
+    emit_deny "$(deny_message "${decision#deny:}" "${deny_detail}")"
+    return 0
+  fi
+
+  # The stateful tier runs only after the stateless tiers have allowed (or
+  # warned), only for commands that can carry a probe key, and only with a
+  # session id that is a plain file name -- no id, no rule, never a global
+  # fallback that would leak across concurrent sessions. It costs a second
+  # scanner pass on those commands and nothing on any other.
+  local repeat_reason=''
+  if [[ "${session_id}" =~ ^[A-Za-z0-9._-]+$ && "${session_id}" != '.' && "${session_id}" != '..' ]] \
+    && [[ "${command}" == *pgrep* || "${command}" == *.output* ]]; then
+    local keys
+    keys="$(probe_keys "${command}" "$(scan_command "${command}")")" || keys=''
+    if [[ -n "${keys}" ]]; then
+      repeat_reason="$(repeat_check "${session_id}" "${keys}")" || repeat_reason=''
+    fi
+  fi
+  if [[ -n "${repeat_reason}" ]]; then
+    emit_deny "${repeat_reason}"
+    return 0
+  fi
+
   case "${decision}" in
-    deny:*)
-      emit_deny "$(deny_message "${decision#deny:}" "${deny_tool}")"
-      ;;
     warn)
       emit_warn "${WARN_MESSAGE}"
       ;;
@@ -2096,6 +2265,179 @@ function run_deny_sweep() {
   ((failures == 0))
 }
 
+# @description Self-test helper: run main with (or without) a session id and print the
+#              decision and the reason, tab-separated. The reason comes back @tsv-escaped, so
+#              a needle must not span a newline.
+# @arg $1 session_id the session id, or empty to omit the field
+# @arg $2 command the command string
+# @stdout "<allow|deny|none>\t<reason>"
+function repeat_probe() {
+  local -r session_id="$1" command="$2"
+  local json out
+  if [[ -n "${session_id}" ]]; then
+    json="$(jq --null-input --arg sid "${session_id}" --arg cmd "${command}" \
+      '{session_id: $sid, tool_name: "Bash", tool_input: {command: $cmd}}')"
+  else
+    json="$(jq --null-input --arg cmd "${command}" '{tool_name: "Bash", tool_input: {command: $cmd}}')"
+  fi
+  out="$(main <<< "${json}")"
+  jq --raw-output '[(.hookSpecificOutput.permissionDecision // "none"),
+    (.hookSpecificOutput.permissionDecisionReason // "")] | @tsv' <<< "${out}"
+}
+
+# @description Self-test helper: assert a probe's decision.
+# @arg $1 label description
+# @arg $2 expected allow, deny, or none
+# @arg $3 session_id the session id, or empty
+# @arg $4 command the command string
+# @arg $5 reason_var name of a caller variable that receives the reason (optional)
+# @exitcode 0 match
+# @exitcode 1 mismatch
+function assert_probe() {
+  local -r label="$1" expected="$2" session_id="$3" command="$4"
+  # Named got_* so the nameref below cannot bind to a same-named local when
+  # the caller passes a variable called `reason`.
+  local got_decision got_reason
+  IFS=$'\t' read -r got_decision got_reason <<< "$(repeat_probe "${session_id}" "${command}")"
+  if [[ -n "${5:-}" ]]; then
+    local -n reason_out="$5"
+    # shellcheck disable=SC2034 # write-only output param
+    reason_out="${got_reason}"
+  fi
+  assert_equals "${label}" "${expected}" "${got_decision}"
+}
+
+# @description The per-session repeat rule, end to end through main, against a throwaway
+#              state dir. Cases 9 and 10 run first, while the dir is still empty, so "no file
+#              was created" is provable.
+# @noargs
+# @exitcode 0 all assertions held
+# @exitcode 1 at least one failed
+function run_repeat_tests() {
+  if ! command -v jq > /dev/null 2>&1; then
+    printf 'FAIL(repeat): jq missing; repeat cases not run\n' >&2
+    return 1
+  fi
+  local failures=0
+  local state_dir
+  state_dir="$(mktemp --directory "${TMPDIR:-/tmp}/block-pgrep-self-test.XXXXXX")"
+  export BLOCK_PGREP_STATE_DIR="${state_dir}"
+  local -r base='/tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks'
+  local -r p="${base}/bcuxbdgc5.output"
+  local -r p_key="task:${p#/tmp/}"
+  local reason needle i expected now
+
+  # 9: no session id -> the rule is skipped entirely and leaves no state.
+  for i in 1 2 3; do
+    assert_probe "repeat: no session id, probe ${i}" 'none' '' "cat ${p}" || failures=$((failures + 1))
+  done
+  if [[ -n "$(ls -A "${state_dir}")" ]]; then
+    printf 'FAIL(repeat): state written without a session id\n' >&2
+    failures=$((failures + 1))
+  fi
+  # 10: a session id that is not a plain file name is rejected, not joined.
+  assert_probe 'repeat: traversal session id' 'none' '../escape' "cat ${p}" || failures=$((failures + 1))
+  assert_probe 'repeat: slash session id' 'none' 'a/b' "cat ${p}" || failures=$((failures + 1))
+  if [[ -e "${state_dir}/../escape" || -n "$(ls -A "${state_dir}")" ]]; then
+    printf 'FAIL(repeat): state written for an invalid session id\n' >&2
+    failures=$((failures + 1))
+  fi
+
+  # 1 + 2: the same path three times denies the third, and the fourth.
+  for i in 1 2 3 4; do
+    expected='none'
+    ((i >= 3)) && expected='deny'
+    assert_probe "repeat: same path probe ${i}" "${expected}" 's1' "cat ${p}" reason \
+      || failures=$((failures + 1))
+  done
+  for needle in 'probe 3' "${REPEAT_WINDOW_SECONDS} s" 'TaskOutput' 'block: true' "${p_key}" \
+    'If this command WRITES'; do
+    if [[ "${reason}" != *"${needle}"* ]]; then
+      printf 'FAIL(repeat): task reason lacks %s\n  text: %.160s\n' "${needle}" "${reason}" >&2
+      failures=$((failures + 1))
+    fi
+  done
+
+  # 3: three different task files are three first reads.
+  assert_probe 'repeat: different path 1' 'none' 's3' "cat ${base}/a1.output" || failures=$((failures + 1))
+  assert_probe 'repeat: different path 2' 'none' 's3' "cat ${base}/a2.output" || failures=$((failures + 1))
+  assert_probe 'repeat: different path 3' 'none' 's3' "cat ${base}/a3.output" || failures=$((failures + 1))
+
+  # 4: sessions do not share state.
+  for i in a b c; do
+    assert_probe "repeat: session s4${i}" 'none' "s4${i}" "cat ${p}" || failures=$((failures + 1))
+  done
+
+  # 5: entries older than the window are pruned before counting.
+  printf -v now '%(%s)T' -1
+  printf '%s\t%s\n%s\t%s\n' "$((now - 400))" "${p_key}" "$((now - 400))" "${p_key}" > "${state_dir}/s5"
+  assert_probe 'repeat: stale entries pruned' 'none' 's5' "cat ${p}" || failures=$((failures + 1))
+  assert_equals 'repeat: stale file rewritten to one line' '1' "$(wc --lines < "${state_dir}/s5")" \
+    || failures=$((failures + 1))
+
+  # 6: a corrupt file allows and is healed to only the fresh line.
+  printf 'garbage\n\tno-epoch\n12x\ttask:foo\n' > "${state_dir}/s6"
+  assert_probe 'repeat: corrupt state allows' 'none' 's6' "cat ${p}" || failures=$((failures + 1))
+  if [[ ! "$(cat "${state_dir}/s6")" =~ ^[0-9]+$'\t'"${p_key}"$ ]]; then
+    printf 'FAIL(repeat): corrupt state not healed: %s\n' "$(cat "${state_dir}/s6" | tr '\n' '|')" >&2
+    failures=$((failures + 1))
+  fi
+
+  # 7: a state "file" that is a directory allows every time.
+  mkdir "${state_dir}/s7"
+  for i in 1 2 3; do
+    assert_probe "repeat: unreadable state, probe ${i}" 'none' 's7' "cat ${p}" || failures=$((failures + 1))
+  done
+
+  # 8: an unwritable state dir allows every time. Root ignores mode bits, so
+  # the case is reported as skipped there rather than failed.
+  chmod 500 "${state_dir}"
+  if [[ -w "${state_dir}" ]] && touch "${state_dir}/.probe" 2> /dev/null; then
+    rm -f "${state_dir}/.probe"
+    printf 'note(repeat): unwritable-dir case skipped (running as root)\n' >&2
+  else
+    for i in 1 2 3; do
+      assert_probe "repeat: unwritable dir, probe ${i}" 'none' 's8' "cat ${p}" || failures=$((failures + 1))
+    done
+  fi
+  chmod 700 "${state_dir}"
+
+  # 11: a pgrep operand is a probe key too; the reason names the PID probe.
+  assert_probe 'repeat: pgrep probe 1' 'none' 's11' 'pgrep -f java' || failures=$((failures + 1))
+  assert_probe 'repeat: pgrep probe 2' 'none' 's11' 'pgrep -f java' || failures=$((failures + 1))
+  assert_probe 'repeat: pgrep probe 3' 'deny' 's11' 'pgrep -f java' reason || failures=$((failures + 1))
+  for needle in 'kill -0' 'pgrep:java' 'TaskOutput'; do
+    if [[ "${reason}" != *"${needle}"* ]]; then
+      printf 'FAIL(repeat): pgrep reason lacks %s\n  text: %.160s\n' "${needle}" "${reason}" >&2
+      failures=$((failures + 1))
+    fi
+  done
+
+  # 12: a warn-tier command is still a probe; warn plus repeat is a deny.
+  assert_probe 'repeat: warn probe 1' 'allow' 's12' 'pgrep --full x | wc -l' || failures=$((failures + 1))
+  assert_probe 'repeat: warn probe 2' 'allow' 's12' 'pgrep --full x | wc -l' || failures=$((failures + 1))
+  assert_probe 'repeat: warn probe 3' 'deny' 's12' 'pgrep --full x | wc -l' || failures=$((failures + 1))
+
+  # 13: a stateless deny is never recorded.
+  for i in 1 2 3; do
+    assert_probe "repeat: kill deny ${i}" 'deny' 's13' 'pkill --full java' || failures=$((failures + 1))
+  done
+  if [[ -e "${state_dir}/s13" ]]; then
+    printf 'FAIL(repeat): stateless deny was recorded\n' >&2
+    failures=$((failures + 1))
+  fi
+
+  # 14: two probes of one key in one command collapse to one entry.
+  assert_probe 'repeat: duplicate keys in one command' 'none' 's14' 'pgrep -f java; pgrep -f java' \
+    || failures=$((failures + 1))
+  assert_equals 'repeat: one entry for duplicate keys' '1' "$(wc --lines < "${state_dir}/s14")" \
+    || failures=$((failures + 1))
+
+  unset BLOCK_PGREP_STATE_DIR
+  rm -rf "${state_dir}"
+  ((failures == 0))
+}
+
 # @description Run the built-in case table.
 # @noargs
 # @exitcode 0 all cases matched
@@ -2109,6 +2451,9 @@ function run_self_test() {
     failures=$((failures + 1))
   fi
   if ! run_deny_sweep; then
+    failures=$((failures + 1))
+  fi
+  if ! run_repeat_tests; then
     failures=$((failures + 1))
   fi
   local case_line expected actual command
@@ -2129,7 +2474,7 @@ function run_self_test() {
     printf '%d self-test failure(s)\n' "${failures}" >&2
     return 1
   fi
-  printf 'all %d self-test cases, %d message cases, and the deny sweep passed\n' \
+  printf 'all %d self-test cases, %d message cases, the deny sweep, and the repeat suite passed\n' \
     "${#SELF_TEST_CASES[@]}" "${#MESSAGE_TEST_CASES[@]}"
 }
 
