@@ -807,13 +807,20 @@ process command line and is always found. The result is therefore inflated by on
 of 0 does not mean the target process is running. Add `--ignore-ancestors` if the count or the exit
 status is being used for anything.'
 
+# Every deny leads with the escape hatch for the one legitimate reason to put a
+# denied shape in a Bash command: writing prose that quotes it. It used to
+# trail the fixes, where it was read last or not at all.
+# shellcheck disable=SC2016
+readonly WRITE_TOOL_LEAD='If this command WRITES text that contains such an example (a heredoc, `echo`, or `printf` into
+a file) rather than running one, use the Write tool instead; this guard only inspects Bash commands.'
+
 # @description Build the deny reason for a deny kind.
 # @arg $1 kind loop or kill
-# @arg $2 tool the tool of the denying invocation, pgrep or pkill; defaults to pgrep
-# @stdout the reason text
+# @arg $2 detail for kill, the tool of the denying invocation (pgrep or pkill; defaults to pgrep)
+# @stdout the reason text: the Write-tool lead, a preamble, and a fixes list
 function deny_message() {
   local -r kind="$1"
-  local -r tool="${2:-pgrep}"
+  local -r detail="${2:-pgrep}"
   local preamble fixes
 
   case "${kind}" in
@@ -821,50 +828,47 @@ function deny_message() {
       # shellcheck disable=SC2016
       preamble='This loop can never exit. The Bash tool runs commands as `bash -c ...`, so the search
 pattern is by construction part of an ancestor process command line. `pgrep --full` matches that
-ancestor, the loop always sees a live process, and it spins until something kills it.'
+ancestor, the loop always sees a live process, and it spins until something kills it.
+
+`--ignore-ancestors` does not rescue a loop. It excludes ANCESTORS only: a second waiter for the
+same event -- a sibling background shell whose command line carries the same literal -- is matched
+by the first, and the first by the second, and both spin until killed. Never write two waiters for
+one event.'
+      # shellcheck disable=SC2016
+      fixes='Two fixes, in order of preference:
+
+1. Do not poll. A background task re-invokes you with a task notification when it finishes: stop
+   here and Read the output path it names. If the result is needed before you can reply, call
+   `TaskOutput` with `block: true` on the task id -- one call returns the output and the exit
+   code. Polling is the root cause; this loop is a symptom.
+2. Poll a PID, not a pattern: `while kill -0 "$pid" 2>/dev/null; do sleep 5; done`, with `$pid`
+   recorded when the process was started (`$!`, a PID file). A PID cannot match a sibling.'
       ;;
     kill)
       # shellcheck disable=SC2016
       preamble='This matches the invoking shell itself. The Bash tool runs commands as `bash -c ...`,
 so the search pattern is part of an ancestor process command line, and killing that match terminates
 the session shell.'
-      ;;
-    *)
-      preamble='This pgrep matches its own ancestor process.'
-      ;;
-  esac
-
-  if [[ "${kind}" == 'kill' ]]; then
-    # Kill denials get targeting advice, not anti-polling advice, and the
-    # examples name the tool that was actually invoked (#152).
-    # shellcheck disable=SC2016
-    fixes='Three fixes, in order of preference:
+      # Kill denials get targeting advice, not anti-polling advice, and the
+      # examples name the tool that was actually invoked (#152).
+      # shellcheck disable=SC2016
+      fixes='Three fixes, in order of preference:
 
 1. Kill by PID, not by pattern. Use a PID recorded when the process was started (`kill "$pid"`, a
    PID file), or probe liveness first with `kill -0 "$pid"`. Pattern-matching kills are the root
    cause; the self-match is a symptom.
 2. `__TOOL__ --ignore-ancestors --full <pattern>` excludes the `bash -c` ancestor.
 3. `__TOOL__ --full "[p]attern"` hides the needle from its own regex, but only when the bare literal
-   appears NOWHERE ELSE in the same command. A second copy in the same call silently defeats it.
+   appears NOWHERE ELSE in the same command. A second copy in the same call silently defeats it.'
+      fixes="${fixes//__TOOL__/${detail}}"
+      ;;
+    *)
+      preamble='This pgrep matches its own ancestor process.'
+      fixes=''
+      ;;
+  esac
 
-If this command writes text that CONTAINS such an example rather than running one, use the Write tool
-instead of a heredoc; this guard only inspects Bash commands.'
-    fixes="${fixes//__TOOL__/${tool}}"
-  else
-    # shellcheck disable=SC2016
-    fixes='Three fixes, in order of preference:
-
-1. Do not poll. Use `kill -0 "$pid"`, a PID file, or let the background task notification wake you --
-   completion re-invokes the model automatically. Polling is the root cause; this is a symptom.
-2. `pgrep --ignore-ancestors --full <pattern>` excludes the `bash -c` ancestor.
-3. `pgrep --full "[p]attern"` hides the needle from its own regex, but only when the bare literal
-   appears NOWHERE ELSE in the same command. A second copy in the same call silently defeats it.
-
-If this command writes text that CONTAINS such an example rather than running one, use the Write tool
-instead of a heredoc; this guard only inspects Bash commands.'
-  fi
-
-  printf '%s\n\n%s\n' "${preamble}" "${fixes}"
+  printf '%s\n\n%s\n\n%s\n' "${WRITE_TOOL_LEAD}" "${preamble}" "${fixes}"
 }
 
 # Wrappers that run their `-c` payload as code ON THIS MACHINE, in this process
@@ -1020,10 +1024,18 @@ function classify_command() {
     [[ -z "${idx}" ]] && continue
     args="$(invocation_args "${tokens}" "${idx}")"
     has_flag "${args}" '--full' 'f' || continue
-    has_flag "${args}" '--ignore-ancestors' 'A' && continue
+    # `--ignore-ancestors` used to exempt an invocation outright. It excludes
+    # ANCESTORS only: a sibling waiter whose command line carries the same
+    # literal is still matched, so two waiters for one event deadlock each
+    # other (Gap 1, 2026-08-26). It therefore still clears a kill -- the
+    # session shell is an ancestor -- and still fixes an inflated count, but
+    # it never clears a loop.
+    local ignores_ancestors=0
+    has_flag "${args}" '--ignore-ancestors' 'A' && ignores_ancestors=1
     operand="$(pattern_operand "${command}" "${args}")"
     bracket_mitigation_holds "${command}" "${operand}" && continue
     if [[ "${name}" == 'pkill' ]] || feeds_a_kill CMD_TOKENS "${idx}"; then
+      ((ignores_ancestors == 1)) && continue
       printf 'deny:kill\t%s\n' "${name}"
       return 0
     fi
@@ -1041,6 +1053,7 @@ function classify_command() {
         fi
         ;;
     esac
+    ((ignores_ancestors == 1)) && continue
     result_is_consumed CMD_TOKENS "${idx}" "${args}" "${command}" "${tokens}" && verdict='warn'
   done <<< "$(find_invocations "${tokens}")"
 
@@ -1145,8 +1158,8 @@ readonly -a SELF_TEST_CASES=(
   $'until ! pgrep --full "unittest discover" > /dev/null 2>&1; do sleep 5; done\tdeny:loop'
   $'while pgrep -f build >/dev/null; do sleep 2; done\tdeny:loop'
   $'while true; do pgrep --full x >/dev/null || break; sleep 5; done\tdeny:loop'
-  $'until ! pgrep --ignore-ancestors --full x; do sleep 5; done\tallow'
-  $'until ! pgrep -Af x; do sleep 5; done\tallow'
+  $'until ! pgrep --ignore-ancestors --full x; do sleep 5; done\tdeny:loop'
+  $'until ! pgrep -Af x; do sleep 5; done\tdeny:loop'
   $'until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tallow'
   $'echo "unittest discover"; until ! pgrep --full "[u]nittest discover"; do sleep 5; done\tdeny:loop'
   $'pkill --full "unittest discover"\tdeny:kill'
@@ -1487,9 +1500,21 @@ readonly -a SELF_TEST_CASES=(
   $'until ! pgrep --full "${PAT}"; do sleep 5; done\tdeny:loop'
   $'pkill --full "$PAT"\tdeny:kill'
   $'kill $(pgrep --full "$PAT")\tdeny:kill'
-  # The remedy the deny message names has to work on this shape too, or the
-  # deny is a dead end rather than a conservative default.
-  $'until ! pgrep --ignore-ancestors --full "$PAT"; do sleep 5; done\tallow'
+  # `--ignore-ancestors` does not rescue this shape either: it excludes
+  # ancestors only, and a sibling waiter carrying the same literal still
+  # matches. The remedy the deny names is a PID probe (`kill -0`), which
+  # needs no pattern at all, so the runtime-operand loop stays denied.
+  $'until ! pgrep --ignore-ancestors --full "$PAT"; do sleep 5; done\tdeny:loop'
+
+  # Gap 1 (2026-08-26): the incident shape -- two sibling waiters written to
+  # the old advice matched each other and spun for an hour. `-A` therefore
+  # never clears a loop, in cond or in a terminated body; it still clears a
+  # kill and still silences the inflated-count warn.
+  $'until ! pgrep -f judge_resolves.py --ignore-ancestors >/dev/null 2>&1; do sleep 30; done\tdeny:loop'
+  $'while true; do pgrep -A -f x >/dev/null || break; sleep 5; done\tdeny:loop'
+  $'pgrep -A -f x | wc -l\tallow'
+  $'while [ -n "$p" ]; do p=$(pgrep -A --full x); sleep 5; done\tallow'
+  $'sudo pgrep --ignore-ancestors --full x | xargs kill\tallow'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
@@ -1509,7 +1534,16 @@ readonly -a MESSAGE_TEST_CASES=(
   $'pgrep --full x | xargs kill\treason\tcontains\tKill by PID, not by pattern'
   # Loop denial: anti-polling advice stays, and a mitigation is named.
   $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\tDo not poll'
-  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\t--ignore-ancestors'
+  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\tkill -0'
+  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\tTaskOutput'
+  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\tblock: true'
+  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\tNever write two'
+  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tlacks\tpgrep --ignore-ancestors --full'
+  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tlacks\texcludes the `bash -c` ancestor'
+  $'until ! pgrep -f judge_resolves.py --ignore-ancestors >/dev/null 2>&1; do sleep 30; done\treason\tcontains\tNever write two'
+  # The Write-tool escape hatch leads every deny (it used to trail).
+  $'pkill --full java\treason\tcontains\tIf this command WRITES'
+  $'while pgrep --full x > /dev/null; do sleep 5; done\treason\tcontains\tIf this command WRITES'
   # Warn: the inflated-count explanation reaches additionalContext.
   $'pgrep --full x | wc -l\tcontext\tcontains\tinflated by one'
   # Decision wiring (#158): the emitted permissionDecision per tier. Without
@@ -1875,12 +1909,13 @@ function run_message_tests() {
 }
 
 # @description Sweep every deny-expected SELF_TEST_CASES row through main and
-#              assert the --ignore-ancestors mitigation is named in each
-#              permissionDecisionReason (#158). MESSAGE_TEST_CASES pins the
-#              full copy for representative commands; this guards the
+#              assert that its permissionDecisionReason names the mitigation
+#              for ITS kind -- not a single fixed needle, since a loop deny no
+#              longer names --ignore-ancestors (#158, Gap 1). MESSAGE_TEST_CASES
+#              pins the full copy for representative commands; this guards the
 #              mitigation invariant across the whole deny surface.
 # @noargs
-# @exitcode 0 every deny reason names the mitigation
+# @exitcode 0 every deny reason names its kind's mitigation
 # @exitcode 1 at least one deny reason omits it
 function run_deny_sweep() {
   if ! command -v jq > /dev/null 2>&1; then
@@ -1888,7 +1923,7 @@ function run_deny_sweep() {
     return 1
   fi
   local failures=0
-  local case_line command expected json out reason
+  local case_line command expected json out reason needle
   for case_line in "${SELF_TEST_CASES[@]}"; do
     command="${case_line%%$'\t'*}"
     expected="${case_line##*$'\t'}"
@@ -1898,9 +1933,22 @@ function run_deny_sweep() {
     json="$(jq --null-input --arg cmd "${command}" '{tool_name: "Bash", tool_input: {command: $cmd}}')"
     out="$(main <<< "${json}")"
     reason="$(jq --raw-output '.hookSpecificOutput.permissionDecisionReason // ""' <<< "${out}")"
-    if [[ "${reason}" != *'--ignore-ancestors'* ]]; then
-      printf 'FAIL(sweep): deny reason lacks --ignore-ancestors: %s\n  text: %.120s\n' \
-        "${command//$'\n'/\\n}" "${reason}" >&2
+    # The mitigation each kind must name. A loop reason deliberately no longer
+    # names --ignore-ancestors (it does not fix a loop; see Gap 1).
+    case "${expected#deny:}" in
+      kill) needle='--ignore-ancestors' ;;
+      loop) needle='kill -0' ;;
+      *) needle='' ;;
+    esac
+    if [[ -z "${needle}" ]]; then
+      printf 'FAIL(sweep): no mitigation needle for kind %s: %s\n' \
+        "${expected#deny:}" "${command//$'\n'/\\n}" >&2
+      failures=$((failures + 1))
+      continue
+    fi
+    if [[ "${reason}" != *"${needle}"* ]]; then
+      printf 'FAIL(sweep): deny reason lacks %s: %s\n  text: %.120s\n' \
+        "${needle}" "${command//$'\n'/\\n}" "${reason}" >&2
       failures=$((failures + 1))
     fi
   done
