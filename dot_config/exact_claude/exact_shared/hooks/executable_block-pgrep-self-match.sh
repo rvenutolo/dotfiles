@@ -2341,6 +2341,14 @@ readonly -a SELF_TEST_CASES=(
   $'time -o /tmp/t pkill --full x\tallow'
   $'/usr/bin/time -o /tmp/t pkill --full x\tdeny:kill'
   $'time -p pkill --full x\tdeny:kill'
+  # ...and the reserved word wins only as the very first word of the command.
+  # Behind any prefix, or behind an assignment, `time` is a word the prefix
+  # execs, which is GNU time and does understand -o.
+  $'env time -o /tmp/t pkill --full x\tdeny:kill'
+  $'command time -o /tmp/t pkill --full x\tdeny:kill'
+  $'nohup time -o /tmp/t pkill --full x\tdeny:kill'
+  $'sudo -u bob time -o /tmp/t pkill --full x\tdeny:kill'
+  $'FOO=1 time -o /tmp/t pkill --full x\tdeny:kill'
   # sudo's own synopsis lists eleven options that take a separate value; -R and
   # -T are as ordinary as -u and were missed by writing the table from memory.
   $'sudo -R /chroot pkill --full x\tdeny:kill'
