@@ -971,7 +971,13 @@ function wrapper_operand_budget() {
 #              not the one the wrapper reads its script from. A heredoc counts when its operator is
 #              seen in the wrapper's simple command with no `-c` before it and the simple command
 #              then ends without an operand spending the budget -- an operand makes the body that
-#              script's stdin instead. A redirection may precede the command word it attaches to
+#              script's stdin instead, unless a `-s` in a short flag cluster already said stdin IS
+#              the script, in which case the operands are its positional parameters and the body
+#              still runs here. Any other redirection in the same simple command (`bash <<EOF >
+#              /tmp/log`, `bash <<EOF 2>&1`) is neither an operand nor a flag: it leaves both the
+#              budget and the pending heredoc alone.
+#
+#              A redirection may precede the command word it attaches to
 #              (`<<EOF bash`, `sudo <<EOF bash`), so a stdin heredoc seen while still hunting for
 #              the command word is remembered and, once that word turns out to be a wrapper,
 #              counted as its payload exactly as one written after the word would be. Both
@@ -991,14 +997,23 @@ function wrapper_operand_budget() {
 # @stdout one payload per NUL, quotes stripped; nothing if there are none
 function shell_wrapper_payloads() {
   local -r command="$1" tokens="$2"
-  local at_cmd=1 in_wrapper=0 saw_c=0 operands=0 offset token word next_at_cmd raw budget
+  local at_cmd=1 in_wrapper=0 saw_c=0 saw_s=0 operands=0 offset token word next_at_cmd raw budget
   local heredoc_seq=0 body_seq=0 pending='' leading_pending='' wanted=' ' expect_delim=0 len fd
+  local expect_redir_target=0
   # A `<<` heredoc operator may carry a leading fd (`0<<`, `3<<-`), which is
   # ordinary redirection syntax; only fd 0 (empty or explicit `0`) feeds the
   # wrapper's stdin. `<<<` (and an fd-prefixed `0<<<`) is a here-string, not a
   # heredoc, so the next byte after `<<` must not itself be `<`. ERE,
   # evaluated unquoted in [[ =~ ]].
   local -r heredoc_re='^([0-9]*)<<([^<]|$)' bare_heredoc_re='^[0-9]*<<-?$'
+  # Any other redirection: an optional fd, then `>`/`<`, `>>`/`<>`, or `&>`.
+  # Reached only after the heredoc branches above have continued, so a `<<`
+  # never lands here; the newline token `<NL>` does match and is excluded by
+  # name, since it is an operator that has to reach the flush below.
+  # `redir_bare_re` says the operator carries no attached target (`> f` rather
+  # than `>f`), in which case the next token is the target and is not an
+  # operand either.
+  local -r redir_re='^[0-9]*(\&?[\<\>]|[\<\>]{2})' redir_bare_re='^[0-9]*[\<\>\&\|]+$'
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
     word="${token##*/}"
@@ -1037,11 +1052,35 @@ function shell_wrapper_payloads() {
       continue
     fi
 
+    # An ordinary redirection on the wrapper's own simple command (`bash <<EOF
+    # > /tmp/log`, `bash <<EOF 2>&1`) is neither an operand nor a flag: it
+    # neither spends the budget nor ends the wrapper, so a heredoc already
+    # pending stays pending. Left to the operand branch below it exhausted a
+    # zero budget and dropped the payload, and bash ran the body unclassified.
+    if ((expect_redir_target == 1)); then
+      # The tokenizer splits `2>&1` into `2>`, `&`, `1`, so the token after a
+      # bare operator can be an operator rather than the target. It ends the
+      # simple command and must reach the flush below like any other.
+      expect_redir_target=0
+      is_operator "${token}" || continue
+    fi
+    if [[ "${token}" != '<NL>' && "${token}" =~ ${redir_re} ]]; then
+      [[ "${token}" =~ ${redir_bare_re} ]] && expect_redir_target=1
+      continue
+    fi
+
     if ((in_wrapper == 1)); then
+      # `-s` in a short cluster says stdin IS the script, so the operands after
+      # it are that script's positional parameters ($1...) rather than a script
+      # to run in the body's place.
+      if [[ "${word}" == -*s* && "${word}" != --* ]]; then
+        saw_s=1
+      fi
       if is_operator "${token}"; then
         [[ -n "${pending}" ]] && wanted+="${pending} "
         in_wrapper=0
         saw_c=0
+        saw_s=0
         pending=''
       elif ((saw_c == 1)) && [[ "${word}" != -* ]]; then
         raw="${command:offset:${#token}}"
@@ -1050,16 +1089,19 @@ function shell_wrapper_payloads() {
         fi
         in_wrapper=0
         saw_c=0
+        saw_s=0
         pending=''
       elif [[ "${word}" == -*c* && "${word}" != --* ]]; then
         # A short cluster, so `bash -lc '...'` counts as well as `bash -c '...'`.
         saw_c=1
       elif [[ "${word}" != -* ]]; then
         # An operand before any `-c`. Spend one from the budget, and once it is
-        # gone the wrapper no longer owns the options that follow.
+        # gone the wrapper no longer owns the options that follow -- unless
+        # `-s` already said stdin is the script, in which case no operand ever
+        # displaces the body.
         if ((operands > 0)); then
           operands=$((operands - 1))
-        else
+        elif ((saw_s == 0)); then
           in_wrapper=0
           saw_c=0
           pending=''
@@ -1078,6 +1120,7 @@ function shell_wrapper_payloads() {
     if ((at_cmd == 1)) && budget="$(wrapper_operand_budget "${word}")"; then
       in_wrapper=1
       saw_c=0
+      saw_s=0
       operands="${budget}"
       pending="${leading_pending}"
       leading_pending=''
