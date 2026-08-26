@@ -39,6 +39,8 @@
   - **Test bug** (assertion was wrong) → fix the test. Should be rare if tests are derived from the spec.
 - Default heavily toward the "genuine bug" interpretation. The whole point of spec-driven tests is to surface real defects in shipped code.
 - Separate `fix:` commits from the `test:` commit that surfaced the bug, even if they land back-to-back. The `fix:` commit message should reference the surfacing test by name. Bundling fixes into test commits hides defect history from `git log --grep='^fix:'` and from blame tooling.
+- **Never use a real destructive command as test payload.** When a test needs *some* text to sit in the payload position — inside a heredoc whose termination is under test, in a string being parsed, in a fixture — use an inert marker (`echo PAYLOAD_RAN`, `touch /tmp/marker`) and assert on the marker. The whole point of such a test is that the parsing assumption might be wrong, and when it is wrong the payload runs. On 2026-08-26 a broad pattern-kill used as heredoc filler did exactly that and terminated the X session. Same signal, zero blast radius.
+- The rule covers any payload with side effects, not just process kills: `rm`, `dd`, `shutdown`, `git push`, a request to a live endpoint. It also covers code written into a file and then executed — a `PreToolUse` guard only inspects the command string it is handed, so nothing inspects the inside of `bash script.sh`.
 
 ## Verifying Behavior Before Acting
 
