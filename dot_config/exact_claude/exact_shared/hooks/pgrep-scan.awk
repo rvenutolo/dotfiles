@@ -120,7 +120,9 @@ BEGIN { RS = "\0"; ORS = "" }
       }
       if (ch == "$" && substr(cmd, i + 1, 1) == "(") {
         masked = masked "$("; i += 2; depth++; ctx[depth] = "N"
-        # `((` and `$((` are both arithmetic, where `<<` is a shift and not a heredoc.
+        # `((` and `$((` are both arithmetic, where `<<` is a shift and not a
+        # heredoc -- and is masked outright, so no `<<` reaches the token stream
+        # for the hook's heredoc counter to trip over.
         opener[depth] = (substr(cmd, i, 1) == "(") ? "A" : "P"
         continue
       }
@@ -145,7 +147,16 @@ BEGIN { RS = "\0"; ORS = "" }
       if (ch == "<") {
         # A here-string is not a heredoc.
         if (substr(cmd, i + 1, 2) == "<<") { masked = masked "<<<"; i += 3; continue }
-        if (substr(cmd, i + 1, 1) == "<" && !(depth > 0 && opener[depth] == "A")) {
+        # Inside arithmetic a `<<` is a left shift. Mask both bytes rather than
+        # emitting them: the hook counts `<<` tokens to pick a wrapper's body
+        # out of the marker sequence, and no marker is emitted for a shift, so
+        # a `<<` left in the stream desyncs every later heredoc's ordinal. Two
+        # `\001` keep the byte offsets aligned and match neither the hook's
+        # heredoc regex nor its redirection one.
+        if (substr(cmd, i + 1, 1) == "<" && depth > 0 && opener[depth] == "A") {
+          masked = masked "\001\001"; i += 2; continue
+        }
+        if (substr(cmd, i + 1, 1) == "<") {
           # Read the delimiter word ahead of the cursor, applying quote
           # removal; any quoting makes the body literal. The cursor itself
           # only moves past `<<`, so the delimiter's own bytes are masked by
