@@ -2011,6 +2011,21 @@ readonly -a SELF_TEST_CASES=(
   $'bash 3<<EOF\npkill --full x\nEOF\tallow'
   $'cat 0<<A\nhello\nA\nbash <<B\npkill --full x\nB\tdeny:kill'
   $'<<EOF bash\npkill --full x\nEOF\tdeny:kill'
+
+  # An arithmetic shift is not a heredoc operator and must not be counted as
+  # one. A counted-but-markerless `<<` shifts every later body's ordinal, which
+  # both loses a wrapper's real body and slices somebody else's in its place.
+  $'echo $((1 << 2)); bash <<EOF\npkill --full x\nEOF\tdeny:kill'
+  $'echo $((1<<2)); bash <<A\nnote\nA\ncat <<B\npkill --full x\nB\tallow'
+
+  # A redirection on the wrapper's own simple command is neither an operand nor
+  # a flag, so it must not end the wrapper and strand its heredoc payload.
+  $'bash <<EOF > /tmp/log\npkill --full x\nEOF\tdeny:kill'
+  $'bash <<EOF 2>&1\npkill --full x\nEOF\tdeny:kill'
+
+  # `-s` says stdin IS the script, so operands after it are that script's
+  # positional parameters ($1...) and the body still runs here.
+  $'bash -s arg <<EOF\npkill --full x\nEOF\tdeny:kill'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
@@ -2251,6 +2266,14 @@ function run_scanner_tests() {
   # shellcheck disable=SC2016
   assert_equals 'a shift inside arithmetic is not a heredoc' \
     '1' "$(scan_command "$(printf 'echo $((1<<2))\npkill --full x')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # ...and it must leave no `<<` in the token stream either. The hook counts
+  # `<<` tokens to pick a wrapper's body out of the marker sequence, and the
+  # scanner emits no marker for a shift, so a counted shift desyncs every
+  # later heredoc's ordinal.
+  # shellcheck disable=SC2016
+  assert_equals 'an arithmetic shift leaves no << token to count' \
+    '0' "$(scan_command 'echo $((1 << 2))' | grep --count '<<' || true)" \
     || failures=$((failures + 1))
   # An unterminated heredoc masks to end of input: fail-open, and the
   # assertion returning at all is the no-hang check. The body is the 14
