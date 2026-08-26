@@ -2104,6 +2104,33 @@ readonly -a SELF_TEST_CASES=(
   # parity, hiding the real pkill that follows it.
   $'cat <<\'\'\nit\'s fine\n\npkill --full x\tdeny:kill'
   $'cat <<\'\'\nit\'s fine\npkill --full x\n\necho done\tallow'
+
+  # #188: a prefix command's own options must not break command position. Every
+  # tier is affected -- kill, loop, and the wrapper payloads -- because they all
+  # read the chain the same way.
+  $'sudo -u bob pkill --full x\tdeny:kill'
+  $'sudo --user=bob pkill --full x\tdeny:kill'
+  $'sudo --user bob pkill --full x\tdeny:kill'
+  $'sudo -u bob -- pkill --full x\tdeny:kill'
+  $'doas -u bob pkill --full x\tdeny:kill'
+  $'env -i pkill --full x\tdeny:kill'
+  $'env -u FOO pkill --full x\tdeny:kill'
+  $'sudo -u bob bash -c \'pkill --full x\'\tdeny:kill'
+  $'until ! sudo -u bob pgrep --full x; do sleep 5; done\tdeny:loop'
+  # `timeout` runs its argument here, so it is a prefix like the others; the
+  # duration is an operand it is entitled to before the command word.
+  $'timeout 5 pkill --full x\tdeny:kill'
+  $'timeout -s KILL 5 pkill --full x\tdeny:kill'
+  $'timeout --signal=KILL 5 pkill --full x\tdeny:kill'
+  # `command -v` prints a path instead of running anything, so it must keep
+  # ending the chain -- without that, teaching the chain to skip flags would
+  # turn this allow into a false deny.
+  $'command -v pkill\tallow'
+  $'command -v pkill --full x\tallow'
+  # Past the prefix's own operands the words belong to the script it ran, so a
+  # `pkill` among them is an argument, not a command.
+  $'sudo deploy.sh pkill --full x\tallow'
+  $'timeout 5 deploy.sh pkill --full x\tallow'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
