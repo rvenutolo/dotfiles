@@ -380,6 +380,15 @@ what they are for, rather than by the repo they come from:
   These are the repo's own tests, not third-party linters; a change to any of
   those scripts that breaks its suite fails the commit.
 
+  The pgrep hook denies four kinds — `kill`, `loop`, `task-poll` (a
+  `while`/`until` on a harness `…/tasks/<id>.output` file), and `repeat`
+  (the third probe of one target in 300 s). `repeat` is the hook's only
+  stateful rule: one file per session at
+  `${XDG_RUNTIME_DIR}/block-pgrep-self-match/<session_id>` (override with
+  `BLOCK_PGREP_STATE_DIR`), touched only by commands that carry a probe
+  key, pruned on every write, and every state failure allows. Its suite
+  (`run_repeat_tests`) runs against a throwaway dir inside `--self-test`.
+
 Keep this list in step with the file. It has drifted before — it named seven
 hooks while the config had nineteen — and a hook nobody knows about is one
 nobody maintains.
