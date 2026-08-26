@@ -1177,21 +1177,38 @@ function repeat_check() {
   if ! printf -v now '%(%s)T' -1 2> /dev/null; then return 0; fi
   if [[ -e "${file}" && ! -f "${file}" ]]; then return 0; fi
 
-  local kept='' epoch key
+  local kept='' epoch key content
   if [[ -f "${file}" ]]; then
     if [[ ! -r "${file}" ]]; then return 0; fi
-    # `|| [[ -n ... ]]` keeps a final line that lacks a trailing newline. The
-    # `2> /dev/null` sits before `<` so a TOCTOU open failure (file removed
-    # between the -r check above and this open) is silenced rather than
-    # leaking to stderr -- same ordering fix as the write below.
+    # Read via `cat`, not a `<` redirect (and deliberately not the `$(< file)`
+    # builtin fast path): a failed open inside `$(< file)` is a word-expansion
+    # error that bash treats as fatal to the shell that hits it, NOT as an
+    # ordinary nonzero exit status -- `if !`/`||` cannot absorb it, so it
+    # still reaches the ERR trap despite looking guarded (confirmed empirically:
+    # `bash -c 'set -Eeuo pipefail; trap "echo TRAP" ERR; f=/nonexistent;
+    # if ! c="$(< "$f")" 2>/dev/null; then echo guarded; fi; echo after'`
+    # prints only the open-failure diagnostic and exits 1 -- neither "guarded"
+    # nor "after" is reached). `cat` forks its own process, so its failure is
+    # an ordinary exit status the `if !` below can absorb, and `2> /dev/null`
+    # on the `cat` invocation itself (not tacked onto the assignment) applies
+    # before that process's own open() attempt, so a TOCTOU race (the file
+    # removed between the -r check above and this read) is fully silenced,
+    # not just made non-fatal.
+    if ! content="$(cat "${file}" 2> /dev/null)"; then return 0; fi
+    # `<<<` appends exactly one newline regardless of whether the file (and
+    # therefore `content`, which command substitution already stripped
+    # trailing newlines from) had one, so every line -- including a
+    # newline-less last line -- is delivered to `read` with a terminator; no
+    # `|| [[ -n ... ]]` fallback is needed here the way the write-side loops
+    # need one for a raw `<` redirect.
     # A leading-zero epoch (`08`) would otherwise pass this regex and then
     # trip `(( ))`'s octal parser on the arithmetic test below, so the
     # anchor excludes it: a valid epoch never starts with 0.
-    while IFS=$'\t' read -r epoch key || [[ -n "${epoch}" ]]; do
+    while IFS=$'\t' read -r epoch key; do
       [[ "${epoch}" =~ ^[1-9][0-9]{0,11}$ && -n "${key}" ]] || continue
       ((epoch <= now && now - epoch <= REPEAT_WINDOW_SECONDS)) || continue
       kept+="${epoch}"$'\t'"${key}"$'\n'
-    done 2> /dev/null < "${file}"
+    done <<< "${content}"
   fi
 
   local probe_key count ages
