@@ -1180,12 +1180,18 @@ function repeat_check() {
   local kept='' epoch key
   if [[ -f "${file}" ]]; then
     if [[ ! -r "${file}" ]]; then return 0; fi
-    # `|| [[ -n ... ]]` keeps a final line that lacks a trailing newline.
+    # `|| [[ -n ... ]]` keeps a final line that lacks a trailing newline. The
+    # `2> /dev/null` sits before `<` so a TOCTOU open failure (file removed
+    # between the -r check above and this open) is silenced rather than
+    # leaking to stderr -- same ordering fix as the write below.
+    # A leading-zero epoch (`08`) would otherwise pass this regex and then
+    # trip `(( ))`'s octal parser on the arithmetic test below, so the
+    # anchor excludes it: a valid epoch never starts with 0.
     while IFS=$'\t' read -r epoch key || [[ -n "${epoch}" ]]; do
-      [[ "${epoch}" =~ ^[0-9]{1,12}$ && -n "${key}" ]] || continue
+      [[ "${epoch}" =~ ^[1-9][0-9]{0,11}$ && -n "${key}" ]] || continue
       ((epoch <= now && now - epoch <= REPEAT_WINDOW_SECONDS)) || continue
       kept+="${epoch}"$'\t'"${key}"$'\n'
-    done < "${file}"
+    done 2> /dev/null < "${file}"
   fi
 
   local probe_key count ages
@@ -1207,15 +1213,25 @@ function repeat_check() {
 
   local -r tmp="${file}.$$"
   if [[ -z "${kept}" ]]; then
-    rm -f "${file}" 2> /dev/null
+    # `|| true` so a bare rm failure (e.g. the directory lost write
+    # permission after the mkdir check above) can never trip errexit here --
+    # this line is not itself guarded by an enclosing if/||, unlike every
+    # other filesystem step in this function.
+    rm -f "${file}" 2> /dev/null || true
     return 0
   fi
-  if ! printf '%s' "${kept}" > "${tmp}" 2> /dev/null; then
+  # `2> /dev/null` sits before `>` so a failed open reports nothing: with the
+  # reverse order bash still applies `>` first, so the open failure prints
+  # to the ORIGINAL stderr before the stderr redirect ever takes effect.
+  if ! printf '%s' "${kept}" 2> /dev/null > "${tmp}"; then
     rm -f "${tmp}" 2> /dev/null
     return 0
   fi
   if ! mv -f "${tmp}" "${file}" 2> /dev/null; then
-    rm -f "${tmp}" 2> /dev/null
+    # Last command of this if-body, so unlike the sibling rm above its exit
+    # status would otherwise become the if's status -- `|| true` for the
+    # same reason.
+    rm -f "${tmp}" 2> /dev/null || true
   fi
   return 0
 }
@@ -1396,10 +1412,18 @@ function main() {
     local keys
     keys="$(probe_keys "${command}" "$(scan_command "${command}")")" || keys=''
     if [[ -n "${keys}" ]]; then
+      # The `||` is load-bearing beyond the obvious fallback: it is what
+      # keeps this whole command substitution off errexit's radar for its
+      # entire dynamic extent, so nothing inside repeat_check can trip the
+      # top-level ERR trap. Do not turn this into a plain assignment.
       repeat_reason="$(repeat_check "${session_id}" "${keys}")" || repeat_reason=''
     fi
   fi
-  if [[ -n "${repeat_reason}" ]]; then
+  # Only a string shaped like repeat_message's output is treated as a deny
+  # reason. If the ERR trap ever fired inside the substitution above despite
+  # the guard, it would print emit_allow's `{}` to stdout -- non-empty, but
+  # not a reason -- and this check keeps that from being emitted as one.
+  if [[ "${repeat_reason}" == "${WRITE_TOOL_LEAD}"* ]]; then
     emit_deny "${repeat_reason}"
     return 0
   fi
@@ -2357,6 +2381,10 @@ function run_repeat_tests() {
       failures=$((failures + 1))
     fi
   done
+  # A denied command is not recorded: probes 3 and 4 both denied, so the
+  # file still holds only the 2 lines written by probes 1 and 2.
+  assert_equals 'repeat: denied probe not recorded' '2' "$(wc --lines < "${state_dir}/s1")" \
+    || failures=$((failures + 1))
 
   # 3: three different task files are three first reads.
   assert_probe 'repeat: different path 1' 'none' 's3' "cat ${base}/a1.output" || failures=$((failures + 1))
@@ -2375,8 +2403,11 @@ function run_repeat_tests() {
   assert_equals 'repeat: stale file rewritten to one line' '1' "$(wc --lines < "${state_dir}/s5")" \
     || failures=$((failures + 1))
 
-  # 6: a corrupt file allows and is healed to only the fresh line.
-  printf 'garbage\n\tno-epoch\n12x\ttask:foo\n' > "${state_dir}/s6"
+  # 6: a corrupt file allows and is healed to only the fresh line. Includes a
+  # leading-zero epoch (08), which is a valid-looking decimal but an invalid
+  # octal literal to `(( ))` -- it must be rejected by the epoch regex, not
+  # reach the arithmetic test and print "value too great for base".
+  printf 'garbage\n\tno-epoch\n12x\ttask:foo\n08\ttask:foo\n' > "${state_dir}/s6"
   assert_probe 'repeat: corrupt state allows' 'none' 's6' "cat ${p}" || failures=$((failures + 1))
   if [[ ! "$(cat "${state_dir}/s6")" =~ ^[0-9]+$'\t'"${p_key}"$ ]]; then
     printf 'FAIL(repeat): corrupt state not healed: %s\n' "$(cat "${state_dir}/s6" | tr '\n' '|')" >&2
