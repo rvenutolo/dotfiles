@@ -8,13 +8,27 @@
 # prose ("it's", "don't") otherwise inverts quote parity for the whole rest of
 # the command, which has been observed both exposing a quoted string as if it
 # were code and hiding a real poll loop inside a quoted region.
+#
+# A heredoc body is text the shell feeds to a command, not code (#184). Its
+# bytes are masked from the newline after the `<<` line to the terminator
+# line, which is masked too. A quoted delimiter (`<<'EOF'`, `<<"EOF"`,
+# `<<\EOF`) masks everything; an unquoted one masks like a double-quoted
+# string, so `$(` and backticks still re-enter code context. One body is
+# emitted to the tokenizer as a `<HD:len>` marker at its first byte, which is
+# how the hook slices a body fed to a local shell wrapper.
 BEGIN { RS = "\0"; ORS = "" }
 {
   cmd = $0
   n = length(cmd)
   masked = ""
   depth = 0
-  ctx[0] = "N"          # N unquoted, S single-quoted, D double-quoted
+  ctx[0] = "N"          # N unquoted, S single-quoted, D double-quoted, H heredoc body
+  # Heredocs opened on a line but not yet begun, in operator order. One queue
+  # for every depth: a heredoc opened before a `$(` that opens its own on a
+  # later line would pop in the wrong order, which is rare enough to note and
+  # not handle.
+  pq_head = 0; pq_tail = 0
+  hb_n = 0              # body spans, for the tokenizer's <HD:len> marker
   i = 1
   while (i <= n) {
     ch = substr(cmd, i, 1)
@@ -26,7 +40,9 @@ BEGIN { RS = "\0"; ORS = "" }
       if (ch == "'") ctx[depth] = "N_END"
     } else if (cur == "D") {
       if (ch == "$" && substr(cmd, i + 1, 1) == "(") {
-        masked = masked "$("; i += 2; depth++; ctx[depth] = "N"; opener[depth] = "P"; continue
+        masked = masked "$("; i += 2; depth++; ctx[depth] = "N"
+        opener[depth] = (substr(cmd, i, 1) == "(") ? "A" : "P"
+        continue
       }
       if (ch == "`") {
         masked = masked "`"; i++
@@ -36,7 +52,53 @@ BEGIN { RS = "\0"; ORS = "" }
       out = "\001"
       if (ch == "\\") { masked = masked "\001\001"; i += 2; continue }
       if (ch == "\"") ctx[depth] = "N_END"
+    } else if (cur == "H") {
+      # At a line start, a line equal to the delimiter (after leading tabs,
+      # for `<<-`) is the terminator: mask it and return to code. The newline
+      # after it is the unquoted branch's, which starts the next queued body.
+      if (hd_bol[depth]) {
+        j = i
+        if (hd_strip[depth]) while (substr(cmd, j, 1) == "\t") j++
+        d = length(hd_delim[depth])
+        if (substr(cmd, j, d) == hd_delim[depth] && (j + d > n || substr(cmd, j + d, 1) == "\n")) {
+          hb_len[hb_id[depth]] = i - hb_start[hb_id[depth]]
+          while (i < j + d) { masked = masked "\001"; i++ }
+          ctx[depth] = "N"
+          continue
+        }
+        hd_bol[depth] = 0
+      }
+      if (ch == "\n") { masked = masked "\n"; i++; hd_bol[depth] = 1; continue }
+      if (!hd_quoted[depth]) {
+        if (ch == "$" && substr(cmd, i + 1, 1) == "(") {
+          masked = masked "$("; i += 2; depth++; ctx[depth] = "N"
+          opener[depth] = (substr(cmd, i, 1) == "(") ? "A" : "P"
+          continue
+        }
+        if (ch == "`") {
+          masked = masked "`"; i++
+          if (depth > 0 && opener[depth] == "B") { depth-- } else { depth++; ctx[depth] = "N"; opener[depth] = "B" }
+          continue
+        }
+        if (ch == "\\") { masked = masked "\001\001"; i += 2; continue }
+      }
+      masked = masked "\001"; i++
+      continue
     } else {
+      # A newline begins the next queued heredoc body. A backslash-newline
+      # never reaches here (it is consumed as a continuation below), which
+      # matches bash: the body starts after the logical line.
+      if (ch == "\n" && pq_head < pq_tail) {
+        masked = masked "\n"; i++
+        hd_delim[depth] = pq_delim[pq_head]; hd_quoted[depth] = pq_quoted[pq_head]
+        hd_strip[depth] = pq_strip[pq_head]; pq_head++
+        ctx[depth] = "H"; hd_bol[depth] = 1
+        # The span defaults to end of input: an unterminated heredoc masks
+        # everything after it (fail-open) and the terminator, when found,
+        # shortens it.
+        hb_id[depth] = hb_n; hb_start[hb_n] = i; hb_len[hb_n] = n + 1 - i; hb_n++
+        continue
+      }
       # A `#` opens a comment only at the start of a WORD. The precondition is
       # load-bearing: without it the `#` of `${#arr[@]}` would open a comment and
       # mask the rest of the line. A word also starts after a command separator,
@@ -52,13 +114,55 @@ BEGIN { RS = "\0"; ORS = "" }
         continue
       }
       if (ch == "$" && substr(cmd, i + 1, 1) == "(") {
-        masked = masked "$("; i += 2; depth++; ctx[depth] = "N"; opener[depth] = "P"; continue
+        masked = masked "$("; i += 2; depth++; ctx[depth] = "N"
+        # `$((` is arithmetic, where `<<` is a shift and not a heredoc.
+        opener[depth] = (substr(cmd, i, 1) == "(") ? "A" : "P"
+        continue
       }
-      if (ch == ")" && depth > 0 && opener[depth] == "P") { masked = masked ")"; i++; depth--; continue }
+      if (ch == ")" && depth > 0 && (opener[depth] == "P" || opener[depth] == "A")) {
+        masked = masked ")"; i++; depth--; continue
+      }
       if (ch == "`") {
         masked = masked "`"; i++
         if (depth > 0 && opener[depth] == "B") { depth-- } else { depth++; ctx[depth] = "N"; opener[depth] = "B" }
         continue
+      }
+      if (ch == "<") {
+        # A here-string is not a heredoc.
+        if (substr(cmd, i + 1, 2) == "<<") { masked = masked "<<<"; i += 3; continue }
+        if (substr(cmd, i + 1, 1) == "<" && !(depth > 0 && opener[depth] == "A")) {
+          # Read the delimiter word ahead of the cursor, applying quote
+          # removal; any quoting makes the body literal. The cursor itself
+          # only moves past `<<`, so the delimiter's own bytes are masked by
+          # the ordinary rules below and every byte is read at most twice.
+          j = i + 2
+          strip = 0; quoted = 0; delim = ""
+          if (substr(cmd, j, 1) == "-") { strip = 1; j++ }
+          while (substr(cmd, j, 1) == " " || substr(cmd, j, 1) == "\t") j++
+          while (j <= n) {
+            c = substr(cmd, j, 1)
+            if (c == "'") {
+              quoted = 1; j++
+              while (j <= n && substr(cmd, j, 1) != "'") { delim = delim substr(cmd, j, 1); j++ }
+              j++
+            } else if (c == "\"") {
+              quoted = 1; j++
+              while (j <= n && substr(cmd, j, 1) != "\"") { delim = delim substr(cmd, j, 1); j++ }
+              j++
+            } else if (c == "\\") {
+              quoted = 1; delim = delim substr(cmd, j + 1, 1); j += 2
+            } else if (index(" \t\n;&|<>()", c) > 0) {
+              break
+            } else {
+              delim = delim c; j++
+            }
+          }
+          if (delim != "") {
+            pq_delim[pq_tail] = delim; pq_quoted[pq_tail] = quoted; pq_strip[pq_tail] = strip; pq_tail++
+          }
+          masked = masked "<<"; i += 2
+          continue
+        }
       }
 
       if (ch == "'") { ctx[depth] = "S"; out = "\001" }
@@ -81,9 +185,14 @@ BEGIN { RS = "\0"; ORS = "" }
   }
 
   # Tokenize the masked string. Newline is emitted as the literal token <NL>
-  # so it survives a line-oriented reader.
-  word = ""; start = 0
+  # so it survives a line-oriented reader. A heredoc body's marker is emitted
+  # at the body's first byte, right after the <NL> that opened it.
+  word = ""; start = 0; m = 0
   for (i = 1; i <= n; i++) {
+    if (m < hb_n && i == hb_start[m]) {
+      if (word != "") { print (start - 1) "\t" word "\n"; word = "" }
+      print (i - 1) "\t<HD:" hb_len[m] ">\n"; m++
+    }
     ch = substr(masked, i, 1)
     if (ch == " " || ch == "\t" || ch == "\n") {
       if (word != "") { print (start - 1) "\t" word "\n"; word = "" }
@@ -97,4 +206,7 @@ BEGIN { RS = "\0"; ORS = "" }
     }
   }
   if (word != "") print (start - 1) "\t" word "\n"
+  # A body that starts at end of input (`cat <<EOF` with a trailing newline
+  # and nothing after) has no byte for the loop to reach.
+  while (m < hb_n) { print (hb_start[m] - 1) "\t<HD:" hb_len[m] ">\n"; m++ }
 }

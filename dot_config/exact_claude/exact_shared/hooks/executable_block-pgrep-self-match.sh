@@ -1909,6 +1909,14 @@ readonly -a SELF_TEST_CASES=(
   $'until curl --fail --silent https://ci.example/x; do sleep 5; done\tallow'
   # Body position with no terminator is a read inside a loop, not its test.
   $'while true; do cat /tmp/claude-1000/-home-u-proj/0b9df07e-7ed4-4c6e-99fa-4dd2deb783de/tasks/bcuxbdgc5.output; sleep 5; done\tallow'
+
+  # #184: a heredoc body is text bash does not run. The postmortem shape that
+  # surfaced the gap, an unquoted body whose substitution DOES run, a loop
+  # idiom quoted in a note, and a tab-indented `<<-` body.
+  $'cat > postmortem.md <<\'EOF\'\nThe guard denied this shape:\n    pkill --full judge_resolves.py\nEOF\tallow'
+  $'cat <<EOF\n$(pkill --full x)\nEOF\tdeny:kill'
+  $'cat <<\'EOF\'\nuntil ! pgrep --full x; do sleep 5; done\nEOF\tallow'
+  $'cat <<-EOF\n\tpkill --full x\n\tEOF\tallow'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
@@ -2092,6 +2100,78 @@ function run_scanner_tests() {
     "$(terminator_probe 'while true; do pgrep --full x; sleep 5; done')" || failures=$((failures + 1))
   assert_equals 'terminator in an outer body only' 'no' \
     "$(terminator_probe 'while true; do for f in *; do pgrep --full x; done; break; done')" \
+    || failures=$((failures + 1))
+
+  # Heredoc bodies (#184). A quoted delimiter means bash expands nothing in
+  # the body, so nothing in it is code.
+  assert_equals 'quoted heredoc body is masked' \
+    '0' "$(scan_command "$(printf "cat <<'EOF'\npkill --full x\nEOF")" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # The marker is what shell_wrapper_payloads slices a wrapper's body by, so
+  # its offset and length are asserted exactly: the body is `pkill --full x\n`,
+  # 15 bytes starting after the 12-byte `cat <<'EOF'\n`.
+  assert_equals 'heredoc body marker carries the body offset and length' \
+    $'12\t<HD:15>' "$(scan_command "$(printf "cat <<'EOF'\npkill --full x\nEOF")" | grep '<HD:' || true)" \
+    || failures=$((failures + 1))
+  # An unquoted delimiter masks the body like a double-quoted string: a
+  # command substitution in it re-enters code context, because bash runs it.
+  # shellcheck disable=SC2016
+  assert_equals 'command substitution inside an unquoted heredoc body is visible' \
+    '12' "$(scan_command "$(printf 'cat <<EOF\n$(pkill --full x)\nEOF')" \
+      | awk -F'\t' '$2 == "pkill" {print $1}')" \
+    || failures=$((failures + 1))
+  assert_equals 'plain text in an unquoted heredoc body is masked' \
+    '0' "$(scan_command "$(printf 'cat <<EOF\npkill --full x\nEOF')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # shellcheck disable=SC2016
+  assert_equals 'backslash-escaped delimiter is a quoted delimiter' \
+    '0' "$(scan_command "$(printf 'cat <<\\EOF\n$(pkill --full x)\nEOF')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # `<<-` tolerates leading tabs on the terminator line; the line after it is
+  # code again.
+  assert_equals 'tab-indented terminator closes a <<- body' \
+    '0' "$(scan_command "$(printf 'cat <<-EOF\npkill --full x\n\tEOF\nls')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  assert_equals 'code after a <<- body is tokenized' \
+    '1' "$(scan_command "$(printf 'cat <<-EOF\npkill --full x\n\tEOF\nls')" | grep --count '\bls$' || true)" \
+    || failures=$((failures + 1))
+  # Two heredocs on one line: the bodies follow in operator order, and the
+  # rest of the `<<` line is ordinary code.
+  assert_equals 'two heredocs on one line yield two bodies' \
+    '2' "$(scan_command "$(printf 'cat <<A <<B\na-body\nA\nb-body\nB\nls')" | grep --count '<HD:' || true)" \
+    || failures=$((failures + 1))
+  assert_equals 'both bodies are masked' \
+    '0' "$(scan_command "$(printf 'cat <<A <<B\na-body\nA\nb-body\nB\nls')" | grep --count 'body' || true)" \
+    || failures=$((failures + 1))
+  assert_equals 'code after two bodies is tokenized' \
+    '1' "$(scan_command "$(printf 'cat <<A <<B\na-body\nA\nb-body\nB\nls')" | grep --count '\bls$' || true)" \
+    || failures=$((failures + 1))
+  # Not heredocs: a `<<` inside a quoted string, a here-string, and a shift
+  # inside arithmetic.
+  assert_equals 'a quoted << is not a heredoc' \
+    '1' "$(scan_command "$(printf 'echo "<<EOF"\npkill --full x')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  assert_equals 'a here-string is not a heredoc' \
+    '1' "$(scan_command 'cat <<< x; pkill --full x' | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # shellcheck disable=SC2016
+  assert_equals 'a shift inside arithmetic is not a heredoc' \
+    '1' "$(scan_command "$(printf 'echo $((1<<2))\npkill --full x')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # An unterminated heredoc masks to end of input: fail-open, and the
+  # assertion returning at all is the no-hang check. The body is the 14
+  # bytes after `cat <<EOF\n`.
+  assert_equals 'unterminated heredoc masks to end of input' \
+    $'10\t<HD:14>' "$(scan_command "$(printf 'cat <<EOF\npkill --full x')" | grep '<HD:' || true)" \
+    || failures=$((failures + 1))
+  # A heredoc inside a command substitution opens at the newline inside it.
+  # shellcheck disable=SC2016
+  assert_equals 'heredoc inside a command substitution is masked' \
+    '0' "$(scan_command "$(printf 'echo "$(cat <<EOF\npkill --full x\nEOF\n)"')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # Offsets after a body still slice the raw command correctly.
+  assert_equals 'byte offsets stay aligned across a heredoc body' \
+    'a b' "$(pattern_probe "$(printf "cat <<'EOF'\nx\nEOF\npgrep --full \"a b\"")")" \
     || failures=$((failures + 1))
 
   # A guard that dies quietly is worse than no guard, so both missing-dependency
