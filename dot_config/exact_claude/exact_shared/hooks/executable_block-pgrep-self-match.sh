@@ -2309,8 +2309,33 @@ readonly -a SELF_TEST_CASES=(
   # `pkill` among them is an argument, not a command.
   $'sudo deploy.sh pkill --full x\tallow'
   $'timeout 5 deploy.sh pkill --full x\tallow'
-  # GNU `time` takes options of its own; the shell keyword spelling takes none.
-  $'time -o /tmp/t pkill --full x\tdeny:kill'
+  # Bare `time` is bash's reserved word whatever follows it, so `-o` is read as
+  # a command and nothing else on the line runs. Only a path spelling reaches
+  # GNU time, whose -o really does take the next word.
+  $'time -o /tmp/t pkill --full x\tallow'
+  $'/usr/bin/time -o /tmp/t pkill --full x\tdeny:kill'
+  $'time -p pkill --full x\tdeny:kill'
+  # sudo's own synopsis lists eleven options that take a separate value; -R and
+  # -T are as ordinary as -u and were missed by writing the table from memory.
+  $'sudo -R /chroot pkill --full x\tdeny:kill'
+  $'sudo --chroot /chroot pkill --full x\tdeny:kill'
+  $'sudo -T 5 pkill --full x\tdeny:kill'
+  $'sudo --command-timeout 5 pkill --full x\tdeny:kill'
+  # Past `--` nothing is a flag any more: timeout's command here is `-k`, which
+  # does not exist, so the pkill never runs. The duration still comes first when
+  # the terminator precedes it.
+  $'timeout -- -k 5 pkill --full x\tallow'
+  $'timeout -- 5 pkill --full x\tdeny:kill'
+  # The rest of each table, and the chain re-seeding on a nested prefix.
+  $'sudo -l pkill --full x\tallow'
+  $'env -u pkill true\tallow'
+  $'timeout -k 5 5 pkill --full x\tdeny:kill'
+  $'doas -C /etc/doas.conf pkill --full x\tdeny:kill'
+  $'sudo -u bob env -u FOO pkill --full x\tdeny:kill'
+  $'timeout 5 bash -c \'pkill --full x\'\tdeny:kill'
+  # The documented fail-open residual: an option no table lists takes its value
+  # to be the command word, which ends the chain and hides the kill.
+  $'sudo --future-opt bob pkill --full x\tallow'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
