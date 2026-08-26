@@ -34,8 +34,10 @@ readonly -a COMMAND_POSITION_KEYWORDS=(
 
 # Words that run another command and so preserve command position for the word
 # after them. `sudo pkill --full java` is the single most likely session-killing
-# form, so the guard must see through the prefix.
-readonly -a PREFIX_COMMANDS=('sudo' 'doas' 'env' 'nohup' 'command' 'time')
+# form, so the guard must see through the prefix -- and through the prefix's own
+# options, which is what prefix_chain_step below is for. `timeout` belongs here
+# for the same reason the others do: `timeout 5 pkill --full java` runs the kill.
+readonly -a PREFIX_COMMANDS=('sudo' 'doas' 'env' 'nohup' 'command' 'time' 'timeout')
 
 # @description True when a token is a command prefix that keeps the following word in command
 #              position.
@@ -48,6 +50,186 @@ function is_prefix_command() {
   for prefix in "${PREFIX_COMMANDS[@]}"; do
     [[ "${token}" == "${prefix}" ]] && return 0
   done
+  return 1
+}
+
+# @description True when an option of a prefix command consumes the NEXT word, so that word is the
+#              option's value rather than the command. `--opt=value` needs no entry: an attached
+#              value is a single word.
+#
+#              An option missing from this table leaks -- its value is read as the prefix's operand,
+#              which ends the chain and hides the command word (#188). That is the fail-open
+#              direction, and it is the deliberate trade: an operand budget generous enough to
+#              swallow an unknown option's value would read the `pkill` of `sudo deploy.sh pkill x`
+#              as a command and deny one bash never runs.
+# @arg $1 prefix the prefix command, already reduced to its basename
+# @arg $2 word the option word to test
+# @exitcode 0 the option consumes the next word
+# @exitcode 1 it does not
+function prefix_value_option() {
+  local -r prefix="$1" word="$2"
+  case "${prefix}" in
+    'sudo')
+      case "${word}" in
+        '-u' | '-g' | '-p' | '-C' | '-D' | '-h' | '-U' | '-r' | '-t' | '--user' | '--group' | \
+          '--prompt' | '--close-from' | '--chdir' | '--host' | '--other-user' | '--role' | \
+          '--type')
+          return 0
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
+    'doas')
+      case "${word}" in
+        '-u' | '-C' | '-a') return 0 ;;
+        *) return 1 ;;
+      esac
+      ;;
+    'env')
+      case "${word}" in
+        '-u' | '--unset' | '-C' | '--chdir' | '-S' | '--split-string') return 0 ;;
+        *) return 1 ;;
+      esac
+      ;;
+    'timeout')
+      case "${word}" in
+        '-s' | '--signal' | '-k' | '--kill-after') return 0 ;;
+        *) return 1 ;;
+      esac
+      ;;
+    'time')
+      case "${word}" in
+        '-o' | '--output' | '-f' | '--format') return 0 ;;
+        *) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# @description How many non-flag operands a prefix command takes before the command word.
+#
+#              Only `timeout` has any: its duration. Every other prefix takes none, so its first
+#              non-flag word IS the command -- which is what keeps `sudo deploy.sh pkill x`, where
+#              `pkill` is an argument to the script, from reading as a kill.
+# @arg $1 prefix the prefix command
+# @stdout the operand count
+function prefix_operand_budget() {
+  case "$1" in
+    'timeout') printf '1' ;;
+    *) printf '0' ;;
+  esac
+}
+
+# @description True when an option makes its prefix run no command at all, so the words after it
+#              are not in command position. `command -v pkill` prints a path and `sudo -l pkill`
+#              reports whether a rule allows it; neither runs anything. Without this, teaching the
+#              chain to see past a prefix's flags would turn both of those allows into false denies.
+# @arg $1 prefix the prefix command
+# @arg $2 word the option word to test
+# @exitcode 0 the option ends the chain
+# @exitcode 1 it does not
+function prefix_breaks_chain() {
+  local -r prefix="$1" word="$2"
+  case "${prefix}" in
+    'command')
+      case "${word}" in
+        '-v' | '-V') return 0 ;;
+        *) return 1 ;;
+      esac
+      ;;
+    'sudo')
+      case "${word}" in
+        '-l' | '--list' | '-v' | '--validate' | '-e' | '--edit' | '-V' | '--version') return 0 ;;
+        *) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# @description Advance command-position tracking by one token and report whether the word AFTER it
+#              is in command position. This is the whole prefix-chain rule, in one place because
+#              find_invocations and shell_wrapper_payloads both need it and a second copy would
+#              drift -- the bare-word version was already duplicated when it was wrong (#188).
+#
+#              An operator or keyword restores command position and clears the chain. A prefix word
+#              opens one. Inside a chain, the prefix's own flags keep command position for what
+#              follows, a flag's value is skipped without ever being in command position itself
+#              (`env -u pkill cmd` unsets a variable, it does not run one), `--` ends the flags, and
+#              the operands the prefix is entitled to are spent one per word. The first word that is
+#              none of those IS the command, so the chain ends there. An option that makes the
+#              prefix run nothing ends it too.
+# @arg $1 token the raw token
+# @arg $2 word the token reduced to its basename
+# @arg $3 at_cmd 1 when this token is itself in command position
+# @arg $4 chain name of the caller's variable holding the prefix in effect, empty when none
+# @arg $5 skip name of the caller's variable marking the next word as a flag's value
+# @arg $6 operands name of the caller's variable holding the chain's remaining operand budget
+# @exitcode 0 the next word is in command position
+# @exitcode 1 it is not
+function prefix_chain_step() {
+  local -r token="$1" word="$2" at_cmd="$3"
+  # Namerefs must not share a name with the caller's variable, or bash refuses
+  # the assignment as a circular reference, so each carries a _ref suffix.
+  local -n chain_ref="$4" skip_ref="$5" operands_ref="$6"
+  if is_operator "${token}"; then
+    chain_ref=''
+    skip_ref=0
+    operands_ref=0
+    return 0
+  fi
+  if ((skip_ref == 1)); then
+    skip_ref=0
+    return 0
+  fi
+  # Only a prefix or assignment that is itself in command position chains: in
+  # `git command x` the word `command` is an argument, not a prefix. The prefix
+  # test runs before the keyword test because `time` is both, and only the
+  # prefix reading understands its `-o file`.
+  if ((at_cmd == 1)) && is_prefix_command "${word}"; then
+    chain_ref="${word}"
+    skip_ref=0
+    operands_ref="$(prefix_operand_budget "${word}")"
+    return 0
+  fi
+  if is_keyword "${token}"; then
+    chain_ref=''
+    skip_ref=0
+    operands_ref=0
+    return 0
+  fi
+  if ((at_cmd != 1)); then
+    chain_ref=''
+    return 1
+  fi
+  if is_assignment_word "${token}"; then
+    return 0
+  fi
+  if [[ -z "${chain_ref}" ]]; then
+    return 1
+  fi
+  if [[ "${token}" == '--' ]]; then
+    return 0
+  fi
+  if prefix_breaks_chain "${chain_ref}" "${word}"; then
+    chain_ref=''
+    return 1
+  fi
+  if [[ "${word}" == -* ]]; then
+    # A flag's value is never itself in command position, but the word after it
+    # is; a flag that takes no value keeps command position directly.
+    if prefix_value_option "${chain_ref}" "${word}"; then
+      skip_ref=1
+      return 1
+    fi
+    return 0
+  fi
+  if ((operands_ref > 0)); then
+    operands_ref=$((operands_ref - 1))
+    return 0
+  fi
+  chain_ref=''
   return 1
 }
 
@@ -109,7 +291,7 @@ function scan_command() {
 # @arg $1 tokens newline-separated "<offset>\t<token>" records from scan_command
 # @stdout lines of "<index>\t<offset>\t<basename>"
 function find_invocations() {
-  local at_cmd=1 idx=0 offset token word next_at_cmd
+  local at_cmd=1 idx=0 offset token word chain='' chain_skip=0 chain_operands=0
   local -r tokens="$1"
   while IFS=$'\t' read -r offset token; do
     [[ -z "${token}" ]] && continue
@@ -117,16 +299,11 @@ function find_invocations() {
     if ((at_cmd == 1)) && [[ "${word}" == 'pgrep' || "${word}" == 'pkill' ]]; then
       printf '%s\t%s\t%s\n' "${idx}" "${offset}" "${word}"
     fi
-    if is_operator "${token}" || is_keyword "${token}"; then
-      next_at_cmd=1
-    elif ((at_cmd == 1)) && { is_prefix_command "${word}" || is_assignment_word "${token}"; }; then
-      # Only a prefix or assignment that is itself in command position chains: in
-      # `git command x` the word `command` is an argument, not a prefix.
-      next_at_cmd=1
+    if prefix_chain_step "${token}" "${word}" "${at_cmd}" chain chain_skip chain_operands; then
+      at_cmd=1
     else
-      next_at_cmd=0
+      at_cmd=0
     fi
-    at_cmd="${next_at_cmd}"
     idx=$((idx + 1))
   done <<< "${tokens}"
 }
@@ -1006,7 +1183,8 @@ function wrapper_operand_budget() {
 function shell_wrapper_payloads() {
   local -r command="$1" tokens="$2"
   local at_cmd=1 in_wrapper=0 saw_c=0 saw_s=0 saw_s_operand=0 operands=0
-  local offset token word next_at_cmd raw budget
+  # shellcheck disable=SC2034 # written through prefix_chain_step's namerefs, which shellcheck cannot follow
+  local offset token word next_at_cmd raw budget chain='' chain_skip=0 chain_operands=0
   local heredoc_seq=0 body_seq=0 pending='' leading_pending='' wanted=' ' expect_delim=0 len fd
   local expect_redir_target=0
   # A `<<` heredoc operator may carry a leading fd (`0<<`, `3<<-`), which is
@@ -1129,9 +1307,9 @@ function shell_wrapper_payloads() {
     fi
 
     if is_operator "${token}" || is_keyword "${token}"; then
-      next_at_cmd=1
       leading_pending=''
-    elif ((at_cmd == 1)) && { is_prefix_command "${word}" || is_assignment_word "${token}"; }; then
+    fi
+    if prefix_chain_step "${token}" "${word}" "${at_cmd}" chain chain_skip chain_operands; then
       next_at_cmd=1
     else
       next_at_cmd=0
@@ -2131,6 +2309,8 @@ readonly -a SELF_TEST_CASES=(
   # `pkill` among them is an argument, not a command.
   $'sudo deploy.sh pkill --full x\tallow'
   $'timeout 5 deploy.sh pkill --full x\tallow'
+  # GNU `time` takes options of its own; the shell keyword spelling takes none.
+  $'time -o /tmp/t pkill --full x\tdeny:kill'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
