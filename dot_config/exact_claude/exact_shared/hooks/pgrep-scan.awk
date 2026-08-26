@@ -189,15 +189,16 @@ BEGIN { RS = "\0"; ORS = "" }
               delim = delim c; j++
             }
           }
-          # An empty delimiter is either no delimiter word at all (`cat <<`,
-          # `cat <<;`), which bash rejects as a syntax error, or the explicitly
-          # empty `<<''`, which bash accepts with a blank line as terminator.
-          # Neither is enqueued, so the lines that follow are scanned as code
-          # on purpose.
-          # TODO: `<<''` is syntax bash really runs, and its body is scanned
-          # rather than masked. It is vanishingly rare, and scanning can only
-          # cost a false deny -- it never hides a command from the guard.
-          if (delim != "") {
+          # A quoted empty delimiter (`<<''`, `<<""`) is legal bash: the body
+          # runs to the first blank line. It is enqueued like any other, and
+          # the terminator check below handles a zero-length delimiter on its
+          # own -- `substr(cmd, j, 0)` is "", so the suffix clause is what
+          # decides, and it demands a newline right there. Left unqueued the
+          # body was scanned as code, and an apostrophe in it ("it's") flipped
+          # quote parity for everything after, hiding a real command.
+          # No delimiter word at all (`cat <<`, `cat <<;`) is a bash syntax
+          # error, so nothing is enqueued for it and the rest stays code.
+          if (delim != "" || quoted) {
             pq_delim[pq_tail] = delim; pq_quoted[pq_tail] = quoted; pq_strip[pq_tail] = strip; pq_tail++
           }
           masked = masked "<<"; i += 2
