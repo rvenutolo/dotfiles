@@ -182,7 +182,16 @@ function prefix_chain_step() {
   # called token, word, or at_cmd to this function by name.
   local -n chain_ref="$4" skip_ref="$5" operands_ref="$6"
   if is_operator "${token}"; then
-    chain_ref=''
+    # Every operator restores command position, but a pipe leaves a sentinel
+    # behind: `time` may prefix only the FIRST command of a pipeline, so past a
+    # `|` it is an ordinary word PATH resolves to GNU time. The `&` arm keeps
+    # that sentinel so `|&` reads like the `|` it extends, while a `&` on its
+    # own still starts a command where the reserved word is legal.
+    if [[ "${token}" == '|' ]] || [[ "${token}" == '&' && "${chain_ref}" == 'pipe' ]]; then
+      chain_ref='pipe'
+    else
+      chain_ref=''
+    fi
     skip_ref=0
     operands_ref=0
     return 0
