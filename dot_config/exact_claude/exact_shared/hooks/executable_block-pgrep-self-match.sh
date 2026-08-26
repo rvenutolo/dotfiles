@@ -196,13 +196,15 @@ function prefix_chain_step() {
   # test runs before the keyword test because `time` is both, and only the
   # prefix reading understands its `-o file`.
   if ((at_cmd == 1)) && is_prefix_command "${word}"; then
-    # Bare `time` is bash's reserved word whatever follows it -- `time -o f cmd`
-    # runs `-o`, not GNU time -- so only a path spelling (`/usr/bin/time`) gets
-    # the option table. The sentinel keeps the reserved word's own `-p` in
-    # command position while matching no arm of either table. `env time -o f`
-    # does reach GNU time and is read as the reserved word here; modelling that
-    # would mean resolving what `env` execs, which this guard does not do.
-    if [[ "${token}" == 'time' ]]; then
+    # `time` is bash's reserved word only as the very first word of a command:
+    # `time -o f cmd` runs `-o`, not GNU time. Behind a prefix (`env time`,
+    # `sudo -u bob time`) or an assignment (`FOO=1 time`) the word is one those
+    # resolve through PATH, which is GNU time and does understand `-o` -- hence
+    # the empty-chain test, the assignment sentinel below being what makes the
+    # second case work. A path spelling (`/usr/bin/time`) is never the reserved
+    # word either. The sentinel keeps the reserved word's own `-p` in command
+    # position while matching no arm of either table.
+    if [[ "${token}" == 'time' && -z "${chain_ref}" ]]; then
       chain_ref='time-builtin'
     else
       chain_ref="${word}"
@@ -222,6 +224,10 @@ function prefix_chain_step() {
     return 1
   fi
   if is_assignment_word "${token}"; then
+    # An assignment is not a chain, but it does mean the next word is no longer
+    # the command's first: `FOO=1 time ...` runs GNU time, not the reserved
+    # word. The sentinel records that and matches no arm of either table.
+    [[ -z "${chain_ref}" ]] && chain_ref='assignment'
     return 0
   fi
   if [[ -z "${chain_ref}" ]]; then
