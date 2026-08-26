@@ -987,6 +987,11 @@ function wrapper_operand_budget() {
 #              order, so a heredoc's ordinal among all `<<` tokens -- fd-prefixed or not -- is its
 #              body's ordinal among the markers.
 #
+#              Two shapes are deliberately not covered: `cat <<EOF | bash`, where the body does run
+#              in bash but the heredoc feeds `cat`, so seeing it needs pipeline data-flow this
+#              scanner does not model; and `sudo -u user bash <<EOF`, the pre-existing prefix-chain
+#              limitation that stops the wrapper being recognised at all -- identical for `-c`.
+#
 #              Payloads are NUL-terminated because a heredoc body is usually several lines and
 #              has to reach classify_command as one command.
 #
@@ -2069,6 +2074,13 @@ readonly -a SELF_TEST_CASES=(
   # `-s` says stdin IS the script, so operands after it are that script's
   # positional parameters ($1...) and the body still runs here.
   $'bash -s arg <<EOF\npkill --full x\nEOF\tdeny:kill'
+  # ...but with no `-s` an operand still wins over a redirection: the body is
+  # the script's stdin, not code the wrapper runs.
+  $'bash <<EOF >/tmp/log script.sh\npkill --full x\nEOF\tallow'
+
+  # Two stdin heredocs before the wrapper word: bash applies the last, so the
+  # body sliced must be B's, not A's.
+  $'<<A <<B bash\nnote\nA\npkill --full x\nB\tdeny:kill'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
@@ -2275,6 +2287,31 @@ function run_scanner_tests() {
   assert_equals 'plain text in an unquoted heredoc body is masked' \
     '0' "$(scan_command "$(printf 'cat <<EOF\npkill --full x\nEOF')" | grep --count '\bpkill$' || true)" \
     || failures=$((failures + 1))
+  # A double-quoted delimiter quotes the body exactly as a single-quoted one
+  # does; only the unquoted form re-enters code context.
+  assert_equals 'a double-quoted delimiter masks the body' \
+    '0' "$(scan_command "$(printf 'cat <<"EOF"\npkill --full x\nEOF')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # The terminator is the WHOLE line, not a prefix of it: `EOFX` starts with
+  # the delimiter and must not close the body, or everything after it is
+  # scanned as code the shell never runs.
+  assert_equals 'a line merely starting with the delimiter is not a terminator' \
+    '0' "$(scan_command "$(printf 'cat <<EOF\nEOFX\npkill --full x\nEOF')" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
+  # A body that begins at end of input has no byte for the tokenizer loop to
+  # reach, so its marker is emitted after the loop -- with the right offset and
+  # a zero length. The command is written as a $'' literal, not $(printf ...),
+  # because the trailing newline is the whole point and $() strips it.
+  assert_equals 'a body at end of input still emits a zero-length marker' \
+    $'10\t<HD:0>' "$(scan_command $'cat <<EOF\n' | grep '<HD:' || true)" \
+    || failures=$((failures + 1))
+  # An unterminated quote ends the delimiter word at the newline. Read on past
+  # it and the next line's bytes are glued onto the delimiter, so the real
+  # terminator is never recognised and the rest of the command is masked as
+  # body -- here `E` closes the body and `pkill` is code again.
+  assert_equals 'an unterminated quote ends the delimiter word at the newline' \
+    '1' "$(scan_command "$(printf "cat <<E'\nx'\nE\npkill --full x")" | grep --count '\bpkill$' || true)" \
+    || failures=$((failures + 1))
   # shellcheck disable=SC2016
   assert_equals 'backslash-escaped delimiter is a quoted delimiter' \
     '0' "$(scan_command "$(printf 'cat <<\\EOF\n$(pkill --full x)\nEOF')" | grep --count '\bpkill$' || true)" \
@@ -2292,8 +2329,11 @@ function run_scanner_tests() {
   assert_equals 'two heredocs on one line yield two bodies' \
     '2' "$(scan_command "$(printf 'cat <<A <<B\na-body\nA\nb-body\nB\nls')" | grep --count '<HD:' || true)" \
     || failures=$((failures + 1))
-  assert_equals 'both bodies are masked' \
-    '0' "$(scan_command "$(printf 'cat <<A <<B\na-body\nA\nb-body\nB\nls')" | grep --count 'body' || true)" \
+  assert_equals 'the first of two bodies is masked' \
+    '0' "$(scan_command "$(printf 'cat <<A <<B\na-body\nA\nb-body\nB\nls')" | grep --count '\ba-body$' || true)" \
+    || failures=$((failures + 1))
+  assert_equals 'the second of two bodies is masked' \
+    '0' "$(scan_command "$(printf 'cat <<A <<B\na-body\nA\nb-body\nB\nls')" | grep --count '\bb-body$' || true)" \
     || failures=$((failures + 1))
   assert_equals 'code after two bodies is tokenized' \
     '1' "$(scan_command "$(printf 'cat <<A <<B\na-body\nA\nb-body\nB\nls')" | grep --count '\bls$' || true)" \

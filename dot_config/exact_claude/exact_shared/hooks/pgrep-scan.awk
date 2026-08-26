@@ -170,10 +170,16 @@ BEGIN { RS = "\0"; ORS = "" }
             if (c == "'") {
               quoted = 1; j++
               while (j <= n && substr(cmd, j, 1) != "'" && substr(cmd, j, 1) != "\n") { delim = delim substr(cmd, j, 1); j++ }
+              # An unterminated quote ends the delimiter word at end of input.
+              # Without the break the word loop runs on past the newline and
+              # glues the next line's bytes onto the delimiter, so `cat <<E'`
+              # would look for a terminator named `Ex` rather than `E`.
+              if (j > n || substr(cmd, j, 1) == "\n") break
               j++
             } else if (c == "\"") {
               quoted = 1; j++
               while (j <= n && substr(cmd, j, 1) != "\"" && substr(cmd, j, 1) != "\n") { delim = delim substr(cmd, j, 1); j++ }
+              if (j > n || substr(cmd, j, 1) == "\n") break
               j++
             } else if (c == "\\") {
               quoted = 1; delim = delim substr(cmd, j + 1, 1); j += 2
@@ -183,6 +189,14 @@ BEGIN { RS = "\0"; ORS = "" }
               delim = delim c; j++
             }
           }
+          # An empty delimiter is either no delimiter word at all (`cat <<`,
+          # `cat <<;`), which bash rejects as a syntax error, or the explicitly
+          # empty `<<''`, which bash accepts with a blank line as terminator.
+          # Neither is enqueued, so the lines that follow are scanned as code
+          # on purpose.
+          # TODO: `<<''` is syntax bash really runs, and its body is scanned
+          # rather than masked. It is vanishingly rare, and scanning can only
+          # cost a false deny -- it never hides a command from the guard.
           if (delim != "") {
             pq_delim[pq_tail] = delim; pq_quoted[pq_tail] = quoted; pq_strip[pq_tail] = strip; pq_tail++
           }
