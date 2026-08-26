@@ -80,7 +80,12 @@ BEGIN { RS = "\0"; ORS = "" }
           if (depth > 0 && opener[depth] == "B") { depth-- } else { depth++; ctx[depth] = "N"; opener[depth] = "B" }
           continue
         }
-        if (ch == "\\") { masked = masked "\001\001"; i += 2; continue }
+        # A body line ending in a backslash is not a continuation here -- the
+        # heredoc body is literal text, so the backslash is an ordinary byte.
+        # Masking it together with a following newline would swallow that
+        # newline, which is what starts the terminator check on the next
+        # line; leave the newline for the ch == "\n" branch above to see.
+        if (ch == "\\" && substr(cmd, i + 1, 1) != "\n") { masked = masked "\001\001"; i += 2; continue }
       }
       masked = masked "\001"; i++
       continue
@@ -115,12 +120,22 @@ BEGIN { RS = "\0"; ORS = "" }
       }
       if (ch == "$" && substr(cmd, i + 1, 1) == "(") {
         masked = masked "$("; i += 2; depth++; ctx[depth] = "N"
-        # `$((` is arithmetic, where `<<` is a shift and not a heredoc.
+        # `((` and `$((` are both arithmetic, where `<<` is a shift and not a heredoc.
         opener[depth] = (substr(cmd, i, 1) == "(") ? "A" : "P"
         continue
       }
       if (ch == ")" && depth > 0 && (opener[depth] == "P" || opener[depth] == "A")) {
         masked = masked ")"; i++; depth--; continue
+      }
+      # A bare `(` nests one more arithmetic level whenever it is the second
+      # paren of a `((` open (the arithmetic command form, or the inner one
+      # of `$((`) or it appears anywhere inside an already-open arithmetic
+      # level -- an explicit grouping paren like `(1)` inside `$(( (1)<<2 ))`
+      # must push and pop in step with the surrounding `))`, or its `)`
+      # closes the outer level early and strands the rest of the arithmetic
+      # at depth 0, where a `<<` in it reads as a heredoc operator.
+      if (ch == "(" && (substr(cmd, i + 1, 1) == "(" || (depth > 0 && opener[depth] == "A"))) {
+        masked = masked "("; i++; depth++; ctx[depth] = "N"; opener[depth] = "A"; continue
       }
       if (ch == "`") {
         masked = masked "`"; i++
@@ -143,11 +158,11 @@ BEGIN { RS = "\0"; ORS = "" }
             c = substr(cmd, j, 1)
             if (c == "'") {
               quoted = 1; j++
-              while (j <= n && substr(cmd, j, 1) != "'") { delim = delim substr(cmd, j, 1); j++ }
+              while (j <= n && substr(cmd, j, 1) != "'" && substr(cmd, j, 1) != "\n") { delim = delim substr(cmd, j, 1); j++ }
               j++
             } else if (c == "\"") {
               quoted = 1; j++
-              while (j <= n && substr(cmd, j, 1) != "\"") { delim = delim substr(cmd, j, 1); j++ }
+              while (j <= n && substr(cmd, j, 1) != "\"" && substr(cmd, j, 1) != "\n") { delim = delim substr(cmd, j, 1); j++ }
               j++
             } else if (c == "\\") {
               quoted = 1; delim = delim substr(cmd, j + 1, 1); j += 2
