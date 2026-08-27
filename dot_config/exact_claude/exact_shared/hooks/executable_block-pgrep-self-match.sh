@@ -3456,6 +3456,15 @@ function run_self_test() {
   for case_line in "${SELF_TEST_CASES[@]}"; do
     command="${case_line%%$'\t'*}"
     expected="${case_line##*$'\t'}"
+    # A row whose command embeds a tab must still reassemble from its halves.
+    # A split that drops part of the command classifies a fragment and passes
+    # vacuously, testing nothing (upstream claude-pgrep-pkill-guard#9).
+    if [[ "${command}"$'\t'"${expected}" != "${case_line}" ]]; then
+      printf 'FAIL(split): row does not reassemble from command and expected: %s\n' \
+        "${case_line//$'\n'/\\n}" >&2
+      failures=$((failures + 1))
+      continue
+    fi
     actual="$(classify_command "${command}")"
     # Verdict rows assert the kind alone; the tool field after the tab is
     # asserted end-to-end by MESSAGE_TEST_CASES, which fail if it is wrong.
