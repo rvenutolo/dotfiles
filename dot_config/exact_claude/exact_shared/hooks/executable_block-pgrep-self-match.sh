@@ -2392,6 +2392,47 @@ readonly -a SELF_TEST_CASES=(
   # The documented fail-open residual: an option no table lists takes its value
   # to be the command word, which ends the chain and hides the kill.
   $'sudo --future-opt bob pkill --full x\tallow'
+
+  # #186: a payload piped into a local shell wrapper. The wrapper reads its
+  # script from stdin, so the left side of the pipe is what it runs -- a
+  # heredoc body whose operator belongs to `cat`, or a single literal operand
+  # of `echo` / `printf`. Every rule the wrapper's own simple command already
+  # had still applies past the pipe: an operand displaces stdin, a `-c` claims
+  # the payload instead, `-s` keeps stdin as the script, and the prefix chain
+  # is followed.
+  $'cat <<EOF | bash\npkill --full x\nEOF\tdeny:kill'
+  $'cat <<\'EOF\' | bash\npkill --full x\nEOF\tdeny:kill'
+  $'cat <<EOF | sudo bash\nuntil ! pgrep --full x; do sleep 5; done\nEOF\tdeny:loop'
+  $'cat <<EOF | bash -s arg\npkill --full x\nEOF\tdeny:kill'
+  $'cat - <<EOF | bash\npkill --full x\nEOF\tdeny:kill'
+  $'echo \'pkill --full x\' | bash\tdeny:kill'
+  $'echo "pkill --full x" | sudo bash\tdeny:kill'
+  $'echo -n \'pkill --full x\' | bash\tdeny:kill'
+  $'printf \'pkill --full x\\n\' | bash\tdeny:kill'
+  $'printf \'%s\\n\' \'pkill --full x\' | bash\tdeny:kill'
+
+  # ...and the false denies that bound it. The wrapper must still be reading
+  # stdin (an operand or a `-c` means it is not), the producer must hand the
+  # text through unchanged, the wrapper must be the very next stage and must
+  # run the script HERE, and a pipe into anything else runs nothing.
+  $'cat <<EOF | bash script.sh\npkill --full x\nEOF\tallow'
+  $'cat <<EOF | bash -c \'echo hi\'\npkill --full x\nEOF\tallow'
+  $'cat file <<EOF | bash\npkill --full x\nEOF\tallow'
+  $'sed <<EOF | bash\npkill --full x\nEOF\tallow'
+  $'cat <<EOF | tee /tmp/f | bash\npkill --full x\nEOF\tallow'
+  $'cat <<EOF | ssh host bash\npkill --full x\nEOF\tallow'
+  $'cat <<EOF | grep x\npkill --full x\nEOF\tallow'
+  $'echo \'pkill --full x\' | cat\tallow'
+  $'printf \'%s %s\\n\' \'pkill --full x\' b | bash\tallow'
+
+  # A `|` is a pipe only when it is one: `||` is a conditional list and nothing
+  # crosses it, while `|&` extends the pipe it follows. A redirection on the
+  # PRODUCER sends the wrapper nothing (the body lands in the file), where one
+  # on the WRAPPER leaves stdin alone.
+  $'echo \'pkill --full x\' || bash\tallow'
+  $'echo \'pkill --full x\' |& bash\tdeny:kill'
+  $'cat <<EOF > /tmp/f | bash\npkill --full x\nEOF\tallow'
+  $'cat <<EOF | bash 2>&1\npkill --full x\nEOF\tdeny:kill'
 )
 
 # Message-content rows: command TAB field TAB mode TAB needle. Fields: reason
