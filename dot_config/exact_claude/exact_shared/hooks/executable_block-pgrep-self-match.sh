@@ -3154,7 +3154,7 @@ function run_deny_sweep() {
   local failures=0
   local case_line command expected json out reason needle
   for case_line in "${SELF_TEST_CASES[@]}"; do
-    command="${case_line%%$'\t'*}"
+    command="${case_line%$'\t'*}"
     expected="${case_line##*$'\t'}"
     if [[ "${expected}" != deny:* ]]; then
       continue
@@ -3454,7 +3454,7 @@ function run_self_test() {
   fi
   local case_line expected actual command
   for case_line in "${SELF_TEST_CASES[@]}"; do
-    command="${case_line%%$'\t'*}"
+    command="${case_line%$'\t'*}"
     expected="${case_line##*$'\t'}"
     # A row whose command embeds a tab must still reassemble from its halves.
     # A split that drops part of the command classifies a fragment and passes
