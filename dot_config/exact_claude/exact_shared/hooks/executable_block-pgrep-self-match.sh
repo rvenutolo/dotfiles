@@ -1165,6 +1165,59 @@ function wrapper_operand_budget() {
   return 1
 }
 
+# @description The text a pass-through producer on the left of a pipe hands to the wrapper on the
+#              right, for the producers whose output is knowable from the command line alone.
+#              `cat` is not one of them here -- what it passes through is a heredoc body, which
+#              the caller resolves through the scanner's `<HD:len>` marker instead.
+#
+#              `echo` prints its operands, so a single literal operand IS the script. `-n`, `-e`
+#              and `-E` are the only flags it has and are skipped; any other dash word is printed
+#              literally, and counting it as a flag would hand the recursion a script the shell
+#              never sees. More than one operand is skipped rather than reconstructed: the
+#              separator is a space only because IFS says so, and a wrong reconstruction is a
+#              false deny.
+#
+#              `printf` takes its format first, so one operand means the format itself is the
+#              script (`printf 'cmd\n' | bash`) and two mean the format is a pass-through and the
+#              second operand is (`printf '%s\n' 'cmd' | bash`). Three or more is a format applied
+#              repeatedly, which cannot be reconstructed here either.
+# @arg $1 name the producer's basename
+# @arg $@ words its operand words, already unquoted
+# @stdout the payload text, when there is one
+# @exitcode 0 a payload was printed
+# @exitcode 1 this producer hands the wrapper nothing knowable
+function pipe_producer_payload() {
+  local -r name="$1"
+  shift
+  local -a literals=()
+  local word
+  case "${name}" in
+    echo)
+      for word in "$@"; do
+        [[ "${word}" =~ ^-[neE]+$ ]] && continue
+        literals+=("${word}")
+      done
+      ((${#literals[@]} == 1)) || return 1
+      printf '%s' "${literals[0]}"
+      ;;
+    printf)
+      for word in "$@"; do
+        [[ "${word}" == '--' ]] && continue
+        literals+=("${word}")
+      done
+      case "${#literals[@]}" in
+        1) printf '%s' "${literals[0]}" ;;
+        2) printf '%s' "${literals[1]}" ;;
+        *) return 1 ;;
+      esac
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  return 0
+}
+
 # @description Find the payloads of local shell wrappers and print each one's raw text,
 #              NUL-terminated, with any surrounding quotes stripped.
 #
@@ -1207,10 +1260,21 @@ function wrapper_operand_budget() {
 #              order, so a heredoc's ordinal among all `<<` tokens -- fd-prefixed or not -- is its
 #              body's ordinal among the markers.
 #
-#              Two shapes are deliberately not covered: `cat <<EOF | bash`, where the body does run
-#              in bash but the heredoc feeds `cat`, so seeing it needs pipeline data-flow this
-#              scanner does not model; and `sudo -u user bash <<EOF`, the pre-existing prefix-chain
-#              limitation that stops the wrapper being recognised at all -- identical for `-c`.
+#              A payload piped into the wrapper counts too (#186). The wrapper reads its script
+#              from stdin, so the left of the pipe is what it runs -- but only when that side hands
+#              the text through unchanged: `cat` with no operand but `-`, and no redirection of its
+#              own, passes a heredoc body through, and `echo` / `printf` pass a literal operand (see
+#              pipe_producer_payload). A filter may emit something other than what it was given, so
+#              `sed <<EOF | bash` is not read as a payload -- denying on text that never reaches the
+#              wrapper is a false deny. The wrapper must be the pipe's very NEXT stage, since an
+#              intermediate one (`cat <<EOF | tee f | bash`) can change the text on the way. Past the
+#              pipe nothing else changes: the payload is handed to the same machinery, so an operand
+#              still displaces stdin, a `-c` still claims the payload instead, `-s` still keeps stdin
+#              as the script, and the prefix chain is still followed.
+#
+#              Still not covered: content that is not on the command line at all
+#              (`printf '%s' "${script}" | bash`, `curl ... | bash`), and a here-string fed to a
+#              wrapper (`bash <<< 'script'`).
 #
 #              Payloads are NUL-terminated because a heredoc body is usually several lines and
 #              has to reach classify_command as one command.
@@ -1228,6 +1292,15 @@ function shell_wrapper_payloads() {
   local chain='' chain_skip=0 chain_operands=0
   local heredoc_seq=0 body_seq=0 pending='' leading_pending='' wanted=' ' expect_delim=0 len fd
   local expect_redir_target=0
+  # The pipeline carry (#186). `seg_*` is the simple command being read right
+  # now; `pipe_*` is what an ended segment left behind for the next one, which
+  # only the very next command word may claim. `pending_text` is the wrapper's
+  # claimed literal payload, held until its simple command ends the same way a
+  # heredoc ordinal is.
+  local seg_cmd='' seg_heredoc='' seg_redir=0 seg_ok payload w
+  local -a seg_words=()
+  local pipe_heredoc='' pipe_text='' pipe_text_set=0 last_pipe_offset=-1
+  local pending_text='' pending_text_set=0
   # A `<<` heredoc operator may carry a leading fd (`0<<`, `3<<-`), which is
   # ordinary redirection syntax; only fd 0 (empty or explicit `0`) feeds the
   # wrapper's stdin. `<<<` (and an fd-prefixed `0<<<`) is a here-string, not a
@@ -1262,6 +1335,9 @@ function shell_wrapper_payloads() {
       heredoc_seq=$((heredoc_seq + 1))
       fd="${BASH_REMATCH[1]}"
       if [[ -z "${fd}" || "${fd}" == '0' ]]; then
+        # Remembered for the pipeline carry whoever owns it: bash applies the
+        # LAST stdin heredoc of a simple command, so a later one replaces it.
+        seg_heredoc="${heredoc_seq}"
         if ((in_wrapper == 1 && saw_c == 0)); then
           pending="${heredoc_seq}"
         elif ((at_cmd == 1)); then
@@ -1296,6 +1372,10 @@ function shell_wrapper_payloads() {
     fi
     if [[ "${token}" != '<NL>' && "${token}" =~ ${redir_re} ]]; then
       [[ "${token}" =~ ${redir_bare_re} ]] && expect_redir_target=1
+      # A producer whose own output is redirected sends the wrapper nothing:
+      # in `cat > f <<EOF | bash` the body lands in the file and bash reads an
+      # empty pipe. Disqualify the segment rather than guess which fd it was.
+      seg_redir=1
       continue
     fi
 
@@ -1308,11 +1388,14 @@ function shell_wrapper_payloads() {
       fi
       if is_operator "${token}"; then
         [[ -n "${pending}" ]] && wanted+="${pending} "
+        ((pending_text_set == 1)) && printf '%s\0' "${pending_text}"
         in_wrapper=0
         saw_c=0
         saw_s=0
         saw_s_operand=0
         pending=''
+        pending_text=''
+        pending_text_set=0
       elif ((saw_c == 1)) && [[ "${word}" != -* ]]; then
         raw="${command:offset:${#token}}"
         if [[ ("${raw}" == \"*\" || "${raw}" == \'*\') && ${#raw} -ge 2 ]]; then
@@ -1323,6 +1406,8 @@ function shell_wrapper_payloads() {
         saw_s=0
         saw_s_operand=0
         pending=''
+        pending_text=''
+        pending_text_set=0
       elif [[ "${word}" == -*c* && "${word}" != --* ]] && ((saw_s_operand == 0)); then
         # A short cluster, so `bash -lc '...'` counts as well as `bash -c '...'`.
         # Once `-s` has taken an operand the wrapper's own option list is over:
@@ -1343,17 +1428,72 @@ function shell_wrapper_payloads() {
           in_wrapper=0
           saw_c=0
           pending=''
+          pending_text=''
+          pending_text_set=0
         fi
       fi
     fi
 
-    if is_operator "${token}" || is_keyword "${token}"; then
+    # The segment's operand words, kept in case it turns out to be a producer
+    # on the left of a pipe. A word still in command position is the command
+    # itself or a prefix's own option, neither of which the producer prints.
+    if ((at_cmd == 0)) && ! is_operator "${token}" && ! is_keyword "${token}"; then
+      raw="${command:offset:${#token}}"
+      if [[ ("${raw}" == \"*\" || "${raw}" == \'*\') && ${#raw} -ge 2 ]]; then
+        seg_words+=("${raw:1:${#raw}-2}")
+      else
+        seg_words+=("${raw}")
+      fi
+    fi
+
+    if is_operator "${token}"; then
+      if [[ "${token}" == '|' ]] && ((last_pipe_offset != offset - 1)); then
+        pipe_heredoc=''
+        pipe_text=''
+        pipe_text_set=0
+        seg_ok=1
+        ((seg_redir == 1)) && seg_ok=0
+        for w in ${seg_words[@]+"${seg_words[@]}"}; do
+          [[ "${w}" == '-' ]] || seg_ok=0
+        done
+        if ((seg_ok == 1)) && [[ "${seg_cmd}" == 'cat' && -n "${seg_heredoc}" ]]; then
+          pipe_heredoc="${seg_heredoc}"
+        elif ((seg_redir == 0)) \
+          && payload="$(pipe_producer_payload "${seg_cmd}" ${seg_words[@]+"${seg_words[@]}"})"; then
+          pipe_text="${payload}"
+          pipe_text_set=1
+        fi
+        last_pipe_offset="${offset}"
+      elif [[ "${token}" == '|' ]]; then
+        # The second `|` of a `||`, which is a conditional list and not a pipe:
+        # nothing crosses it, so drop what the first `|` armed.
+        pipe_heredoc=''
+        pipe_text=''
+        pipe_text_set=0
+        last_pipe_offset="${offset}"
+      elif [[ "${token}" == '&' ]] && ((last_pipe_offset == offset - 1)); then
+        # `|&` extends the pipe it follows, so the carry it armed stands.
+        last_pipe_offset="${offset}"
+      else
+        pipe_heredoc=''
+        pipe_text=''
+        pipe_text_set=0
+      fi
+      seg_cmd=''
+      seg_heredoc=''
+      seg_redir=0
+      seg_words=()
+      leading_pending=''
+    elif is_keyword "${token}"; then
       leading_pending=''
     fi
     if prefix_chain_step "${token}" "${word}" "${at_cmd}" chain chain_skip chain_operands; then
       next_at_cmd=1
     else
       next_at_cmd=0
+    fi
+    if ((at_cmd == 1 && next_at_cmd == 0)); then
+      seg_cmd="${word}"
     fi
     if ((at_cmd == 1)) && budget="$(wrapper_operand_budget "${word}")"; then
       in_wrapper=1
@@ -1363,9 +1503,36 @@ function shell_wrapper_payloads() {
       operands="${budget}"
       pending="${leading_pending}"
       leading_pending=''
+      pending_text=''
+      pending_text_set=0
+      # A heredoc written on the wrapper's own simple command is the one bash
+      # applies; the pipe only supplies stdin when nothing else did.
+      if [[ -z "${pending}" && -n "${pipe_heredoc}" ]]; then
+        pending="${pipe_heredoc}"
+      fi
+      if ((pipe_text_set == 1)); then
+        pending_text="${pipe_text}"
+        pending_text_set=1
+      fi
+      pipe_heredoc=''
+      pipe_text=''
+      pipe_text_set=0
+    elif ((at_cmd == 1 && next_at_cmd == 0)); then
+      # A command word that is not a local wrapper: whatever the pipe carried is
+      # this command's input, and nothing here runs it as a script.
+      pipe_heredoc=''
+      pipe_text=''
+      pipe_text_set=0
     fi
     at_cmd="${next_at_cmd}"
   done <<< "${tokens}"
+
+  # A wrapper whose simple command runs to the end of the input (`echo 'x' |
+  # bash`) meets no operator to flush on. A heredoc payload needs no such
+  # flush: its body marker always follows the <NL> that ended that command.
+  if ((pending_text_set == 1)); then
+    printf '%s\0' "${pending_text}"
+  fi
 }
 
 # A harness task-output file:
