@@ -91,6 +91,17 @@
   - Append `!` after the type for breaking changes: `feat!: drop Java 11 support`
   - Optional body (after a blank line): explain *why*, not *what*
 
+## GitHub
+
+- The user's personal GitHub account (`rvenutolo`) is on the **Pro** plan. Treat Pro-tier features as available on their personal repos — public and private — and use them without first asking whether the plan allows it:
+  - Branch protection rules, required reviewers, and CODEOWNERS on private repos
+  - Draft pull requests and auto-merge on private repos
+  - GitHub Pages and wikis on private repos
+  - Repository insights (traffic, commits, code frequency, network, forks)
+  - The larger GitHub Actions minutes and Packages storage allowances Pro grants for private repos
+- Pro is an account-level plan, not a Copilot subscription — it does not imply GitHub Copilot access.
+- Repos owned by an organization bill against that org's plan, not the user's Pro plan. Do not assume Pro-only features are available there.
+
 ## AWS CLI
 
 - Prefer long options (e.g., `--region`, `--output`, `--query`)
