@@ -19,7 +19,31 @@ Filenames in this repo are not literal paths — they encode target-state metada
 
 - `dot_foo` → `~/.foo` (leading dot in target)
 - `private_foo` → mode `0600` (or `0700` for dirs)
-- `exact_foo/` → directory contents managed exactly: chezmoi removes unmanaged entries on apply. Applies only to files directly inside the dir, not recursively — subdirectories need their own `exact_` prefix to get the same treatment
+- `exact_foo/` → directory contents managed exactly: on apply, chezmoi removes
+  every entry directly inside that directory that it does not manage — **files and
+  subdirectories alike**, and an unmanaged subdirectory is removed with its entire
+  tree. What does *not* recurse is the `exact_` property itself: a managed
+  subdirectory is not exact unless it carries its own `exact_` prefix, so strays
+  inside it survive. Consequence: never mark a directory `exact_` when the app
+  writes its own state beside the managed config (`~/.config/helix/runtime` is
+  1.7 GB of compiled grammars). To get both — strays cleaned at the top
+  level, a state directory left alone — add that state directory to the source tree
+  as a managed-but-not-exact directory: `exact_foo/bar/.keep`. Managing `bar` stops
+  `exact_foo` from removing it, and `bar` carries no `exact_` prefix of its own, so
+  its contents are untouched. Source entries starting with `.` are never applied,
+  so the `.keep` writes nothing to the target — it exists only so git can carry an
+  otherwise-empty directory. `exact_helix/runtime/.keep` is the live instance
+- `exact_` dirs currently in use for app-state directories: `exact_helix/runtime`,
+  `exact_direnv/lib`, `exact_docker/private_buildx`, `exact_lapce-stable/db`,
+  `exact_lite-xl/{fonts,ws}` — each a `.keep` dir per the rule above. Loose
+  app-written *files* cannot use `.keep`; they are listed in `.chezmoiignore`
+  instead (docker token seeds, lite-xl `session.lua` / `user_settings.lua`), which
+  also protects them from `exact_` removal. Two traps: a `.keep` dir must not
+  collide with a `.chezmoiexternal.toml.tmpl` target — externals already count as
+  managed, and doubling up makes chezmoi refuse the path with "inconsistent state"
+  (this is why `exact_lite-xl` has no `colors/.keep`; `colors`, `libraries/widget`
+  and `plugins` are externals) — and a `.keep` dir defaults to mode 0755, so a
+  target the app created 0700 needs `private_` to avoid being loosened.
 - `symlink_foo` → target is a symlink; file contents are the link target
 - `encrypted_foo` → decrypted on apply via age (key at `~/.keys/age.key`)
 - `*.tmpl` → Go-template rendered with chezmoi data (host facts, `is_personal`, `is_work`, etc.)
@@ -78,8 +102,12 @@ for another template to reuse.
   `.chezmoi.toml.tmpl`. Reorder the list to change the preference; do not edit
   the rendered chain.
 - nano / hx / nvim / vim / vi are fallbacks for minimal or foreign machines.
-  Their configs (`exact_nano/`, `exact_nvim/`) are deliberately minimal — do
-  not invest in feature parity with micro. hx intentionally ships no config.
+  Their configs (`exact_nano/`, `exact_nvim/`, `exact_helix/`) are deliberately
+  minimal — do not invest in feature parity with micro. hx ships only a
+  `languages.toml`, and only for languages whose default language server is not the
+  one installed; it has no `config.toml` by choice. `exact_helix/` also carries
+  `runtime/.keep`, which is what stops `exact_` from deleting helix's
+  compiled-grammar tree — see the `exact_foo/` bullet above.
 - `VISUAL` is a separate GUI chain (`editors.visual`: zed → lite-xl → kate,
   flatpak-aware — each entry probes `flatpak_id` before `bin`) that falls back
   to `$EDITOR`; `.chezmoiscripts/run_after_50-set-xdg-defaults.sh` reads it at

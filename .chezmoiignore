@@ -6,6 +6,18 @@ docs
 {{- /* Repo tooling, not target state. */}}
 justfile
 
+{{- /*
+  App-written state living beside managed config in an exact_ directory. exact_
+  removes every unmanaged entry, so runtime files the app owns must be ignored
+  here or they are silently deleted on apply. State *directories* are handled
+  instead by a managed-but-not-exact `<dir>/.keep` in the source tree; this list
+  is only for loose files. See the `exact_foo/` bullet in CLAUDE.md.
+*/}}
+.config/docker/.token_seed
+.config/docker/.token_seed.lock
+.config/lite-xl/session.lua
+.config/lite-xl/user_settings.lua
+
 {{- /* Skip terminal-editor .desktop files when the binary isn't installed. */}}
 {{- if not (lookPath "hx") }}
 dot_local/share/applications/hx.desktop
