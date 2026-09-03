@@ -1,0 +1,40 @@
+# Helix defaults only need overriding where the server it looks for by default
+# is not the one installed. Everything else -- nixd, terraform-ls,
+# yaml-language-server, vscode-*-language-server -- already sits in Helix's
+# built-in chain for its language and is picked up with no config here.
+
+# --- Python -----------------------------------------------------------------
+# Helix's built-in chain is ty, ruff, jedi, pylsp; Pyright is not in it.
+
+[language-server.pyright]
+command = "pyright-langserver"
+args = ["--stdio"]
+
+[[language]]
+name = "python"
+language-servers = [
+  # Types, hover, goto-definition.
+  { name = "pyright" },
+  # Lint and format only; Pyright is the better source for everything else.
+  { name = "ruff", only-features = ["diagnostics", "format"] },
+]
+auto-format = true
+
+# --- C# ---------------------------------------------------------------------
+# Helix looks for omnisharp by default, which is not installed.
+
+[language-server.csharp-ls]
+command = "csharp-ls"
+
+[[language]]
+name = "c-sharp"
+language-servers = ["csharp-ls"]
+
+# --- Nix --------------------------------------------------------------------
+# nixd handles the LSP side, but does not format. alejandra and nixpkgs-fmt are
+# both installed; alejandra is the one wired up here.
+
+[[language]]
+name = "nix"
+formatter = { command = "alejandra", args = ["--quiet"] }
+auto-format = true
