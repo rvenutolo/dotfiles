@@ -59,12 +59,85 @@ function find_askpass() {
   return 1
 }
 
-# @description Detect an askpass binary, export the SSH_ASKPASS env vars,
-#   and hand off to ssh-add. No-op (exit 0) when no GUI session is present,
-#   so the same script is safe to run on TTY logins and headless servers.
+# @description Print the private key this script should unlock, taken from the
+#   PERSONAL_SSH_PRIVATE_KEY export in profile.sh (which the login chain also
+#   feeds to the systemd user manager). Deliberately has no hardcoded fallback:
+#   .chezmoidata.yaml owns that path, a literal copy here could not track it,
+#   and an unset var means the login chain is broken in a way worth failing on
+#   rather than papering over.
 # @noargs
+# @stdout path of the private key to add
+# @exitcode 0 a path was printed
+# @exitcode 1 PERSONAL_SSH_PRIVATE_KEY is unset or empty
+function resolve_key_path() {
+  if [[ -z "${PERSONAL_SSH_PRIVATE_KEY:-}" ]]; then
+    return 1
+  fi
+  printf '%s\n' "${PERSONAL_SSH_PRIVATE_KEY}"
+}
+
+# @description Print the SHA256 fingerprint of a key file. ssh-keygen reads the
+#   sibling .pub for a private key, so this never touches the passphrase and
+#   never triggers a prompt.
+# @arg $1 key_path path to the private (or public) key file
+# @stdout SHA256:... fingerprint
+# @exitcode 0 fingerprint printed
+# @exitcode 1 ssh-keygen could not read a fingerprint from the file
+function key_fingerprint() {
+  local -r key_path="$1"
+  local listing
+  # ssh-keygen has no long-form equivalents for -l / -f
+  if ! listing="$(ssh-keygen -l -f "${key_path}" 2> /dev/null)"; then
+    return 1
+  fi
+  printf '%s\n' "${listing}" | awk '{ print $2 }'
+}
+
+# @description Test whether a fingerprint is already held by the running agent.
+#   An unreachable or empty agent counts as "not loaded".
+# @arg $1 fingerprint SHA256:... fingerprint to look for
+# @exitcode 0 the fingerprint is present in the agent
+# @exitcode 1 not present, or no reachable agent
+function key_loaded() {
+  local -r fingerprint="$1"
+  local listing
+  # ssh-add -l exits 1 when the agent is reachable but empty, 2 when it is not
+  # reachable at all; both mean "not loaded" here. ssh-add has no long options.
+  if ! listing="$(ssh-add -l 2> /dev/null)"; then
+    return 1
+  fi
+  grep --quiet --fixed-strings -- "${fingerprint}" <<< "${listing}"
+}
+
+# @description Resolve the key path, detect an askpass binary, export the
+#   SSH_ASKPASS env vars, and hand off to ssh-add. No-op (exit 0) when no GUI
+#   session is present, so the same script is safe to run on TTY logins and
+#   headless servers, and also when the key is already in the agent.
+# @noargs
+# @exitcode 0 no GUI session, key already loaded, or ssh-add succeeded
+# @exitcode 1 key path unresolved or missing, no askpass, or ssh-add failed
 function main() {
   if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
+    exit 0
+  fi
+
+  local key_path
+  if ! key_path="$(resolve_key_path)"; then
+    log_err 'PERSONAL_SSH_PRIVATE_KEY is unset or empty; is profile.sh sourced?'
+    exit 1
+  fi
+  if [[ ! -f "${key_path}" ]]; then
+    log_err "private key not found: ${key_path}"
+    exit 1
+  fi
+
+  # Skip the agent round-trip (and the askpass prompt it would raise) when the
+  # key is already loaded, so re-running this by hand is free and silent.
+  local fingerprint
+  if fingerprint="$(key_fingerprint "${key_path}")" \
+    && [[ -n "${fingerprint}" ]] \
+    && key_loaded "${fingerprint}"; then
+    log_info "already loaded: ${key_path} (${fingerprint})"
     exit 0
   fi
 
@@ -77,9 +150,12 @@ function main() {
   export SSH_ASKPASS="${askpass}"
   export SSH_ASKPASS_REQUIRE='prefer'
 
-  log_info "using askpass ${askpass}"
-  # ssh-add has no long-form equivalent for -q  # no long-form equivalent
-  exec ssh-add -q
+  log_info "using askpass ${askpass} to add ${key_path}"
+  # The key path must be passed explicitly: bare ssh-add reads only its
+  # hardcoded ~/.ssh/id_* defaults and ignores IdentityFile from ssh_config,
+  # so it found nothing here and exited 1 on every boot.
+  # ssh-add has no long-form equivalent for -q
+  exec ssh-add -q "${key_path}"
 }
 
 main "$@"
