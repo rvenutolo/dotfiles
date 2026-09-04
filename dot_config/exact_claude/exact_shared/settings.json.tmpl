@@ -556,6 +556,17 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${HOME}/.local/bin/ssh-signing-key-reminder\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
