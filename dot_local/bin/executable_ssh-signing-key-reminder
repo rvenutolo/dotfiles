@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+
+# Warn, on one line to stdout, when the git commit-signing SSH key is not
+# loaded in the running ssh-agent. Wired up as a Claude Code SessionStart hook
+# so the reminder lands in Claude's context at session start, and runnable by
+# hand from a terminal. It is a backstop for ssh-add-unlock, which is what
+# actually loads the key at graphical-session start.
+#
+# It is strictly advisory: it never prompts, never blocks, and never exits
+# non-zero. Anything it cannot determine — no git, no agent, no signing key
+# configured — degrades to a silent no-op.
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+# Unlike ssh-add-unlock, this ERR trap exits 0. A SessionStart hook must never
+# fail a session start, so an unexpected error is reported on stderr (which the
+# harness surfaces only in debug output) and then swallowed.
+trap 'printf "error: line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2; exit 0' ERR
+
+# Command the user should run to load the key. Kept as a constant so the
+# warning text and the real remedy cannot drift apart.
+readonly REMEDY_COMMAND="${HOME}/.local/bin/ssh-add-unlock"
+
+# @description Print the configured git commit-signing key path.
+# @noargs
+# @stdout value of git config user.signingkey
+# @exitcode 0 a value was printed
+# @exitcode 1 git is unavailable or no signing key is configured
+function signing_key_path() {
+  if ! command -v git > /dev/null 2>&1; then
+    return 1
+  fi
+  git config --get user.signingkey 2> /dev/null
+}
+
+# @description Print the SHA256 fingerprint of a key file. ssh-keygen reads the
+#   public half, so this never touches a passphrase and never prompts.
+# @arg $1 key_path path to the public (or private) key file
+# @stdout SHA256:... fingerprint
+# @exitcode 0 fingerprint printed
+# @exitcode 1 ssh-keygen is unavailable or could not read the file
+function key_fingerprint() {
+  local -r key_path="$1"
+  local listing
+  if ! command -v ssh-keygen > /dev/null 2>&1; then
+    return 1
+  fi
+  # ssh-keygen has no long-form equivalents for -l / -f
+  if ! listing="$(ssh-keygen -l -f "${key_path}" 2> /dev/null)"; then
+    return 1
+  fi
+  printf '%s\n' "${listing}" | awk '{ print $2 }'
+}
+
+# @description Test whether a fingerprint is held by the running agent.
+# @arg $1 fingerprint SHA256:... fingerprint to look for
+# @exitcode 0 the fingerprint is present in the agent
+# @exitcode 1 not present, or the agent is reachable but empty
+# @exitcode 2 no agent is reachable, so the question cannot be answered
+function key_loaded() {
+  local -r fingerprint="$1"
+  local listing
+  local status=0
+  if ! command -v ssh-add > /dev/null 2>&1; then
+    return 2
+  fi
+  # ssh-add -l exits 1 when the agent is reachable but holds no identities, and
+  # 2 when no agent can be contacted at all. Only the first is a real "the key
+  # is missing" signal; the second means there is nothing to advise about.
+  # ssh-add has no long-form equivalent for -l.
+  listing="$(ssh-add -l 2> /dev/null)" || status=$?
+  if ((status >= 2)); then
+    return 2
+  fi
+  grep --quiet --fixed-strings -- "${fingerprint}" <<< "${listing}"
+}
+
+# @description Emit the reminder when the signing key is absent from the agent.
+#   Silent in every other case.
+# @noargs
+# @stdout one warning line when the signing key is not loaded
+# @exitcode 0 always
+function main() {
+  local key_path
+  if ! key_path="$(signing_key_path)" || [[ -z "${key_path}" ]]; then
+    exit 0
+  fi
+
+  # user.signingkey may hold a literal key rather than a path (or point at a
+  # key this host does not have). Nothing to check in that case.
+  if [[ ! -f "${key_path}" ]]; then
+    exit 0
+  fi
+
+  local fingerprint
+  if ! fingerprint="$(key_fingerprint "${key_path}")" || [[ -z "${fingerprint}" ]]; then
+    exit 0
+  fi
+
+  local status=0
+  key_loaded "${fingerprint}" || status=$?
+  case "${status}" in
+    0 | 2)
+      # Loaded, or no agent to ask — either way, say nothing.
+      exit 0
+      ;;
+    *)
+      # stdout, not stderr: this line is the payload, and a SessionStart hook's
+      # stdout is what gets added to the session context.
+      printf 'WARNING: git signing key %s is not loaded in ssh-agent; run: %s\n' \
+        "${key_path}" "${REMEDY_COMMAND}"
+      exit 0
+      ;;
+  esac
+}
+
+main "$@"
