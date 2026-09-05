@@ -4,6 +4,28 @@
 # history, completions, prompt, aliases. Helper functions are defined at
 # the top of this file and unset at the bottom.
 
+# Auto-launch herdr in local GUI terminals, replacing this shell. Runs
+# first so the outer shell does not pay for the SDKMAN/completion/prompt
+# init below only to be exec'd away. Guards, in order: already inside a
+# herdr pane (which re-sources this file -- HERDR_ENV/HERDR_PANE_ID are
+# exported into every pane, HERDR_SESSION is not, it is set only by
+# `herdr --session <name>`); explicit opt-out; another multiplexer;
+# inbound ssh (`herdr --remote` is the intended path there); the tty
+# console or a dumb terminal; an IDE-embedded terminal; no tty on stdin
+# or stdout; herdr not installed. Escape hatch: `NO_HERDR=1 bash`.
+if [[ -z "${HERDR_ENV-}" && -z "${HERDR_PANE_ID-}" ]] \
+  && [[ -z "${NO_HERDR-}" ]] \
+  && [[ -z "${TMUX-}" && -z "${ZELLIJ-}" && -z "${STY-}" ]] \
+  && [[ -z "${SSH_CONNECTION-}" && -z "${SSH_TTY-}" ]] \
+  && [[ "${TERM-}" != 'linux' && "${TERM-}" != 'dumb' ]] \
+  && [[ "${TERM_PROGRAM-}" != 'vscode' && "${TERM_PROGRAM-}" != 'zed' ]] \
+  && [[ "${TERMINAL_EMULATOR-}" != 'JetBrains-JediTerm' ]] \
+  && [[ -z "${INSIDE_EMACS-}" ]] \
+  && [[ -t 0 && -t 1 ]] \
+  && command -v herdr > /dev/null 2>&1; then
+  exec herdr
+fi
+
 # PATH manipulation helpers (sourced once; unset at the bottom of this
 # file).
 if [[ -r "${XDG_CONFIG_HOME}/path-helpers.sh" ]]; then
