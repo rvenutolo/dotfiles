@@ -48,6 +48,11 @@
 - This applies during triage of test failures, debugging reported issues, and code review of suspect logic.
 - The cost of a 30-second probe is far lower than the cost of a fix that "addresses" non-existent behavior.
 
+## Fixing Findings
+
+- A finding from a review, lint, audit or bug report names sites; it does not bound the problem. Before closing it, search the codebase for the same pattern and fix every match, not only the listed lines. A site list is what one sweep happened to find, and the sibling a few lines from a fixed site is the most common miss.
+- If the class search turns up sites the fix should not absorb (a different file set, a different risk, a behavior change), report them instead of silently widening the change.
+
 ## Long Multi-Step Tasks
 
 - Before starting a long or multi-step process, identify all tools and permissions needed upfront
