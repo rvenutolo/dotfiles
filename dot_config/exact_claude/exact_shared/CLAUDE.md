@@ -48,6 +48,11 @@
 - This applies during triage of test failures, debugging reported issues, and code review of suspect logic.
 - The cost of a 30-second probe is far lower than the cost of a fix that "addresses" non-existent behavior.
 
+## Fixing Findings
+
+- A finding from a review, lint, audit or bug report names sites; it does not bound the problem. Before closing it, search the codebase for the same pattern and fix every match, not only the listed lines. A site list is what one sweep happened to find, and the sibling a few lines from a fixed site is the most common miss.
+- If the class search turns up sites the fix should not absorb (a different file set, a different risk, a behavior change), report them instead of silently widening the change.
+
 ## Long Multi-Step Tasks
 
 - Before starting a long or multi-step process, identify all tools and permissions needed upfront
@@ -130,6 +135,7 @@
 
 ## Writing Documentation
 - Never hardcode absolute paths to the current repository in docs, skills, commands, rules, plans, specs, or any other artifact stored inside the repo. Use repo-root-relative paths (e.g., `.claude/rules/shell-scripts.md`, not `/home/<user>/Projects/Foo/.claude/rules/shell-scripts.md`). When the absolute path is genuinely needed at runtime, resolve it dynamically — e.g., `git rev-parse --show-toplevel` for the repo root, `$CLAUDE_CONFIG_DIR` for the Claude config dir, `$HOME` for the user's home — rather than embedding a literal path. Hardcoded paths break the moment the repo is cloned elsewhere or the user/machine changes.
+- Never state a value that drifts with every edit in prose that nothing checks: a file's current line count, a count of files/functions/tests, or a `file.sh:NN` line reference. Cite code by function, heading or anchor. State the enforced limit ("under 200 lines, enforced by `.ci/check-fast-path-size`"), not today's value ("188 lines today"). A figure pinned to an event ("152 lines when #55 landed") cannot drift and is fine.
 
 ## settings.json
 - When reading or writing any `settings.json` file (e.g., `.claude/settings.json`, `~/.claude/settings.json`), always keep all JSON keys sorted alphabetically at every nesting level. This applies both when creating the file from scratch and when modifying existing content — never leave keys in an unsorted order.
