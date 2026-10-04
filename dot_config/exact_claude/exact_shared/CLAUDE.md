@@ -53,6 +53,16 @@
 - A finding from a review, lint, audit or bug report names sites; it does not bound the problem. Before closing it, search the codebase for the same pattern and fix every match, not only the listed lines. A site list is what one sweep happened to find, and the sibling a few lines from a fixed site is the most common miss.
 - If the class search turns up sites the fix should not absorb (a different file set, a different risk, a behavior change), report them instead of silently widening the change.
 
+## Prioritizing Work Items
+
+- When asked to order, rank or prioritize a set of items, "priority" means **implementation sequence**, not product value. The items are all going to be done and will ship together, so the question is which to do first, not which matters most to users.
+- Order by engineering leverage: what makes the remaining work cheaper, faster or safer. Three factors, applied in this order when they conflict:
+  1. **Unblocks other items.** A prerequisite, or something that makes other items simpler to write (a shared helper, a refactor, config plumbing) goes before the items that use it.
+  2. **Speeds up the feedback loop.** Anything that makes every later iteration cheaper goes early: CI caching, faster tests, better lint or tooling. If a cache halves CI time, it is high priority regardless of how small the change is.
+  3. **Retires risk or uncertainty.** The item most likely to fail, surprise, or change the design of the others goes as early as the first two allow, so the rest is planned on solid ground.
+- "Quick wins" are not a factor. A small item is not early because it is small; it is early only if one of the three factors above applies.
+- When the user explicitly asks for a value- or impact-based ranking, that overrides this default.
+
 ## Long Multi-Step Tasks
 
 - Before starting a long or multi-step process, identify all tools and permissions needed upfront
