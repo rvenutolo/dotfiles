@@ -76,6 +76,19 @@ codebase patterns, formatted as a `★ Insight` block with 2–3 key points. Sup
 
 Design system and component patterns for building production-grade frontend interfaces.
 
+### github
+
+GitHub's hosted MCP server (`https://api.githubcopilot.com/mcp/`), registered as an HTTP server
+that authenticates with `Authorization: Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}`. That variable is
+deliberately never set — tokens live in the gh keyring — so the header is empty and every session
+reports a failed MCP connection. The endpoint also serves github.com only, so it cannot reach the
+work host.
+
+Superseded by the user-scope `github` and `github-work` MCP servers, which
+`github-mcp-server.sh` launches with a token read from `gh auth token --hostname <host>`. The
+`mcp__github__*` and `mcp__github-work__*` permission rules in `settings.json` belong to those
+servers, not to this plugin.
+
 ### gopls-lsp
 
 Go language server (LSP) providing code intelligence for Go projects.
