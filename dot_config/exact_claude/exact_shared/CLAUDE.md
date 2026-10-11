@@ -139,6 +139,15 @@
 - If a required tool is missing, inform the user rather than silently failing or substituting a workaround
 - Prefer faster modern alternatives when available (e.g., `rg` over `grep`, `fd` over `find`, `yq` over manual YAML parsing)
 
+## Justfiles
+
+- A `justfile` is a convenience for a developer who happens to have `just` installed. Nothing may require it: CI workflows, git hooks, scripts, other build tooling and documented setup steps must all work on a machine without `just`.
+- A recipe is a thin wrapper around a command that stands alone. Keep the logic in a script or in the underlying tool's own invocation and have the recipe call it; a recipe must never be the only place a procedure exists.
+- In docs, give the underlying command. A `just` recipe may be named beside it as a shortcut, never in place of it.
+- Two kinds of project are exempt from all of the above and may depend on `just` freely:
+  1. **Personal single-user repos** — ones the user maintains for their own use and does not expect anyone else to run, such as their `dotfiles` and `scripts` repos. A repo being public does not make it multi-user; the test is whether anyone else is expected to use it. If that is unclear, ask.
+  2. **Hermetic Nix projects** — ones whose dev shell (`flake.nix` / `shell.nix`) supplies `just`, making it a declared project dependency and not an assumption about the machine.
+
 ## Shell Commands
 - When running Bash() tool commands, prefer `$VAR` over `${VAR}` unless the substitution syntax is necessary (e.g. `${VAR:-default}`, `${VAR%suffix}`). This does not apply to code Claude generates/edits — generated code should default to using `${}`.
 - Any shell command that runs longer than 30 minutes must be killed. Use `timeout 30m` as a prefix for commands that could hang or run unexpectedly long (e.g., `timeout 30m ./mvnw pmd:check`). If a command is killed by the timeout, report it to the user rather than retrying silently.
