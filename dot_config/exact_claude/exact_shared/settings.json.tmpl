@@ -545,18 +545,6 @@
   },
   "model": "fable",
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_CONFIG_DIR}/hooks/block-pgrep-self-match.sh\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
@@ -583,6 +571,7 @@
     "feature-dev@claude-plugins-official": true,
     "hookify@claude-plugins-official": true,
     "jdtls-lsp@claude-plugins-official": true,
+    "pgrep-pkill-guard@rvenutolo": true,
     "pr-review-toolkit@claude-plugins-official": true,
     "ralph-loop@claude-plugins-official": true,
     "remember@claude-plugins-official": true,
@@ -601,6 +590,12 @@
       "source": {
         "source": "github",
         "repo": "forrestchang/andrej-karpathy-skills"
+      }
+    },
+    "rvenutolo": {
+      "source": {
+        "source": "github",
+        "repo": "rvenutolo/claude-pgrep-pkill-guard"
       }
     }
   },

@@ -392,7 +392,7 @@ All other rules — quoting, `${var}` braces, `function` keyword, `[[ ]]`, long 
 Install once per clone with `just hooks`. CI runs the identical config, so a
 commit that passes locally passes the lint job.
 
-`.pre-commit-config.yaml` currently configures twenty hooks. Grouped by
+`.pre-commit-config.yaml` currently configures nineteen hooks. Grouped by
 what they are for, rather than by the repo they come from:
 
 - **Shell** — `shellcheck` and `shfmt`, plus `render-lint-sh-tmpl`, which
@@ -410,22 +410,11 @@ what they are for, rather than by the repo they come from:
 - **CI plumbing** — `actionlint` and `renovate-config-validator` (see below;
   nothing else validates either file).
 - **Local test suites** — `pin-digest-provenance-test` runs
-  `.dev/check-pin-digest-provenance.test.sh`, `pgrep-hook-self-test` runs
-  the `--self-test` table built into
-  `dot_config/exact_claude/exact_shared/hooks/executable_block-pgrep-self-match.sh`,
-  and `xdg-defaults-self-test` runs the `--self-test` table built into
+  `.dev/check-pin-digest-provenance.test.sh`, and `xdg-defaults-self-test`
+  runs the `--self-test` table built into
   `.chezmoiscripts/run_after_50-set-xdg-defaults.sh`.
-  These are the repo's own tests, not third-party linters; a change to any of
-  those scripts that breaks its suite fails the commit.
-
-  The pgrep hook denies four kinds — `kill`, `loop`, `task-poll` (a
-  loop on a harness `…/tasks/<id>.output` file), and `repeat`
-  (the third probe of one target in 300 s). `repeat` is the hook's only
-  stateful rule: one file per session at
-  `${XDG_RUNTIME_DIR}/block-pgrep-self-match/<session_id>` (override with
-  `BLOCK_PGREP_STATE_DIR`), touched only by commands that carry a probe
-  key, pruned on every write, and every state failure allows. Its suite
-  (`run_repeat_tests`) runs against a throwaway dir inside `--self-test`.
+  These are the repo's own tests, not third-party linters; a change to either
+  script that breaks its suite fails the commit.
 
 Keep this list in step with the file. It has drifted before — it named seven
 hooks while the config had nineteen — and a hook nobody knows about is one
