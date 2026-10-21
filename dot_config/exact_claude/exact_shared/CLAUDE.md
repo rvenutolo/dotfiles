@@ -116,6 +116,7 @@
   - The larger GitHub Actions minutes and Packages storage allowances Pro grants for private repos
 - Pro is an account-level plan, not a Copilot subscription — it does not imply GitHub Copilot access.
 - Repos owned by an organization bill against that org's plan, not the user's Pro plan. Do not assume Pro-only features are available there.
+- To update a PR branch that is behind its base, rebase locally (`git fetch origin && git rebase origin/<base>`), confirm the rewritten commits are signed (`git log --format='%G?' origin/<base>..HEAD` shows only `G`), then push with `git push --force-with-lease=<branch>:<old-remote-sha>`. Never use `gh pr update-branch --rebase` or GitHub's "Update with rebase" button: GitHub rewrites the commits unsigned, and branch protection that requires verified signatures then blocks the merge.
 
 ## AWS CLI
 
