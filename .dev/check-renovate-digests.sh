@@ -10,7 +10,7 @@
 # its `url = ` line cannot be anchored to stop at the next comment. Without
 # that anchor, a renovate-tagged entry whose own block has no digest lets the
 # bridge cross into the *next* block and silently bind that entry's SHA to
-# the wrong package (see .github/renovate.json5 and #94). This script is the
+# the wrong package (see .github/renovate.json5). This script is the
 # enforcement fallback: it fails the commit before that mismatch can land.
 # @noargs
 # @stderr one `no digest in url after: <comment>` line per violation

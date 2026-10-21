@@ -96,7 +96,7 @@ for another template to reuse.
 
 ### Editors
 
-- **micro is the primary terminal editor** (decision on #59): first in
+- **micro is the primary terminal editor**: first in
   `editors.text` in `.chezmoidata.yaml`, which drives both the `EDITOR` chain
   rendered into `dot_config/profile.sh.tmpl` and `[edit]` in
   `.chezmoi.toml.tmpl`. Reorder the list to change the preference; do not edit

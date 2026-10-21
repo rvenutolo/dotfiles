@@ -5,7 +5,7 @@
   // Surfaces everything Renovate is holding back — pending minimumReleaseAge
   // updates, rate-limited PRs, anything it decided not to propose. Without it,
   // "Renovate proposed nothing" and "Renovate never ran" look identical from
-  // inside the repo. See #141.
+  // inside the repo.
   dependencyDashboard: true,
   // Only these managers — everything else in this repo is chezmoi target
   // state, not dependency manifests.

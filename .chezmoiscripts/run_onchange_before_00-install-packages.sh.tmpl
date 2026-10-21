@@ -2,7 +2,8 @@
   never depends on a freshly re-inited chezmoi config; keep the
   derivation in sync with .chezmoi.toml.tmpl. run_onchange_: rendered
   content changes (script edits) re-run this, full upgrade included —
-  accepted, see #53. */ -}}
+  accepted, as re-running on rendered content is what makes a
+  package-list edit reinstall. */ -}}
 {{- $osRelease := get .chezmoi "osRelease" | default dict -}}
 {{- $osId := get $osRelease "id" | default "" -}}
 {{- $osIdLike := splitList " " (get $osRelease "idLike" | default "") -}}
