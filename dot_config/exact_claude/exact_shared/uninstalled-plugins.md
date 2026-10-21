@@ -9,20 +9,8 @@ to disable it.
 
 ## Why uninstall rather than disable
 
-This policy started as a workaround. Setting a plugin to `false` in `enabledPlugins` used to
-leave it half-alive:
-
-- **Skills still appeared in the system prompt**, consuming context window tokens even when the
-  plugin was disabled —
-  [#34940](https://github.com/anthropics/claude-code/issues/34940) (closed 2026-03-20),
-  [#40789](https://github.com/anthropics/claude-code/issues/40789) (closed 2026-05-05).
-- **`SessionStart` and `UserPromptSubmit` hooks still fired**, injecting context on every
-  session and every message. A plugin with a large `SessionStart` hook (e.g. a 15KB knowledge
-  graph) could consume 15–20% of the context window before the user said anything —
-  [#35713](https://github.com/anthropics/claude-code/issues/35713) (closed 2026-03-21).
-
-All three are fixed: a disabled plugin now stays quiet. Uninstalling remains the policy anyway,
-for reasons the bugs never covered:
+Uninstalling, rather than setting a plugin to `false` in `enabledPlugins`, is the policy for
+two reasons:
 
 - **Disk.** Every installed plugin is a git checkout under `plugins/cache/`, duplicated per
   profile, and old versions accumulate as separate directories. `caveman` alone held 66M in the
