@@ -192,11 +192,10 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
 
   Those comments say `datasource=github-digest`, **not `git-refs`** — keep it
   that way when adding an entry. `git-refs` resolves the same branch head but
-  reports no release timestamp, and the repo-wide `minimumReleaseAge` fails
-  closed on a missing timestamp, so a `git-refs` entry would stop receiving
-  PRs entirely rather than fail loudly. `github-digest` derives a timestamp
-  from the commit date, which is what puts externals under the quarantine.
-  Note its `depName` is the bare `owner/repo`, not the repo URL `git-refs`
+  reports no release timestamp, and `minimumReleaseAgeBehaviour` fails closed
+  on a missing timestamp, so a `git-refs` entry could stop receiving PRs
+  rather than fail loudly. `github-digest` derives a timestamp from the commit
+  date. Note its `depName` is the bare `owner/repo`, not the repo URL `git-refs`
   wanted.
 - `.github/workflows/ci.yaml` — the lint + render CI workflow. The same
   supply-chain policy applies: every `uses:` is pinned to a 40-hex commit SHA
@@ -207,11 +206,13 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
 
   **Everything Renovate opens automerges** — `automerge: true` sits at the top
   level of `.github/renovate.json5` and covers all three managers and every
-  update type. Two gates precede it: CI must be green (`ignoreTests` is left
-  false, so Renovate will not merge a branch with failing checks), and the
-  update must clear a repo-wide 7-day `minimumReleaseAge` quarantine. Merges
-  land during the Saturday `schedule` window, not the moment a check goes
-  green.
+  update type. A PR merges as soon as CI is green (`ignoreTests` is left
+  false, so Renovate will not merge a branch with failing checks). There is no
+  `schedule`, and `platformAutomerge` is on, so GitHub's native auto-merge
+  fires the moment the `protect-main` required checks pass. GitHub Actions and
+  pre-commit updates sit behind a 7-day `minimumReleaseAge` quarantine, and
+  under the default `internalChecksFilter: 'strict'` their PR is not opened
+  until it has passed — nothing sits open through the window.
 
   This is a deliberate reversal of the earlier "external SHA bumps and
   pre-commit revs are reviewed by hand" policy. One class needed a replacement
@@ -231,21 +232,22 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
 
   `minimumReleaseAge` is at the **top level** and `minimumReleaseAgeBehaviour`
   is left at its default `timestamp-required`, which fails closed. That is
-  only safe because every datasource in use reports a release timestamp — the
-  externals were moved off `git-refs` onto `github-digest` for exactly this
-  reason. Introducing a timestamp-less datasource would silently stop its
-  updates forever while remaining perfectly valid config.
+  only safe because every datasource in use reports a release timestamp.
+  Introducing a timestamp-less datasource would silently stop its updates
+  forever while remaining perfectly valid config.
 
-  Externals also carry `internalChecksFilter: 'flexible'`, scoped to the
-  `custom.regex` manager. They track a moving branch, so the datasource offers
-  exactly one candidate release; the default `strict` filters a pending
-  release and skips the PR "unless a non-pending version is available", and a
-  single branch ref has no older version to fall back to. Every external whose
-  upstream committed within the last week would go silent. `flexible` opens
-  the PR immediately and leaves `renovate/stability-days` pending, so the
-  update stays visible and hand-mergeable while only the automerge waits. The
-  flapping that makes `flexible` a bad default elsewhere cannot occur here — a
-  branch head only moves forward.
+  **Externals are exempt from the quarantine** (`minimumReleaseAge: '0 days'`,
+  scoped to the `custom.regex` manager). They track a moving branch, so the
+  datasource offers exactly one candidate: the branch head. Each upstream
+  commit restarts the clock and there is no older version to fall back to, so
+  an active upstream never ages a week — `strict` would never open its PR and
+  `flexible` would leave it open indefinitely. Do not re-add a release age for
+  externals without solving that.
+
+  `renovate/stability-days` is not a required check, so native auto-merge
+  ignores it. That is safe only while no PR is opened with that check
+  pending — i.e. while nothing uses `internalChecksFilter: 'flexible'`
+  alongside a non-zero release age.
 
   The lint job does **not** use `pre-commit/action`. It runs `pre-commit`
   directly behind an `actions/cache` step whose `restore-keys` supplies a
@@ -507,8 +509,8 @@ Two hooks lint the CI plumbing itself:
   pinned externals quietly go stale.
 
 `rev:` bumps automerge along with everything else (see the `automerge` note
-under `.github/workflows/ci.yaml` above) once CI is green and the 7-day
-quarantine has passed. `renovatebot/pre-commit-hooks` cuts a release for every
+under `.github/workflows/ci.yaml` above) once the 7-day quarantine has passed
+and CI is green. `renovatebot/pre-commit-hooks` cuts a release for every
 Renovate release — several per week — and no longer needs the narrow
 per-repo automerge rule it once had.
 
