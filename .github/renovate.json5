@@ -1,7 +1,6 @@
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: ['config:recommended', ':timezone(America/New_York)'],
-  schedule: ['after 2am on saturday'],
   // Surfaces everything Renovate is holding back — pending minimumReleaseAge
   // updates, rate-limited PRs, anything it decided not to propose. Without it,
   // "Renovate proposed nothing" and "Renovate never ran" look identical from
@@ -13,16 +12,16 @@
   'pre-commit': { enabled: true },
   // Everything Renovate opens automerges — GitHub Actions bumps of every
   // update type, pre-commit `rev:` bumps, and third-party external SHA bumps
-  // alike. Two gates stand in front of it and neither is optional:
+  // alike, as soon as CI is green. `ignoreTests` is left at its default of
+  // false, so Renovate refuses to merge a branch whose status checks have not
+  // passed. The lint + render jobs exercise the actions and re-render every
+  // host, so a bump that breaks the repo does not merge itself. GitHub Actions
+  // and pre-commit updates additionally wait out the 7-day quarantine below
+  // before their PR is even opened.
   //
-  //   1. CI must be green. `ignoreTests` is left at its default of false, so
-  //      Renovate refuses to merge a branch whose status checks have not
-  //      passed. The lint + render jobs exercise the actions and re-render
-  //      every host, so a bump that breaks the repo does not merge itself.
-  //   2. The update must clear the 7-day quarantine below.
-  //
-  // Automerge happens inside the `schedule` window above, so merges land on
-  // Saturday runs rather than the moment a check turns green.
+  // There is no `schedule`: PRs open, rebase and merge whenever Renovate runs.
+  // `main` requires branches to be up to date, so a weekly window would let
+  // queued PRs drain only a few rebases per week.
   //
   // This deliberately replaces the earlier policy of hand-reviewing external
   // SHA bumps, pre-commit revs, and GitHub Actions digest re-points. The last
@@ -44,55 +43,44 @@
   // its version label did not. CI green is a precondition of automerge, so
   // that check is what actually blocks the repoint from merging itself.
   automerge: true,
-  // `main` carries no branch protection, so there are no required checks for
-  // GitHub's native auto-merge to wait on and the platform rejects arming it.
-  // Renovate would fall back to merging through the API anyway, after a failed
-  // call and a warning per PR. Skipping straight to the fallback keeps the run
-  // logs readable. Turn this back on if branch protection is ever added.
-  platformAutomerge: false,
+  // GitHub's native auto-merge: the `protect-main` ruleset's required checks
+  // are what it waits on, so a PR merges the moment they pass rather than on
+  // Renovate's next run. Renovate's own `renovate/stability-days` check is
+  // not required, which is safe only because no PR here is opened while that
+  // check would still be pending — see the externals rule below.
+  platformAutomerge: true,
   // Soak time: adopt only code that has been public for a week. Complements
   // SHA pinning rather than duplicating it — pinning secures the version you
   // are ON (an immutable ref cannot be repointed under you); this secures the
-  // version you are MOVING TO. It is also what makes `automerge` above
-  // defensible: per Renovate's docs, automerge + minimumReleaseAge still opens
-  // the PR immediately but blocks the merge behind a pending
-  // `renovate/stability-days` check, so nothing merges itself inside the
-  // window.
+  // version you are MOVING TO. Under the default `internalChecksFilter:
+  // 'strict'`, Renovate does not open the PR until the release has aged, so
+  // nothing sits open through the window. Externals are exempt (below).
   //
   // `minimumReleaseAgeBehaviour` is left at its default of
   // `timestamp-required`, which fails closed: an update whose datasource
   // reports no release timestamp is never treated as stable, so it can never
   // automerge. That is only safe because every datasource in use here reports
   // one — github-tags and pre-commit's github-tags both do, and the externals
-  // were moved off `git-refs` (which reports nothing) onto `github-digest`
-  // (which derives a timestamp from the commit date) precisely so this setting
-  // could apply to them. If an external ever stops receiving PRs, check that
-  // its `# renovate:` comment still says `datasource=github-digest` before
-  // looking anywhere else — a silent stall is exactly what a missing timestamp
-  // looks like from in here, and the Dependency Dashboard is where it shows up.
+  // use `github-digest` (which derives a timestamp from the commit date)
+  // rather than `git-refs` (which reports nothing). If an external ever stops
+  // receiving PRs, check that its `# renovate:` comment still says
+  // `datasource=github-digest` before looking anywhere else — a silent stall
+  // is exactly what a missing timestamp looks like from in here, and the
+  // Dependency Dashboard is where it shows up.
   minimumReleaseAge: '7 days',
   packageRules: [
     {
-      // Externals track a moving branch, so at any moment the datasource
-      // offers exactly one candidate release: that branch's head commit. Under
-      // the default `internalChecksFilter: 'strict'`, a pending release is
-      // filtered out and the PR is skipped "unless a non-pending version is
-      // available" — and for a single branch ref there is no older version to
-      // fall back to. Any external whose upstream committed within the last
-      // week would therefore go silent instead of opening a PR.
-      //
-      // `flexible` opens the PR with the highest pending version, leaving the
-      // `renovate/stability-days` check pending until the commit is a week
-      // old. The update stays visible and hand-mergeable the whole time; only
-      // the automerge waits.
-      //
-      // The flapping that makes `flexible` a poor default elsewhere — a
-      // pending 1.0.3 later downgraded to 1.0.2 — cannot happen here. A branch
-      // head only moves forward, so there is no lower version to fall back to.
+      // Externals get no soak time. They track a moving branch, so at any
+      // moment the datasource offers exactly one candidate: that branch's head
+      // commit. There is no older version to fall back to, so every new
+      // upstream commit restarts the clock, and an active upstream never ages
+      // a week. Under `strict` such an external would never get a PR; under
+      // `flexible` its PR would sit open indefinitely. Either way the
+      // quarantine starves exactly the externals that change most.
       // Scoped to this manager on purpose: github-actions and pre-commit
-      // resolve real version lists and keep `strict`.
+      // resolve real version lists and keep the 7-day quarantine.
       matchManagers: ['custom.regex'],
-      internalChecksFilter: 'flexible',
+      minimumReleaseAge: '0 days',
     },
   ],
   customManagers: [
