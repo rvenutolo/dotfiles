@@ -9,7 +9,7 @@ IFS=$'\n\t'
 # Symlinked into each profile dir as ${CLAUDE_CONFIG_DIR}/claude-hud.sh, so the
 # cache path resolves per-profile rather than to this file's own location.
 
-readonly CACHE_DIR="${CLAUDE_CONFIG_DIR}/plugins/cache/claude-hud/claude-hud"
+readonly CACHE_DIR="${CLAUDE_CONFIG_DIR}/plugins/cache/rvenutolo-pins/jarrodwatts--hud"
 
 # Version dirs are semver-named; --version-sort orders 0.10.0 after 0.9.0,
 # which a plain lexical sort would not.
