@@ -578,14 +578,14 @@
     "command": "bash \"${CLAUDE_CONFIG_DIR}/claude-hud.sh\""
   },
   "enabledPlugins": {
-    "andrej-karpathy-skills@karpathy-skills": true,
     "claude-code-setup@claude-plugins-official": true,
-    "claude-hud@claude-hud": true,
     "claude-md-management@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
+    "forrestchang--andrej-karpathy-skills@rvenutolo-pins": true,
     "hookify@claude-plugins-official": true,
+    "jarrodwatts--hud@rvenutolo-pins": true,
     "jdtls-lsp@claude-plugins-official": true,
     "pgrep-pkill-guard@rvenutolo": true,
     "pr-review-toolkit@claude-plugins-official": true,
@@ -596,22 +596,17 @@
     "superpowers@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
-    "claude-hud": {
-      "source": {
-        "source": "github",
-        "repo": "jarrodwatts/claude-hud"
-      }
-    },
-    "karpathy-skills": {
-      "source": {
-        "source": "github",
-        "repo": "forrestchang/andrej-karpathy-skills"
-      }
-    },
     "rvenutolo": {
       "source": {
         "source": "github",
         "repo": "rvenutolo/claude-plugins-marketplace"
+      },
+      "autoUpdate": true
+    },
+    "rvenutolo-pins": {
+      "source": {
+        "source": "github",
+        "repo": "rvenutolo/claude-plugins-pins"
       },
       "autoUpdate": true
     }
