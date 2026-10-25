@@ -1,4 +1,4 @@
-{{- /* Top-level key order deliberately matches Claude Code's canonical write order (NOT alphabetical, exempt from the global CLAUDE.md settings.json rule). Claude Code rewrites this file in its own order on every settings change; an alphabetical template makes `chezmoi apply` permanently prompt on a reorder-only diff. Do not re-sort. */ -}}
+{{- /* Top-level key order, and the key order inside "permissions" (allow, deny, ask, defaultMode), deliberately match Claude Code's canonical write order (NOT alphabetical, exempt from the global CLAUDE.md settings.json rule). Claude Code rewrites this file in its own order on every settings change; an alphabetical template makes `chezmoi apply` permanently prompt on a reorder-only diff. Do not re-sort. */ -}}
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "cleanupPeriodDays": 365,
@@ -487,27 +487,6 @@
       "mcp__github__pull_request_read",
       "mcp__github__search_*"
     ],
-    "ask": [
-      "Bash(gh release delete*)",
-      "Bash(gh repo archive*)",
-      "Bash(gh repo create *--public*)",
-      "Bash(gh repo delete*)",
-      "Bash(gh repo edit *--visibility*)",
-      "Bash(gh repo rename*)",
-      "Bash(nc *)",
-      "Bash(npm exec *)",
-      "Bash(npm x *)",
-      "Bash(npx *)",
-      "Bash(pnpm dlx *)",
-      "Bash(sam delete*)",
-      "Bash(sam deploy*)",
-      "Bash(sam sync*)",
-      "Bash(truncate *)",
-      "Bash(yarn dlx *)",
-      "Edit(**/*.cer)",
-      "Edit(**/*.crt)",
-      "Edit(**/.env.*)"
-    ],
     "deny": [
       "Bash(cfdisk *)",
       "Bash(dd *)",
@@ -556,6 +535,27 @@
       "Read(~/.m2/settings.xml)",
       "Read(~/.netrc)",
       "Read(~/.ssh/**)"
+    ],
+    "ask": [
+      "Bash(gh release delete*)",
+      "Bash(gh repo archive*)",
+      "Bash(gh repo create *--public*)",
+      "Bash(gh repo delete*)",
+      "Bash(gh repo edit *--visibility*)",
+      "Bash(gh repo rename*)",
+      "Bash(nc *)",
+      "Bash(npm exec *)",
+      "Bash(npm x *)",
+      "Bash(npx *)",
+      "Bash(pnpm dlx *)",
+      "Bash(sam delete*)",
+      "Bash(sam deploy*)",
+      "Bash(sam sync*)",
+      "Bash(truncate *)",
+      "Bash(yarn dlx *)",
+      "Edit(**/*.cer)",
+      "Edit(**/*.crt)",
+      "Edit(**/.env.*)"
     ],
     "defaultMode": "acceptEdits"
   },
