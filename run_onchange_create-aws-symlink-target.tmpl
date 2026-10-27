@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# Creates the target directory for symlink_dot_aws.tmpl. The AWS CLI and SDKs
+# hardcode ~/.aws/sso/cache and ~/.aws/cli/cache with no override, so ~/.aws is
+# linked into the XDG cache dir; mkdir under a dangling link fails, so the
+# target must exist. Rendered from the same .paths value as the link so the two
+# cannot diverge. 0700 because the directory holds SSO tokens.
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "error: line %s (exit %d): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
+
+readonly AWS_CACHE_DIR='{{ .chezmoi.homeDir }}/{{ .paths.xdg_cache_home }}/aws'
+
+mkdir --parents "${AWS_CACHE_DIR}"
+chmod 0700 "${AWS_CACHE_DIR}"
