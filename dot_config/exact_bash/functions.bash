@@ -66,3 +66,15 @@ function ipv4_to_num() {
 function tmpd() {
   cd "$(mktemp --directory)" || exit
 }
+
+# @description Export AWS credentials into the current shell from aws-env-creds.
+#   A function, not a script, because a child process cannot set the caller's
+#   environment. The output is captured before eval so a failing aws-env-creds
+#   returns its exit status instead of eval'ing nothing and returning 0.
+# @arg $@ Passed through to aws-env-creds.
+# @exitcode * aws-env-creds's exit status when it fails.
+function aws-export-creds() {
+  local creds
+  creds="$(aws-env-creds "$@")" || return
+  eval "${creds}"
+}
