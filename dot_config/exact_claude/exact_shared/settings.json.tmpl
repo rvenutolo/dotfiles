@@ -585,7 +585,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash \"${CLAUDE_CONFIG_DIR}/claude-hud.sh\""
+    "command": "CLAUDE_PROFILE=\"${CLAUDE_CONFIG_DIR##*/}\" claude-powerline --config \"${CLAUDE_CONFIG_DIR}/claude-powerline.json\""
   },
   "enabledPlugins": {
     "aws-core@claude-plugins-official": true,
