@@ -1,0 +1,56 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+  chezmoi owns the header and [settings]; `mise use --global` and
+  `mise unuse --global` own [tools]. The current file arrives on
+  .chezmoi.stdin, and its [tools] table (plus any [tools.*] subtables) is
+  copied through as text, so apply never reorders or reformats what mise
+  wrote and shows no diff after a `mise use`. Text, not fromToml/toToml:
+  toToml sorts keys, and a parse error would fail the whole apply.
+
+  A line is a table header only if it is a bare `[name]` / `[[name]]` line,
+  so a multi-line array element that happens to start with `[` does not end
+  the [tools] section early.
+*/ -}}
+{{- $tools := list -}}
+{{- $inTools := false -}}
+{{- range $line := splitList "\n" .chezmoi.stdin -}}
+{{-   if regexMatch `^\s*\[\[?\s*[A-Za-z0-9_.\-"' ]+\s*\]\]?\s*(#.*)?$` $line -}}
+{{-     $inTools = regexMatch `^\s*\[\s*"?tools"?\s*(\]|\.)` $line -}}
+{{-   end -}}
+{{-   if $inTools -}}
+{{-     $tools = append $tools $line -}}
+{{-   end -}}
+{{- end -}}
+# mise global config. Tools from the package list (packages/universal.csv rows
+# with TYPE=mise in the scripts repo) are installed by mise itself via
+# `mise use --global`, and live in the [tools] table at the end of this file.
+# chezmoi passes that table through untouched; it only manages this header and
+# [settings]. nix/home-manager (CLI binaries) and SDKMAN (JVM candidates) still
+# provide everything else, and Java is SDKMAN-only.
+
+[settings]
+# Default is true, which makes a missing command (typo included) trigger an
+# install attempt. Nothing on this machine should acquire binaries behind our
+# back; tools are added on purpose, by the package list or by hand.
+not_found_auto_install = false
+
+# Java is SDKMAN's, full stop: non-interactive.bash builds JAVA_HOME and the
+# candidate PATH from ${SDKMAN_DIR} on every shell, and honours .sdkmanrc pins.
+# Disabling the backend guarantees mise can never shadow that, even if a
+# project's mise.toml asks for java.
+disable_tools = ["java"]
+
+# Idiomatic version files (.java-version, .node-version, .python-version) stay
+# off. This is mise's default, stated explicitly because it is load-bearing:
+# .java-version would fight SDKMAN, and nothing here pins tool versions
+# per project.
+idiomatic_version_file_enable_tools = []
+
+[settings.hook_env]
+# Default false runs `mise hook-env` on every prompt (~10 ms each). Limit it to
+# actual directory changes - the env only varies by directory anyway.
+chpwd_only = true
+{{- with $tools }}
+
+{{ join "\n" . | trim }}
+{{- end }}
