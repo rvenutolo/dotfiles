@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# chezmoi modify_ script: inject one GitHub MCP server registration into a Claude Code
+# chezmoi modify_ script: inject stdio MCP server registrations into a Claude Code
 # .claude.json, leaving everything else byte-for-byte intact. Claude Code owns the rest
-# of that file (session history, per-project state), so this only ever touches the single
-# .mcpServers["<name>"] key.
+# of that file (session history, per-project state), so this only ever touches the
+# .mcpServers["<name>"] keys it is given.
 #
 #   stdin  = current target contents (empty when the file does not yet exist)
 #   stdout = new target contents
 set -Eeuo pipefail
 IFS=$'\n\t'
 
-readonly SERVER_NAME='{{ .name }}'
-readonly SERVER_HOST='{{ .host }}'
-readonly SERVER_COMMAND='{{ .homeDir }}/.config/claude/shared/github-mcp-server.sh'
+# JSON array of {name, command, args} objects, one per server to register.
+readonly SERVERS_JSON='{{ .servers | toJson }}'
 
 # Slurp stdin with builtins only. An external `cat` would have to run before the bail
 # trap below is armed, so a `cat` missing from PATH would emit an empty file -- the exact
@@ -39,10 +38,8 @@ fi
 # being swallowed by the conditional. jq creates .mcpServers on demand, so `{}` works.
 patched="$(
   printf '%s' "${input}" | jq \
-    --arg name "${SERVER_NAME}" \
-    --arg command "${SERVER_COMMAND}" \
-    --arg host "${SERVER_HOST}" \
-    '.mcpServers[$name] = {type: "stdio", command: $command, args: [$host], env: {}}'
+    --argjson servers "${SERVERS_JSON}" \
+    'reduce $servers[] as $s (.; .mcpServers[$s.name] = {type: "stdio", command: $s.command, args: $s.args, env: {}})'
 )"
 
 # Guard against jq exiting 0 with unusable output; either failure trips the ERR trap.
