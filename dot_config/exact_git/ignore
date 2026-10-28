@@ -9,6 +9,9 @@
 **/docs/superpowers/
 docs/superpowers/
 
+## CodeGraph
+.codegraph/
+
 ## Docker
 .env
 .env.*
