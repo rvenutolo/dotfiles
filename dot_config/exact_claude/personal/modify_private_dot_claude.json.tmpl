@@ -1,1 +1,5 @@
-{{- template "claude-mcp-modify.sh" (dict "homeDir" .chezmoi.homeDir "name" "github" "host" "github.com") -}}
+{{- $githubMcp := printf "%s/.config/claude/shared/github-mcp-server.sh" .chezmoi.homeDir -}}
+{{- template "claude-mcp-modify.sh" (dict "servers" (list
+  (dict "name" "github" "command" $githubMcp "args" (list "github.com"))
+  (dict "name" "context7" "command" "context7-mcp" "args" (list))
+)) -}}
