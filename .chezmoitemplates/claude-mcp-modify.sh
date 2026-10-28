@@ -9,7 +9,9 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
-# JSON array of {name, command, args} objects, one per server to register.
+# JSON array of {name, command, args, env?, alwaysLoad?} objects, one per server to
+# register. env defaults to {}; alwaysLoad is written only when given, so Claude Code
+# keeps its own default (honour each tool's _meta flag) for servers that omit it.
 readonly SERVERS_JSON='{{ .servers | toJson }}'
 
 # Slurp stdin with builtins only. An external `cat` would have to run before the bail
@@ -39,7 +41,7 @@ fi
 patched="$(
   printf '%s' "${input}" | jq \
     --argjson servers "${SERVERS_JSON}" \
-    'reduce $servers[] as $s (.; .mcpServers[$s.name] = {type: "stdio", command: $s.command, args: $s.args, env: {}})'
+    'reduce $servers[] as $s (.; .mcpServers[$s.name] = {type: "stdio", command: $s.command, args: $s.args, env: ($s.env // {})} + (if $s | has("alwaysLoad") then {alwaysLoad: $s.alwaysLoad} else {} end))'
 )"
 
 # Guard against jq exiting 0 with unusable output; either failure trips the ERR trap.

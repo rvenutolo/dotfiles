@@ -2,4 +2,6 @@
 {{- template "claude-mcp-modify.sh" (dict "servers" (list
   (dict "name" "github" "command" $githubMcp "args" (list "github.com"))
   (dict "name" "context7" "command" "context7-mcp" "args" (list))
+  (dict "name" "codegraph" "command" "codegraph" "args" (list "serve" "--mcp")
+    "env" (dict "CODEGRAPH_TELEMETRY" "0" "DO_NOT_TRACK" "1") "alwaysLoad" true)
 )) -}}
