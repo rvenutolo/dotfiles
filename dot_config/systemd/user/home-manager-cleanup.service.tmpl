@@ -1,10 +1,10 @@
 [Unit]
-Description=Delete old home-manager generations
+Description=Repair pre-commit hooks and delete old home-manager generations
 
 [Service]
 Type=oneshot
-{{ if stat "/nix/var/nix/daemon-socket/socket" -}}
-ExecStart=/nix/var/nix/profiles/default/bin/nix-collect-garbage --delete-older-than 10d
-{{- else -}}
-ExecStart={{ .chezmoi.homeDir }}/{{ .paths.nix_user_profile }}/bin/nix-collect-garbage --delete-older-than 10d
-{{- end }}
+# A user unit does not see the login environment, and home-manager-maintenance
+# needs SCRIPTS_DIR and a PATH with nix-collect-garbage and the scripts repo,
+# so source profile.sh first. `;`, not `&&`: profile.sh may end on a non-zero
+# probe, which must not skip the collection.
+ExecStart=/bin/sh -c '. "{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/profile.sh"; exec home-manager-maintenance'

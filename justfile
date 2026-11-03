@@ -38,9 +38,10 @@ lint:
 fmt:
   git ls-files -- '*.sh' '*.bash' | grep --invert-match -E '(^|/)symlink_' | xargs --no-run-if-empty --max-args=50 shfmt --list --indent 2 --case-indent --binary-next-line --space-redirects --write
 
-# Install the pre-commit git hooks.
+# Install the pre-commit git hooks. pre-commit-install (personal scripts repo) makes them find bash and pre-commit on
+# PATH, so a Nix garbage collection of an old pre-commit cannot break them.
 hooks:
-  pre-commit install
+  pre-commit-install
 
 # Check that every chezmoidata paths.* entry exists under $HOME.
 check-paths:

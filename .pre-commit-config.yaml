@@ -174,3 +174,9 @@ repos:
         language: system
         files: ^\.chezmoiscripts/run_after_50-set-xdg-defaults\.sh$
         pass_filenames: false
+      - id: pre-commit-hooks-self-test
+        name: pre-commit hooks repair self-test
+        entry: bash .chezmoiscripts/run_after_60-repair-pre-commit-hooks.sh --self-test
+        language: system
+        files: ^\.chezmoiscripts/run_after_60-repair-pre-commit-hooks\.sh$
+        pass_filenames: false
