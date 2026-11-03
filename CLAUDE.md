@@ -406,8 +406,11 @@ stale. Two things redo that repair, so a plain `pre-commit install` or a host
 that has never run the script cannot leave the hook broken:
 `.chezmoiscripts/run_after_60-repair-pre-commit-hooks.sh` on every
 `chezmoi apply` (self-contained, because the scripts repo is not on every
-host), and the topgrade `Pre-commit Hooks` command, which runs
-`pre-commit-hooks-repair` over every `git_repos` checkout. CI runs the identical config, so a
+host), and `home-manager-maintenance`, which repairs every repo under the
+projects dirs right before it collects garbage. Both the
+`home-manager-cleanup` user timer and `home-manager-update` go through
+`home-manager-maintenance`, so both garbage-collection paths these hosts use
+repair first (topgrade's own Nix cleanup is NixOS-only). CI runs the identical config, so a
 commit that passes locally passes the lint job.
 
 `.pre-commit-config.yaml` currently configures twenty hooks. Grouped by

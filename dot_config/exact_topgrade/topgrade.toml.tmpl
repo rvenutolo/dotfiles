@@ -129,15 +129,6 @@ cleanup = true
 # plugin ad-hoc reddens this until enabledPlugins is updated to match -- that
 # pressure is the point. See shared/uninstalled-plugins.md
 "Claude Code Plugin Drift" = "claude-plugins-check-drift"
-# Rewrites pre-commit hooks that call bash and pre-commit through /nix/store
-# paths, which a Nix garbage collection can remove, so they resolve both on
-# PATH. Repair only, never installs; a checkout missing on this host is skipped.
-"Pre-commit Hooks" = "pre-commit-hooks-repair
-{{- range .git_repos }}
-{{- $key := printf "%s_dir" . }}
-{{- $dir := index $.paths $key }}
-{{- if not $dir }}{{ fail (printf "git_repos entry %q has no matching paths.%s" . $key) }}{{ end }} {{ $.chezmoi.homeDir }}/{{ $dir }}
-{{- end }}"
 
 
 [python]
