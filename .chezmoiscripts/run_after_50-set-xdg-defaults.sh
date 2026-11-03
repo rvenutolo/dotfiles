@@ -96,6 +96,28 @@ function log::info() { log 'INFO' "$*"; }
 function log::warn() { log 'WARN' "$*"; }
 function log::err() { log 'ERROR' "$*"; }
 
+# @description Drop AppImage mount entries and empty entries from a
+# colon-separated search path. An AppImage prepends its transient
+# /tmp/.mount_* dir to XDG_DATA_DIRS for every child process, so an apply run
+# from a terminal launched as an AppImage inherits it. That dir is the app's
+# private bundle, not host state, and Ghostty's bundled mime.cache sends KDE's
+# ktraderclient5 — which xdg-settings and xdg-mime query on Plasma 5 — into an
+# unbounded loop, hanging the apply.
+# @arg $1 dirs Colon-separated directory list.
+# @stdout The filtered list, colon-separated.
+function strip_appimage_dirs() {
+  local -a kept=()
+  local dir
+  local IFS=':'
+  for dir in $1; do
+    case "${dir}" in
+      '' | /tmp/.mount_*) continue ;;
+      *) kept+=("${dir}") ;;
+    esac
+  done
+  printf '%s\n' "${kept[*]}"
+}
+
 # @description Read one variable's value by sourcing profile.sh in a subshell.
 # @arg $1 name The variable name, e.g. BROWSER.
 # @stdout The variable's value (possibly empty).
@@ -395,6 +417,20 @@ debian-xterm.desktop' \
   # "desktop_exists: command not found" rather than the real function.
   unset -f desktop_exists
 
+  assert_stdout 'strip_appimage_dirs drops AppImage mount entries' \
+    '/usr/local/share:/usr/share' \
+    strip_appimage_dirs '/tmp/.mount_ghostXYZ/share:/usr/local/share:/tmp/.mount_other/share:/usr/share' \
+    || failures=$((failures + 1))
+  assert_stdout 'strip_appimage_dirs keeps a list with no mount entries' \
+    '/usr/local/share:/usr/share' \
+    strip_appimage_dirs '/usr/local/share:/usr/share' || failures=$((failures + 1))
+  assert_stdout 'strip_appimage_dirs drops empty entries' \
+    '/usr/share' \
+    strip_appimage_dirs ':/usr/share::' || failures=$((failures + 1))
+  assert_stdout 'strip_appimage_dirs of an empty list is empty' \
+    '' \
+    strip_appimage_dirs '' || failures=$((failures + 1))
+
   # apply_defaults short-circuits. xdg-mime is stubbed so nothing is applied.
   # The stub MUST stay silent: assert_stdout captures stdout, and apply_defaults
   # returns the applied desktop id on stdout, so any stub output corrupts it.
@@ -492,6 +528,11 @@ function main() {
   if ! command -v 'xdg-mime' > /dev/null 2>&1; then
     log::warn 'xdg-mime not installed; skipping XDG defaults setup'
     exit 0
+  fi
+
+  if [[ -n "${XDG_DATA_DIRS:-}" ]]; then
+    XDG_DATA_DIRS="$(strip_appimage_dirs "${XDG_DATA_DIRS}")"
+    export XDG_DATA_DIRS
   fi
 
   local browser_desktop

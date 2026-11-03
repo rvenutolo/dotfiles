@@ -144,6 +144,11 @@ for another template to reuse.
   that `__real_cmd` strips. `__real_cmd` also strips `/tmp/.mount_*/bin`,
   because an AppImage prepends its own mount dir to `PATH` for child processes
   and would otherwise make an app probe resolve to its own transient path.
+  The AppImage does the same to `XDG_DATA_DIRS`, so
+  `run_after_50-set-xdg-defaults.sh` strips `/tmp/.mount_*` entries from it
+  before calling any xdg tool: on Plasma 5, Ghostty's bundled `mime.cache`
+  sends `ktraderclient5` (queried by `xdg-settings` / `xdg-mime`) into an
+  unbounded loop that hangs `chezmoi apply`.
 - Adding an entry to either chain also needs a matching arm in
   `desktop_for_bin()` and a self-test case. A missing arm is not fatal — apply
   logs "no usable .desktop" and leaves mime defaults alone — but it is silent,
