@@ -49,8 +49,8 @@ replay_pid*
 .attach_pid*
 .idea/
 .idea_modules/
-/.factorypath
-/.settings
+.factorypath
+.settings/
 atlassian-ide-plugin.xml
 com_crashlytics_export_strings.xml
 crashlytics-build.properties
