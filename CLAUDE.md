@@ -323,12 +323,13 @@ Pull from git remote and apply in one step:
 chezmoi update
 ```
 
-Check for drift between source and target (exit code reflects status). Two
+Check for drift between source and target (exit code reflects status). Three
 deliberate always-run scripts (`run_before_02-validate-env.sh.tmpl`, a
-preflight that re-checks the baked distro flags, and
+preflight that re-checks the baked distro flags;
 `run_after_50-set-xdg-defaults.sh`, which re-reads the runtime
-`$BROWSER` / `$TERMINAL` / `$FILE_MANAGER` / `$VISUAL` on every apply) always
-report as pending, so
+`$BROWSER` / `$TERMINAL` / `$FILE_MANAGER` / `$VISUAL` on every apply; and
+`run_after_60-repair-pre-commit-hooks.sh`, which repairs this repo's git
+hooks) always report as pending, so
 bare `chezmoi verify` exits 1 even with zero real drift. Use
 `--exclude=scripts` for a real drift signal (the justfile recipes already do):
 
@@ -401,10 +402,15 @@ repo; `just hooks` is the shortcut). Plain `pre-commit install` from Nix bakes
 `/nix/store` paths into the hook, which stops every commit once a garbage
 collection removes that `pre-commit` build. `pre-commit-install` rewrites the
 hook to find `bash` and `pre-commit` on `PATH`, and repairs a hook that is already
-stale. CI runs the identical config, so a
+stale. Two things redo that repair, so a plain `pre-commit install` or a host
+that has never run the script cannot leave the hook broken:
+`.chezmoiscripts/run_after_60-repair-pre-commit-hooks.sh` on every
+`chezmoi apply` (self-contained, because the scripts repo is not on every
+host), and the topgrade `Pre-commit Hooks` command, which runs
+`pre-commit-hooks-repair` over every `git_repos` checkout. CI runs the identical config, so a
 commit that passes locally passes the lint job.
 
-`.pre-commit-config.yaml` currently configures nineteen hooks. Grouped by
+`.pre-commit-config.yaml` currently configures twenty hooks. Grouped by
 what they are for, rather than by the repo they come from:
 
 - **Shell** — `shellcheck` and `shfmt`, plus `render-lint-sh-tmpl`, which
@@ -423,10 +429,11 @@ what they are for, rather than by the repo they come from:
   nothing else validates either file).
 - **Local test suites** — `pin-digest-provenance-test` runs
   `.dev/check-pin-digest-provenance.test.sh`, and `xdg-defaults-self-test`
-  runs the `--self-test` table built into
-  `.chezmoiscripts/run_after_50-set-xdg-defaults.sh`.
-  These are the repo's own tests, not third-party linters; a change to either
-  script that breaks its suite fails the commit.
+  and `pre-commit-hooks-self-test` run the `--self-test` tables built into
+  `.chezmoiscripts/run_after_50-set-xdg-defaults.sh` and
+  `.chezmoiscripts/run_after_60-repair-pre-commit-hooks.sh`.
+  These are the repo's own tests, not third-party linters; a change to any of
+  these scripts that breaks its suite fails the commit.
 
 Keep this list in step with the file. It has drifted before — it named seven
 hooks while the config had nineteen — and a hook nobody knows about is one
