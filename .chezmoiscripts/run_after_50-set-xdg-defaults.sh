@@ -395,6 +395,20 @@ debian-xterm.desktop' \
   # "desktop_exists: command not found" rather than the real function.
   unset -f desktop_exists
 
+  assert_stdout 'strip_appimage_dirs drops AppImage mount entries' \
+    '/usr/local/share:/usr/share' \
+    strip_appimage_dirs '/tmp/.mount_ghostXYZ/share:/usr/local/share:/tmp/.mount_other/share:/usr/share' \
+    || failures=$((failures + 1))
+  assert_stdout 'strip_appimage_dirs keeps a list with no mount entries' \
+    '/usr/local/share:/usr/share' \
+    strip_appimage_dirs '/usr/local/share:/usr/share' || failures=$((failures + 1))
+  assert_stdout 'strip_appimage_dirs drops empty entries' \
+    '/usr/share' \
+    strip_appimage_dirs ':/usr/share::' || failures=$((failures + 1))
+  assert_stdout 'strip_appimage_dirs of an empty list is empty' \
+    '' \
+    strip_appimage_dirs '' || failures=$((failures + 1))
+
   # apply_defaults short-circuits. xdg-mime is stubbed so nothing is applied.
   # The stub MUST stay silent: assert_stdout captures stdout, and apply_defaults
   # returns the applied desktop id on stdout, so any stub output corrupts it.
