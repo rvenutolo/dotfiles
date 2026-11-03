@@ -301,4 +301,9 @@ for file in \
 done
 unset -v file
 
+# Last, after every script above that adds to it: the prepends at the top of
+# this file run again in each nested login shell (the sourced-once guard is
+# not exported), and hm-session-vars.sh prepends its own overlapping set.
+path_dedup XDG_DATA_DIRS
+
 path_helpers_unset
