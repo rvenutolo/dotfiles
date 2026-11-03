@@ -396,7 +396,12 @@ All other rules — quoting, `${var}` braces, `function` keyword, `[[ ]]`, long 
 
 ### Pre-commit hooks
 
-Install once per clone with `just hooks`. CI runs the identical config, so a
+Install once per clone with `pre-commit-install` (from the personal scripts
+repo; `just hooks` is the shortcut). Plain `pre-commit install` from Nix bakes
+`/nix/store` paths into the hook, which stops every commit once a garbage
+collection removes that `pre-commit` build. `pre-commit-install` rewrites the
+hook to find `bash` and `pre-commit` on `PATH`, and repairs a hook that is already
+stale. CI runs the identical config, so a
 commit that passes locally passes the lint job.
 
 `.pre-commit-config.yaml` currently configures nineteen hooks. Grouped by
