@@ -67,7 +67,7 @@ export FFMPEG_DATADIR="${XDG_CONFIG_HOME}/ffmpeg"
 export GEM_HOME="${XDG_DATA_HOME}/gem"
 export GEM_SPEC_CACHE="${XDG_CACHE_HOME}/gem"
 export GNUPGHOME="${XDG_DATA_HOME}/gnupg"
-export GOBIN="${HOME}/.go/bin"
+export GOBIN="${XDG_DATA_HOME}/go/bin"
 export GOCACHE="${XDG_CACHE_HOME}/go-build"
 export GOMODCACHE="${XDG_CACHE_HOME}/go/mod"
 export GOPATH="${XDG_CACHE_HOME}/go"
@@ -243,6 +243,7 @@ for dir in \
   "${HOME}/.local/bin" \
   "${XDG_DATA_HOME}/npm/bin" \
   "${PNPM_HOME}/bin" \
+  "${GOBIN}" \
   "${HOME}/.local/share/JetBrains/Toolbox/scripts" \
   "${HOME}/.nix-profile/bin" \
   '/usr/local/sbin' \
