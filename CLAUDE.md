@@ -263,6 +263,13 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   `restore-keys` line and keep `pre-commit gc` — without the prune, a cache
   that is never invalidated grows an environment for every rev ever pinned.
 
+  The cache step is split into `actions/cache/restore` and
+  `actions/cache/save`, and the save step runs only when `github.ref` is
+  `refs/heads/main`. A cache is scoped to the ref that saved it, so one saved
+  by a pull request serves only that PR while still counting against the
+  repository's 10 GB limit. Gate saves on the ref, never on the event: an
+  event gate still saves from a `workflow_dispatch` on a feature branch.
+
   `shfmt` is installed from the pinned upstream release binary and verified
   against a `sha256` recorded in the workflow, not built with `go install`.
   Renovate can bump `SHFMT_VERSION` but cannot recompute that digest, so a

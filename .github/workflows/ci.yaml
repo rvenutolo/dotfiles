@@ -59,8 +59,12 @@ jobs:
           python-version: '3.15'
       - name: Install pre-commit
         run: python -m pip install --disable-pip-version-check pre-commit
-      - name: Cache pre-commit hook environments
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Restore pre-commit hook environments
+        # Restore and save are split because a cache belongs to the ref that
+        # saved it: one saved by a pull request serves only that PR, yet still
+        # counts against the repository's 10 GB cache limit. Only main saves.
+        id: pre-commit-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -76,11 +80,20 @@ jobs:
       - name: Run pre-commit
         run: pre-commit run --all-files --show-diff-on-failure --color=always
       - name: Prune stale pre-commit hook environments
-        # Runs before actions/cache saves the directory at job end. Without it a
-        # restored cache accumulates the environment of every rev ever pinned
-        # here, since restore-keys means old entries are never evicted by a miss.
+        # Runs before the save step below. Without it a restored cache
+        # accumulates the environment of every rev ever pinned here, since
+        # restore-keys means old entries are never evicted by a miss.
         if: always()
         run: pre-commit gc
+      - name: Save pre-commit hook environments
+        # Gated on the ref, not the event: an event gate would still save from
+        # a workflow_dispatch on a feature branch. Skipped on an exact hit,
+        # because a cache key is immutable and the save would only warn.
+        if: github.ref == 'refs/heads/main' && steps.pre-commit-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ steps.pre-commit-cache.outputs.cache-primary-key }}
 
   pin-provenance:
     # The gate on Renovate's automerge path. `.github/renovate.json5` automerges
