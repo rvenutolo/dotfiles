@@ -20,6 +20,13 @@ for file in '/etc/bash.bashrc' '/etc/bashrc'; do
 done
 unset -v file
 
+# A terminal shipped as an AppImage (e.g. Ghostty via appman) exports its
+# own AppImage runtime vars into this shell. AppImage-aware programs started
+# from here then believe they are that AppImage: JetBrains Toolbox's
+# self-install copies "$APPIMAGE" over its own binary. An interactive shell is
+# never itself an AppImage, so drop them.
+unset -v APPIMAGE APPDIR ARGV0 OWD
+
 ulimit -S -c 0 # no core dumps
 set -o notify
 set -o noclobber
