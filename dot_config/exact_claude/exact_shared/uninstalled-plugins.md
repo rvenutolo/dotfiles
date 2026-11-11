@@ -38,7 +38,7 @@ CLAUDE_CONFIG_DIR="${XDG_CONFIG_HOME}/claude/personal" claude plugin uninstall <
 CLAUDE_CONFIG_DIR="${XDG_CONFIG_HOME}/claude/work" claude plugin uninstall <plugin>@<marketplace>
 ```
 
-Then drop the entry from `enabledPlugins` in `settings.json.tmpl`, add a section here, and run
+Then drop the entry from `enabledPlugins` in `.chezmoitemplates/claude-settings.json`, add a section here, and run
 `claude-plugins-check-drift` to confirm the profiles are clean.
 
 ## The list

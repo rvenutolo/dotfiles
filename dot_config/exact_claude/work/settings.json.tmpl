@@ -1,0 +1,6 @@
+{{- /* The work profile gets its own file rather than a symlink to ../shared/settings.json so it can carry the work GHES plugin marketplace without exposing it to the personal profile. CI has no age identity to decrypt the host, so it renders the shared body only. */ -}}
+{{- $workGithubHost := "" -}}
+{{- if and .is_work (not .is_ci) -}}
+{{-   $workGithubHost = include ".work-github-host.age" | decrypt | trim -}}
+{{- end -}}
+{{- template "claude-settings.json" (dict "homeDir" .chezmoi.homeDir "workGithubHost" $workGithubHost) -}}
