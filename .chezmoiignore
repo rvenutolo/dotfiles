@@ -34,6 +34,25 @@ dot_local/share/applications/nvim.desktop
 {{- end }}
 
 {{- /*
+  Host-local shell files: apply only the set that symlink_dot_profile-local.tmpl
+  and dot_config/exact_bash/symlink_local.bash.tmpl point at, so one host
+  class's private settings never land on another. The branches mirror those
+  templates' if / else if / else order; change them together.
+*/}}
+{{- if not .is_personal }}
+.config/profile-local-personal.sh
+.config/bash/local-personal.bash
+{{- end }}
+{{- if or .is_personal (not .is_work) }}
+.config/profile-local-work.sh
+.config/bash/local-work.bash
+{{- end }}
+{{- if or .is_personal .is_work }}
+.config/profile-local-server.sh
+.config/bash/local-server.bash
+{{- end }}
+
+{{- /*
   CI has no access to the real age identity, so anything that calls decrypt
   can't render there. Skip the known decrypt-dependent targets when running
   under CI (is_ci, from .chezmoi.toml.tmpl) so the render-verify workflow can
