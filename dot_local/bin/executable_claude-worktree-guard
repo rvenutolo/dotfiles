@@ -1,0 +1,632 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+# Exit 1, never 2: an unexpected error must surface as a non-blocking hook
+# error, not silently block a command the guard failed to evaluate.
+trap 'printf "error: line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2; exit 1' ERR
+
+# Claude Code PreToolUse hook (matcher: Bash). Keeps every git worktree Claude
+# creates at <main-repo-root>/.claude/worktrees/<name>, the one location that
+# is globally gitignored and that the native EnterWorktree tool uses, so no
+# worktree lands somewhere nobody will look for it.
+#
+# Reads the hook JSON on stdin and inspects each `git worktree add` /
+# `git worktree move` in the command. The command itself is never executed.
+#
+# Exit codes (the PreToolUse contract):
+#   0  allow
+#   2  block; the reason and the path to use go to stderr, which Claude sees
+#   1  could not evaluate (no jq, bad JSON, not a git repo); non-blocking
+#
+# A target the guard cannot resolve to a literal path (a variable, a command
+# substitution, a path relative to an earlier `cd`, --git-dir / --work-tree)
+# is blocked, not guessed at.
+#
+# `--self-test` runs the built-in case table against a throwaway repo.
+
+readonly WORKTREES_SUBDIR='.claude/worktrees'
+# Commands without this anywhere skip tokenizing entirely.
+readonly WORKTREE_ACTION='worktree[[:space:]\\]+(add|move)'
+# Tokenizer runs: characters with no special meaning in each quoting context.
+readonly UNQUOTED_RUN=$'^[^\'"\\\\ \t;&|$`<\n]+'
+readonly DOUBLE_QUOTED_RUN=$'^[^"\\\\$`]+'
+readonly SINGLE_QUOTED_RUN="^[^']+"
+readonly HEREDOC_WORD=$'^[^ \t\n;&|<>()]+'
+# Byte semantics: in a UTF-8 locale every substring and length operation
+# rescans the string from the start, which made long commands quadratic.
+export LC_ALL=C
+
+# @description Log a timestamped message to stderr.
+# @arg $1 level Severity label.
+# @arg $2 message Text to log.
+function log() {
+  printf '[%s] %-5s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$1" "$2" >&2
+}
+function log::warn() { log 'WARN' "$*"; }
+
+# @description Decide whether a Bash tool command may run.
+# @arg $1 command Full command string from the Bash tool.
+# @arg $2 cwd Directory the command runs in.
+# @stdout Block message (exit 2) or reason (exit 1).
+# @exitcode 0 allow
+# @exitcode 1 cannot evaluate
+# @exitcode 2 block
+function guard_decision() {
+  local -r command="$1"
+  local -r cwd="$2"
+  if [[ ! "${command}" =~ ${WORKTREE_ACTION} ]]; then
+    return 0
+  fi
+  tokenize "${command}"
+  local -r count="${#TOKENS[@]}"
+  local saw_cd=0
+  local start=0
+  local i
+  local rc
+  for ((i = 0; i <= count; i++)); do
+    if ((i < count)) && [[ "${TOKEN_KINDS[i]}" != 'sep' ]]; then
+      continue
+    fi
+    if ((i > start)); then
+      SEG_WORDS=("${TOKENS[@]:start:i-start}")
+      SEG_KINDS=("${TOKEN_KINDS[@]:start:i-start}")
+      rc=0
+      check_segment "${cwd}" "${saw_cd}" || rc=$?
+      if ((rc != 0)); then
+        return "${rc}"
+      fi
+      if [[ "${SEG_WORDS[0]}" == 'cd' || "${SEG_WORDS[0]}" == 'pushd' ]]; then
+        saw_cd=1
+      fi
+    fi
+    start=$((i + 1))
+  done
+  return 0
+}
+
+# @description Split a command string into words and separators without
+#   expanding anything. Handles single/double quotes, backslashes and
+#   backslash-newline continuations; `;`, `&`, `|`, `&&`, `||` and newlines
+#   outside quotes are separators; heredoc bodies are skipped, since nothing in
+#   them runs as a command. Sets the globals TOKENS (text) and TOKEN_KINDS
+#   (word, dynamic, sep); a word is dynamic when it holds an unquoted or
+#   double-quoted `$` or backtick. Consumes runs of ordinary characters with
+#   one regex match each, so a long command costs a handful of matches rather
+#   than one substring per character.
+# @arg $1 text Command string.
+function tokenize() {
+  local rest="$1"
+  TOKENS=()
+  TOKEN_KINDS=()
+  local token=''
+  local kind='word'
+  local started=0
+  local quote=''
+  local char
+  local -a heredocs=()
+  while [[ -n "${rest}" ]]; do
+    if [[ "${quote}" == "'" ]]; then
+      if [[ "${rest}" =~ ${SINGLE_QUOTED_RUN} ]]; then
+        token+="${BASH_REMATCH[0]}"
+        rest="${rest:${#BASH_REMATCH[0]}}"
+      else
+        quote=''
+        rest="${rest:1}"
+      fi
+      continue
+    fi
+    if [[ "${quote}" == '"' ]]; then
+      if [[ "${rest}" =~ ${DOUBLE_QUOTED_RUN} ]]; then
+        token+="${BASH_REMATCH[0]}"
+        rest="${rest:${#BASH_REMATCH[0]}}"
+        continue
+      fi
+      char="${rest:0:1}"
+      case "${char}" in
+        '"')
+          quote=''
+          rest="${rest:1}"
+          ;;
+        "\\")
+          case "${rest:1:1}" in
+            '$' | '`' | '"' | "\\")
+              token+="${rest:1:1}"
+              rest="${rest:2}"
+              ;;
+            $'\n') rest="${rest:2}" ;;
+            *)
+              token+="\\"
+              rest="${rest:1}"
+              ;;
+          esac
+          ;;
+        *)
+          kind='dynamic'
+          token+="${char}"
+          rest="${rest:1}"
+          ;;
+      esac
+      continue
+    fi
+    if [[ "${rest}" =~ ${UNQUOTED_RUN} ]]; then
+      token+="${BASH_REMATCH[0]}"
+      rest="${rest:${#BASH_REMATCH[0]}}"
+      started=1
+      continue
+    fi
+    char="${rest:0:1}"
+    rest="${rest:1}"
+    case "${char}" in
+      "'" | '"')
+        quote="${char}"
+        started=1
+        ;;
+      "\\")
+        if [[ "${rest:0:1}" != $'\n' ]]; then
+          token+="${rest:0:1}"
+          started=1
+        fi
+        rest="${rest:1}"
+        ;;
+      ' ' | $'\t')
+        flush_token
+        ;;
+      ';' | '&' | '|' | $'\n')
+        flush_token
+        TOKENS+=("${char}")
+        TOKEN_KINDS+=('sep')
+        if [[ "${char}" == $'\n' ]] && ((${#heredocs[@]} > 0)); then
+          skip_heredoc_bodies
+          heredocs=()
+        fi
+        ;;
+      '$' | '`')
+        kind='dynamic'
+        token+="${char}"
+        started=1
+        ;;
+      '<')
+        if [[ "${rest:0:2}" == '<<' ]]; then
+          token+='<<<'
+          rest="${rest:2}"
+          started=1
+        elif [[ "${rest:0:1}" == '<' ]]; then
+          flush_token
+          read_heredoc_delimiter
+        else
+          token+='<'
+          started=1
+        fi
+        ;;
+      *)
+        token+="${char}"
+        started=1
+        ;;
+    esac
+  done
+  flush_token
+}
+
+# @description Parse a heredoc operator's delimiter from the front of
+#   tokenize's rest (just after the first `<`) and queue it on tokenize's
+#   heredocs array as "<dash>:<word>". Shares tokenize's locals through bash
+#   dynamic scoping.
+# @noargs
+function read_heredoc_delimiter() {
+  rest="${rest:1}"
+  local dash=0
+  if [[ "${rest:0:1}" == '-' ]]; then
+    dash=1
+    rest="${rest:1}"
+  fi
+  rest="${rest#"${rest%%[!$' \t']*}"}"
+  if [[ "${rest}" =~ ${HEREDOC_WORD} ]]; then
+    local -r raw="${BASH_REMATCH[0]}"
+    rest="${rest:${#raw}}"
+    local -r stripped="${raw//[\'\"]/}"
+    heredocs+=("${dash}:${stripped//\\/}")
+  fi
+}
+
+# @description Drop the queued heredoc bodies from the front of tokenize's
+#   rest, each up to and including its delimiter line. Shares tokenize's
+#   locals through bash dynamic scoping.
+# @noargs
+function skip_heredoc_bodies() {
+  local heredoc
+  local line
+  for heredoc in "${heredocs[@]}"; do
+    while [[ -n "${rest}" ]]; do
+      line="${rest%%$'\n'*}"
+      if [[ "${rest}" == *$'\n'* ]]; then
+        rest="${rest#*$'\n'}"
+      else
+        rest=''
+      fi
+      if [[ "${heredoc:0:1}" == '1' ]]; then
+        line="${line#"${line%%[!$'\t']*}"}"
+      fi
+      if [[ "${line}" == "${heredoc:2}" ]]; then
+        break
+      fi
+    done
+  done
+}
+
+# @description Append tokenize's pending word, if any, and reset it. Shares
+#   tokenize's locals (token, kind, started) through bash dynamic scoping.
+# @noargs
+function flush_token() {
+  if ((started == 1)); then
+    TOKENS+=("${token}")
+    TOKEN_KINDS+=("${kind}")
+  fi
+  token=''
+  kind='word'
+  started=0
+}
+
+# @description Join a path word onto a base directory, expanding a leading `~`.
+# @arg $1 base Directory a relative word resolves against.
+# @arg $2 word Path as written in the command.
+# @stdout Absolute, unnormalized path.
+function join_path() {
+  local -r base="$1"
+  local -r word="$2"
+  case "${word}" in
+    /*) printf '%s\n' "${word}" ;;
+    '~') printf '%s\n' "${HOME}" ;;
+    \~/*) printf '%s\n' "${HOME}/${word#\~/}" ;;
+    *) printf '%s\n' "${base}/${word}" ;;
+  esac
+}
+
+# @description Report whether a path sits inside an existing worktree below
+#   the worktrees directory. Worktree names may contain `/`, so depth alone
+#   cannot tell a nested worktree from a slashed name; a `.git` entry can.
+# @arg $1 allowed Canonical worktrees directory.
+# @arg $2 resolved Canonical target path, a descendant of allowed.
+# @exitcode 0 an ancestor of the target (excluding allowed) is a worktree
+# @exitcode 1 otherwise
+function inside_worktree() {
+  local -r allowed="$1"
+  local path="$2"
+  path="${path%/*}"
+  while [[ "${path}" != "${allowed}" && "${path}" == "${allowed}/"* ]]; do
+    if [[ -e "${path}/.git" ]]; then
+      return 0
+    fi
+    path="${path%/*}"
+  done
+  return 1
+}
+
+# @description Print the main worktree of the repo containing a directory.
+#   Outside a linked worktree that is the top level, which also holds for a
+#   submodule or a --separate-git-dir repo, where the common dir is not
+#   <root>/.git. From a linked worktree it is the first porcelain entry, which
+#   git always lists as the main worktree.
+# @arg $1 dir Directory inside the repo.
+# @stdout Main worktree path.
+# @exitcode 0 printed; 1 not in a (non-bare) git work tree
+function main_worktree_of() {
+  local -r dir="$1"
+  local git_dir
+  local common_dir
+  # -C: no long-form equivalent
+  git_dir="$(git -C "${dir}" rev-parse --path-format=absolute --git-dir 2> /dev/null)" || return 1
+  common_dir="$(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || return 1
+  if [[ "${git_dir}" == "${common_dir}" ]]; then
+    git -C "${dir}" rev-parse --show-toplevel 2> /dev/null
+    return
+  fi
+  local listing
+  listing="$(git -C "${dir}" worktree list --porcelain 2> /dev/null)" || return 1
+  listing="${listing%%$'\n'*}"
+  printf '%s\n' "${listing#worktree }"
+}
+
+# @description Check one segment (globals SEG_WORDS, SEG_KINDS) of the command.
+#   Only `git [global options] worktree add|move` segments are examined.
+# @arg $1 cwd Directory the command runs in.
+# @arg $2 saw_cd 1 when an earlier segment changed directory.
+# @stdout Block message (exit 2) or reason (exit 1).
+# @exitcode 0 allow, 1 cannot evaluate, 2 block
+function check_segment() {
+  local -r cwd="$1"
+  local -r saw_cd="$2"
+  local -r count="${#SEG_WORDS[@]}"
+  case "${SEG_WORDS[0]}" in
+    git | */git) ;;
+    *) return 0 ;;
+  esac
+  local dir="${cwd}"
+  local unresolvable=''
+  local i=1
+  while ((i < count)); do
+    case "${SEG_WORDS[i]}" in
+      -C)
+        i=$((i + 1))
+        if [[ "${SEG_KINDS[i]:-}" == 'dynamic' ]]; then
+          unresolvable='a -C directory that is not a literal path'
+        fi
+        dir="$(join_path "${dir}" "${SEG_WORDS[i]:-}")"
+        ;;
+      -c) i=$((i + 1)) ;;
+      --git-dir | --work-tree)
+        i=$((i + 1))
+        unresolvable="${SEG_WORDS[i - 1]}"
+        ;;
+      --git-dir=* | --work-tree=*) unresolvable="${SEG_WORDS[i]%%=*}" ;;
+      -*) ;;
+      *) break ;;
+    esac
+    i=$((i + 1))
+  done
+  if [[ "${SEG_WORDS[i]:-}" != 'worktree' ]]; then
+    return 0
+  fi
+  local -r action="${SEG_WORDS[i + 1]:-}"
+  local target_index
+  case "${action}" in
+    add) target_index=0 ;;
+    move) target_index=1 ;;
+    *) return 0 ;;
+  esac
+  local -a positionals=()
+  local -a positional_kinds=()
+  local end_of_options=0
+  for ((i = i + 2; i < count; i++)); do
+    if ((end_of_options == 0)); then
+      case "${SEG_WORDS[i]}" in
+        --)
+          end_of_options=1
+          continue
+          ;;
+        -b | -B | --reason)
+          i=$((i + 1))
+          continue
+          ;;
+        -*) continue ;;
+      esac
+    fi
+    positionals+=("${SEG_WORDS[i]}")
+    positional_kinds+=("${SEG_KINDS[i]}")
+  done
+  if ((${#positionals[@]} <= target_index)); then
+    return 0
+  fi
+  local -r target="${positionals[target_index]}"
+  if [[ "${positional_kinds[target_index]}" == 'dynamic' ]]; then
+    unresolvable='a worktree path that is not a literal path'
+  elif ((saw_cd == 1)); then
+    unresolvable='a relative path after cd'
+  fi
+
+  local root_base="${dir}"
+  if [[ -n "${unresolvable}" ]]; then
+    root_base="${cwd}"
+  fi
+  local main_worktree
+  if ! main_worktree="$(main_worktree_of "${root_base}")"; then
+    printf 'not a git repository: %s\n' "${root_base}"
+    return 1
+  fi
+  # Checked explicitly: errexit is off under the caller's `|| rc=$?`, and an
+  # empty allowed dir would make every absolute target look allowed.
+  local root
+  local allowed
+  if ! root="$(realpath -- "${main_worktree}")" || [[ -z "${root}" ]] \
+    || ! allowed="$(realpath --canonicalize-missing -- "${root}/${WORKTREES_SUBDIR}")" || [[ -z "${allowed}" ]]; then
+    printf 'cannot resolve the main worktree of %s\n' "${root_base}"
+    return 1
+  fi
+  local name="${target%/}"
+  name="${name##*/}"
+  local -r suggestion="${allowed}/${name:-NAME}"
+
+  if [[ -n "${unresolvable}" ]]; then
+    printf 'Blocked: cannot verify the location of this git worktree (%s).\n' "${unresolvable}"
+    printf 'Git worktrees must live under %s/. Rerun with a literal absolute path, e.g.:\n' "${allowed}"
+    printf '  git worktree %s ... %s\n' "${action}" "${suggestion}"
+    return 2
+  fi
+  local resolved
+  resolved="$(realpath --canonicalize-missing -- "$(join_path "${dir}" "${target}")")"
+  if [[ "${resolved}" == "${allowed}/"?* ]] && ! inside_worktree "${allowed}" "${resolved}"; then
+    return 0
+  fi
+  printf 'Blocked: git worktree target %s is not directly under %s/.\n' "${resolved}" "${allowed}"
+  printf 'Git worktrees must live under %s/. Use, e.g.:\n' "${allowed}"
+  printf '  git worktree %s ... %s\n' "${action}" "${suggestion}"
+  return 2
+}
+
+# @description Record one self-test result.
+# @arg $1 desc Case description.
+# @arg $2 ok "true" if the case passed.
+function check() {
+  if [[ "$2" == 'true' ]]; then
+    printf 'ok   %s\n' "$1"
+  else
+    printf 'FAIL %s\n' "$1"
+    failures=$((failures + 1))
+  fi
+}
+
+# @description Run guard_decision on one case and check its exit code. Leaves
+#   the decision's stdout in the global last_out.
+# @arg $1 want allow, block or error.
+# @arg $2 cwd Directory the command would run in.
+# @arg $3 command Command string under test (never executed).
+function expect() {
+  local -r want="$1"
+  local -r cwd="$2"
+  local -r command="$3"
+  local rc=0
+  last_out="$(guard_decision "${command}" "${cwd}")" || rc=$?
+  local want_rc
+  case "${want}" in
+    allow) want_rc=0 ;;
+    block) want_rc=2 ;;
+    *) want_rc=1 ;;
+  esac
+  check "${want} (rc ${rc}): ${command} @ ${cwd#"${tmp_root}"/}" "$( ((rc == want_rc)) && echo true)"
+}
+
+# @description Run the built-in case table against a throwaway repo.
+# @exitcode 0 if every case passes, 1 otherwise.
+function self_test() {
+  # A pre-commit run exports these; they would point every git call at the real repo.
+  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY
+  failures=0
+  tmp_root="$(mktemp --directory)"
+  tmp_root="$(realpath -- "${tmp_root}")"
+  trap 'rm --recursive --force -- "${tmp_root:?}"' EXIT
+  local -r r="${tmp_root}/repo"
+  local -r wt="${r}/${WORKTREES_SUBDIR}"
+  mkdir --parents -- "${r}/sub" "${tmp_root}/nonrepo"
+  git -C "${r}" init --quiet # -C: no long-form equivalent
+  git -C "${r}" -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false \
+    commit --quiet --allow-empty --message=init
+  git -C "${r}" -c core.hooksPath=/dev/null worktree add --quiet --detach "${wt}/w1"
+  ln --symbolic -- "${r}" "${tmp_root}/link"
+
+  expect allow "${r}" 'git worktree add .claude/worktrees/a'
+  expect block "${r}" 'git worktree add ../a'
+  check 'block message names the path to use' \
+    "$([[ "${last_out}" == *"${wt}/a"* ]] && echo true)"
+  expect allow "${r}/sub" 'git worktree add ../.claude/worktrees/a'
+  expect block "${wt}/w1" 'git worktree add .claude/worktrees/b'
+  check 'suggestion from inside a worktree uses the main root' \
+    "$([[ "${last_out}" == *"${wt}/b"* ]] && echo true)"
+  expect allow "${wt}/w1" 'git worktree add ../b'
+  expect allow '/' "git -C ${r} worktree add ${wt}/c"
+  expect block "${r}" 'git -C sub worktree add ../x'
+  expect allow "${r}" 'git worktree add -b feat/x .claude/worktrees/x main'
+  expect block "${r}" 'git worktree add -b feat/x /tmp/x'
+  expect allow "${r}" 'git worktree add --reason=foo .claude/worktrees/y'
+  expect allow "${r}" 'git worktree add --lock --reason foo .claude/worktrees/y'
+  expect allow "${r}" 'git worktree add -b x -- .claude/worktrees/z'
+  expect allow "${r}" 'git worktree add ".claude/worktrees/my wt"'
+  expect block "${r}" 'git worktree add "../out side"'
+  expect block "${r}" 'git worktree add .claude/worktrees/../../x'
+  expect allow "${r}" 'git worktree add .claude/worktrees/x/'
+  expect block "${r}" 'git worktree add .claude/worktrees'
+  expect block "${r}" 'git worktree add .claude/worktrees/'
+  expect allow "${tmp_root}/link" 'git worktree add .claude/worktrees/a'
+  expect block "${tmp_root}/link" 'git worktree add ../a'
+  expect block "${r}" 'git worktree move .claude/worktrees/w1 ../w1'
+  expect allow "${r}" 'git worktree move .claude/worktrees/w1 .claude/worktrees/w2'
+  # shellcheck disable=SC2016 # literal command text, never expanded
+  expect block "${r}" 'git worktree add "$HOME/x"'
+  # shellcheck disable=SC2016 # literal command text, never expanded
+  expect block "${r}" 'git worktree add $(pwd)/x'
+  # shellcheck disable=SC2016 # literal command text, never expanded
+  expect block "${r}" 'git worktree add `pwd`/x'
+  expect block "${r}" 'cd sub && git worktree add ../.claude/worktrees/a'
+  expect block "${r}" 'git status && git worktree add ../a'
+  expect block "${r}" 'git status; git worktree add ../a'
+  expect block "${r}" 'git status | git worktree add ../a'
+  expect block "${r}" "git --git-dir=${r}/.git worktree add ${wt}/a"
+  expect block "${r}" "git --work-tree ${r} worktree add ${wt}/a"
+  expect allow "${r}" "git --no-pager -c x.y=z worktree add ${wt}/a"
+  expect block "${r}" '/usr/bin/git worktree add ../a'
+  expect allow "${r}" "git worktree add ~/$(realpath --relative-to="${HOME}" -- "${wt}/a")"
+  expect block "${r}" 'git worktree add ~/a'
+  expect allow "${r}" 'git worktree list'
+  expect allow "${r}" 'git worktree remove ../a'
+  expect allow "${r}" 'git status'
+  expect allow "${r}" 'echo git worktree add ../a'
+  expect allow "${r}" 'git worktree add'
+  expect error "${tmp_root}/nonrepo" 'git worktree add ../a'
+  expect allow "${r}" $'git worktree add \\\n  -b feat/x \\\n  .claude/worktrees/x main'
+  expect block "${r}" $'git worktree add \\\n  ../x'
+  expect allow "${r}" 'git worktree add --orphan -b foo .claude/worktrees/foo'
+  expect block "${r}" 'git worktree add --orphan ../x'
+  expect allow "${r}" $'cat > notes.md <<\'EOF\'\ngit worktree add ../x\nEOF'
+  expect allow "${r}" $'cat <<-EOF > notes.md\n\tgit worktree add ../x\n\tEOF\ngit status'
+  expect block "${r}" $'git commit --file=- <<\'EOF\'\nfix: it\'s fine\nEOF\ngit worktree add ../x'
+  expect allow "${r}" 'git worktree add .claude/worktrees/a <<< here'
+  local -r sep="${tmp_root}/sep"
+  git init --quiet --separate-git-dir "${tmp_root}/sep.gitdir" "${sep}"
+  git -C "${sep}" -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false \
+    commit --quiet --allow-empty --message=init
+  expect allow "${sep}" 'git worktree add .claude/worktrees/a'
+  expect block "${sep}" 'git worktree add ../a'
+  check 'separate git dir: suggestion is inside the repo' \
+    "$([[ "${last_out}" == *"${sep}/${WORKTREES_SUBDIR}/a"* ]] && echo true)"
+  local filler
+  filler="$(head --bytes=60000 /dev/zero | tr '\0' 'a')"
+  local -r started="$(date +%s)"
+  expect allow "${r}" "git commit --message=\"worktree ${filler}\""
+  expect block "${r}" "git commit --message=\"${filler}\" && git worktree add ../x"
+  local -r elapsed="$(($(date +%s) - started))"
+  check "long commands are checked in under 5 s (${elapsed} s)" "$( ((elapsed < 5)) && echo true)"
+
+  local -r self="${BASH_SOURCE[0]}"
+  local rc=0
+  printf '{"tool_input":{"command":"git worktree add ../a"},"cwd":"%s"}' "${r}" \
+    | bash "${self}" 2> "${tmp_root}/stderr" || rc=$?
+  check "hook JSON with a stray target exits 2 (rc ${rc})" "$( ((rc == 2)) && echo true)"
+  check 'hook block reason goes to stderr' "$([[ -s "${tmp_root}/stderr" ]] && echo true)"
+  rc=0
+  printf '{"tool_input":{"command":"git worktree add .claude/worktrees/a"},"cwd":"%s"}' "${r}" \
+    | bash "${self}" 2> /dev/null || rc=$?
+  check "hook JSON with a good target exits 0 (rc ${rc})" "$( ((rc == 0)) && echo true)"
+  rc=0
+  printf '{"tool_input":{"command":"ls"},"cwd":"%s"}' "${r}" | bash "${self}" 2> /dev/null || rc=$?
+  check "hook JSON without worktree exits 0 (rc ${rc})" "$( ((rc == 0)) && echo true)"
+  rc=0
+  printf 'not json worktree' | bash "${self}" 2> /dev/null || rc=$?
+  check "malformed hook JSON exits 1 (rc ${rc})" "$( ((rc == 1)) && echo true)"
+
+  if ((failures > 0)); then
+    printf '\n%d case(s) failed\n' "${failures}"
+    return 1
+  fi
+  printf '\nall cases passed\n'
+}
+
+function main() {
+  if [[ "${1:-}" == '--self-test' ]]; then
+    if self_test; then
+      exit 0
+    fi
+    exit 1
+  fi
+  local input
+  input="$(cat)"
+  # Fast path: most Bash calls never mention worktrees, and this one needs no jq.
+  if [[ "${input}" != *worktree* ]]; then
+    exit 0
+  fi
+  if ! command -v jq > /dev/null 2>&1; then
+    log::warn 'worktree guard: jq not found; not checking this command'
+    exit 1
+  fi
+  local command
+  local cwd
+  if ! command="$(jq --raw-output --exit-status '.tool_input.command | strings' <<< "${input}" 2> /dev/null)" \
+    || ! cwd="$(jq --raw-output --exit-status '.cwd | strings' <<< "${input}" 2> /dev/null)"; then
+    log::warn 'worktree guard: hook input has no command or cwd; not checking this command'
+    exit 1
+  fi
+  local message
+  local rc=0
+  message="$(guard_decision "${command}" "${cwd}")" || rc=$?
+  case "${rc}" in
+    0) exit 0 ;;
+    2)
+      printf '%s\n' "${message}" >&2
+      exit 2
+      ;;
+    *)
+      log::warn "worktree guard: could not evaluate: ${message}"
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"
