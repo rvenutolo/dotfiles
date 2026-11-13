@@ -17,17 +17,16 @@ procedure ends with verification and rollback.
 | Passphrase-encrypted identity | `rvenutolo/crypt` repo, `keys/age.key` | Only consumed by fresh bootstraps (`run_once_before_01-get-keys.sh.tmpl`) |
 | Age recipient (public key) | `.chezmoidata.yaml` → `age.public_key` | Single source; `.chezmoi.toml.tmpl` reads it at init |
 | Ciphertext checksums | `.chezmoidata.yaml` → `checksums:` | `crypt_age_key`, `crypt_id_ed25519`, `crypt_id_ed25519_pub`; get-keys aborts on mismatch |
-| Encrypted files (22) | 18 `encrypted_*` sources + 4 root `.work-*.age` template inputs | All ASCII-armored age files, same recipient; 2 of the 18 `encrypted_*` files (`dot_config/exact_git/encrypted_private_config-personal.private.tmpl` and `dot_config/exact_git/encrypted_private_config-work.private.tmpl`) carry no `.age` suffix |
+| Encrypted files | `encrypted_*` sources + root `.work-*.age` template inputs; list them with `git grep --files-with-matches 'BEGIN AGE ENCRYPTED FILE'` | All ASCII-armored age files, same recipient; the `dot_config/exact_git/encrypted_*.private.tmpl` files carry no `.age` suffix |
 | SSH keypair | `~/.keys/id_ed25519{,.pub}` on every host; encrypted copies in crypt | `authorized_keys` renders live from the GitHub account's keys (`gitHubKeys "rvenutolo"`) |
 
-All 22 encrypted files in this repo are ASCII-armored and share the single
+Every encrypted file in this repo is ASCII-armored and shares the single
 recipient pinned in `.chezmoidata.yaml`, so every decrypt in these
 procedures uses the same invocation shape: `age --decrypt --identity
-~/.keys/age.key <file>`. Two of them
-(`dot_config/exact_git/encrypted_private_config-personal.private.tmpl` and
-`dot_config/exact_git/encrypted_private_config-work.private.tmpl`) are
-armored age ciphertext without a `.age` suffix, so `git ls-files '*.age'`
-undercounts them — enumerate by content instead (see Procedure B).
+~/.keys/age.key <file>`. The `dot_config/exact_git/encrypted_*.private.tmpl`
+files are armored age ciphertext without a `.age` suffix, so
+`git ls-files '*.age'` undercounts — enumerate by content instead (see
+Procedure B).
 
 ## Procedure A: passphrase rotation
 
@@ -69,7 +68,7 @@ is done. Do all repo work in a worktree.
    ```
 
 2. Re-encrypt every armored age file in the repo. Enumerate by content, not
-   by `.age` suffix — `git ls-files '*.age'` misses the two
+   by `.age` suffix — `git ls-files '*.age'` misses the
    `dot_config/exact_git/encrypted_*.private.tmpl` files, which are armored
    age ciphertext without that suffix (see "Moving parts"). Run under
    `set -euo pipefail` so a failed decrypt aborts the loop instead of
