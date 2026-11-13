@@ -77,17 +77,9 @@ Superseded by the user-scope `github` and `github-work` MCP servers, which
 `mcp__github__*` and `mcp__github-work__*` permission rules in `settings.json` belong to those
 servers, not to this plugin.
 
-### gopls-lsp
-
-Go language server (LSP) providing code intelligence for Go projects.
-
 ### lua-lsp
 
 Lua language server (LSP) providing code intelligence for Lua projects.
-
-### pyright-lsp
-
-Python language server (LSP) providing type checking and code intelligence for Python projects.
 
 ### rust-analyzer-lsp
 
