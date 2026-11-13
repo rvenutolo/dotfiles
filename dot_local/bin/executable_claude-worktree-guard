@@ -12,7 +12,14 @@ trap 'printf "error: line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}"
 # worktree lands somewhere nobody will look for it.
 #
 # Reads the hook JSON on stdin and inspects each `git worktree add` /
-# `git worktree move` in the command. The command itself is never executed.
+# `git worktree move` in the command, including ones in `( )` / `{ }` groups,
+# after VAR=value assignments, or behind command, exec, time, nohup, builtin,
+# sudo, env, nice or timeout. The command itself is never executed.
+#
+# Not seen: git run from inside a string that another program interprets
+# (`bash -c '...'`, `eval`, `"$(...)"` inside double quotes, `xargs`), or
+# from a script file. The guard is a backstop for the CLAUDE.md rule, not a
+# sandbox.
 #
 # Exit codes (the PreToolUse contract):
 #   0  allow
@@ -20,8 +27,8 @@ trap 'printf "error: line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}"
 #   1  could not evaluate (no jq, bad JSON, not a git repo); non-blocking
 #
 # A target the guard cannot resolve to a literal path (a variable, a command
-# substitution, a path relative to an earlier `cd`, --git-dir / --work-tree)
-# is blocked, not guessed at.
+# substitution, a directory change earlier in the command, --git-dir /
+# --work-tree) is blocked, not guessed at.
 #
 # `--self-test` runs the built-in case table against a throwaway repo.
 
@@ -29,7 +36,11 @@ readonly WORKTREES_SUBDIR='.claude/worktrees'
 # Commands without this anywhere skip tokenizing entirely.
 readonly WORKTREE_ACTION='worktree[[:space:]\\]+(add|move)'
 # Tokenizer runs: characters with no special meaning in each quoting context.
-readonly UNQUOTED_RUN=$'^[^\'"\\\\ \t;&|$`<\n]+'
+readonly UNQUOTED_RUN=$'^[^\'"\\\\ \t;&|()$`<\n]+'
+# Block-message advice, by why the target could not be verified.
+readonly HINT_LITERAL='Rerun with a literal path'
+readonly HINT_CD='Drop the directory change and pass the repo with git -C'
+readonly HINT_GIT_DIR='Drop --git-dir / --work-tree and pass the repo with git -C'
 readonly DOUBLE_QUOTED_RUN=$'^[^"\\\\$`]+'
 readonly SINGLE_QUOTED_RUN="^[^']+"
 readonly HEREDOC_WORD=$'^[^ \t\n;&|<>()]+'
@@ -87,7 +98,7 @@ function guard_decision() {
 
 # @description Split a command string into words and separators without
 #   expanding anything. Handles single/double quotes, backslashes and
-#   backslash-newline continuations; `;`, `&`, `|`, `&&`, `||` and newlines
+#   backslash-newline continuations; `;`, `&`, `|`, `&&`, `||`, `(`, `)` and newlines
 #   outside quotes are separators; heredoc bodies are skipped, since nothing in
 #   them runs as a command. Sets the globals TOKENS (text) and TOKEN_KINDS
 #   (word, dynamic, sep); a word is dynamic when it holds an unquoted or
@@ -172,7 +183,7 @@ function tokenize() {
       ' ' | $'\t')
         flush_token
         ;;
-      ';' | '&' | '|' | $'\n')
+      ';' | '&' | '|' | '(' | ')' | $'\n')
         flush_token
         TOKENS+=("${char}")
         TOKEN_KINDS+=('sep')
@@ -327,6 +338,55 @@ function main_worktree_of() {
   printf '%s\n' "${listing#worktree }"
 }
 
+# @description Print the index of the command word in the current segment
+#   (globals SEG_WORDS), skipping what runs a command without being one: `(`
+#   and `{` groups, `!`, VAR=value assignments, and the wrappers command, exec,
+#   time, nohup, builtin, sudo, env, nice and timeout with their options.
+# @noargs
+# @stdout Index of the command word (may equal the segment length).
+# @exitcode 0 found; 1 found, but a wrapper option changes directory
+function command_word_index() {
+  local -r count="${#SEG_WORDS[@]}"
+  local changes_dir=0
+  local wrapper
+  local option
+  local i=0
+  while ((i < count)); do
+    case "${SEG_WORDS[i]}" in
+      '{' | '!' | command | exec | time | nohup | builtin) ;;
+      sudo | env | nice | timeout)
+        wrapper="${SEG_WORDS[i]}"
+        i=$((i + 1))
+        while ((i < count)) && [[ "${SEG_WORDS[i]}" == -* ]]; do
+          option="${SEG_WORDS[i]}"
+          case "${wrapper}:${option}" in
+            env:-C | env:--chdir | sudo:-D | sudo:--chdir)
+              changes_dir=1
+              i=$((i + 1))
+              ;;
+            env:-C?* | env:--chdir=* | sudo:-D?* | sudo:--chdir=*) changes_dir=1 ;;
+            env:-u | env:-S | nice:-n | timeout:-s | timeout:-k | sudo:-[ughpUCrtT]) i=$((i + 1)) ;;
+            *) ;;
+          esac
+          i=$((i + 1))
+        done
+        if [[ "${wrapper}" == 'timeout' ]]; then
+          i=$((i + 1))
+        fi
+        continue
+        ;;
+      *)
+        if [[ ! "${SEG_WORDS[i]}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+          break
+        fi
+        ;;
+    esac
+    i=$((i + 1))
+  done
+  printf '%s\n' "${i}"
+  return "${changes_dir}"
+}
+
 # @description Check one segment (globals SEG_WORDS, SEG_KINDS) of the command.
 #   Only `git [global options] worktree add|move` segments are examined.
 # @arg $1 cwd Directory the command runs in.
@@ -337,28 +397,37 @@ function check_segment() {
   local -r cwd="$1"
   local -r saw_cd="$2"
   local -r count="${#SEG_WORDS[@]}"
-  case "${SEG_WORDS[0]}" in
+  local changes_dir="${saw_cd}"
+  local i
+  i="$(command_word_index)" || changes_dir=1
+  case "${SEG_WORDS[i]:-}" in
     git | */git) ;;
     *) return 0 ;;
   esac
   local dir="${cwd}"
   local unresolvable=''
-  local i=1
+  local hint=''
+  i=$((i + 1))
   while ((i < count)); do
     case "${SEG_WORDS[i]}" in
       -C)
         i=$((i + 1))
         if [[ "${SEG_KINDS[i]:-}" == 'dynamic' ]]; then
           unresolvable='a -C directory that is not a literal path'
+          hint="${HINT_LITERAL}"
         fi
         dir="$(join_path "${dir}" "${SEG_WORDS[i]:-}")"
         ;;
-      -c) i=$((i + 1)) ;;
+      -c | --namespace | --config-env) i=$((i + 1)) ;;
       --git-dir | --work-tree)
         i=$((i + 1))
         unresolvable="${SEG_WORDS[i - 1]}"
+        hint="${HINT_GIT_DIR}"
         ;;
-      --git-dir=* | --work-tree=*) unresolvable="${SEG_WORDS[i]%%=*}" ;;
+      --git-dir=* | --work-tree=*)
+        unresolvable="${SEG_WORDS[i]%%=*}"
+        hint="${HINT_GIT_DIR}"
+        ;;
       -*) ;;
       *) break ;;
     esac
@@ -400,8 +469,10 @@ function check_segment() {
   local -r target="${positionals[target_index]}"
   if [[ "${positional_kinds[target_index]}" == 'dynamic' ]]; then
     unresolvable='a worktree path that is not a literal path'
-  elif ((saw_cd == 1)); then
-    unresolvable='a relative path after cd'
+    hint="${HINT_LITERAL}"
+  elif ((changes_dir == 1)); then
+    unresolvable='a directory change earlier in the command'
+    hint="${HINT_CD}"
   fi
 
   local root_base="${dir}"
@@ -428,8 +499,12 @@ function check_segment() {
 
   if [[ -n "${unresolvable}" ]]; then
     printf 'Blocked: cannot verify the location of this git worktree (%s).\n' "${unresolvable}"
-    printf 'Git worktrees must live under %s/. Rerun with a literal absolute path, e.g.:\n' "${allowed}"
-    printf '  git worktree %s ... %s\n' "${action}" "${suggestion}"
+    printf 'Git worktrees must live under %s/. %s, e.g.:\n' "${allowed}" "${hint}"
+    if [[ "${hint}" == "${HINT_LITERAL}" ]]; then
+      printf '  git worktree %s ... %s\n' "${action}" "${suggestion}"
+    else
+      printf '  git -C %s worktree %s ... %s\n' "${root}" "${action}" "${suggestion}"
+    fi
     return 2
   fi
   local resolved
@@ -549,6 +624,33 @@ function self_test() {
   expect allow "${r}" $'cat <<-EOF > notes.md\n\tgit worktree add ../x\n\tEOF\ngit status'
   expect block "${r}" $'git commit --file=- <<\'EOF\'\nfix: it\'s fine\nEOF\ngit worktree add ../x'
   expect allow "${r}" 'git worktree add .claude/worktrees/a <<< here'
+  expect block "${r}" "cd ${r} && git worktree add ${wt}/a"
+  check 'block after cd suggests git -C' "$([[ "${last_out}" == *'git -C'* ]] && echo true)"
+  check 'block after cd does not ask for an absolute path' \
+    "$([[ "${last_out}" != *'absolute path'* ]] && echo true)"
+  expect block "${r}" "git --git-dir=${r}/.git worktree add ${wt}/a"
+  check 'block on --git-dir suggests git -C' "$([[ "${last_out}" == *'git -C'* ]] && echo true)"
+  expect block "${r}" '(git worktree add ../x)'
+  expect allow "${r}" '(git worktree add .claude/worktrees/a)'
+  expect block "${r}" '{ git worktree add ../x; }'
+  expect block "${r}" 'sudo git worktree add ../x'
+  expect block "${r}" 'sudo -u root git worktree add ../x'
+  expect allow "${r}" 'sudo git worktree add .claude/worktrees/a'
+  expect block "${r}" 'env GIT_TRACE=1 git worktree add ../x'
+  expect block "${r}" 'FOO=1 BAR=2 git worktree add ../x'
+  expect allow "${r}" 'FOO=1 git worktree add .claude/worktrees/a'
+  expect block "${r}" 'env --chdir=sub git worktree add ../.claude/worktrees/a'
+  expect block "${r}" 'env -C sub git worktree add ../.claude/worktrees/a'
+  expect block "${r}" 'command git worktree add ../x'
+  expect block "${r}" 'exec git worktree add ../x'
+  expect block "${r}" 'time git worktree add ../x'
+  expect block "${r}" 'nohup git worktree add ../x'
+  expect block "${r}" 'nice -n 5 git worktree add ../x'
+  expect block "${r}" 'timeout 30 git worktree add ../x'
+  expect block "${r}" 'timeout --signal=KILL 30s git worktree add ../x'
+  expect block "${r}" 'git --namespace ns worktree add ../x'
+  expect allow "${r}" 'git --namespace ns worktree add .claude/worktrees/a'
+  expect allow "${r}" 'echo "(git worktree add ../x)"'
   local -r sep="${tmp_root}/sep"
   git init --quiet --separate-git-dir "${tmp_root}/sep.gitdir" "${sep}"
   git -C "${sep}" -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false \
@@ -589,6 +691,11 @@ function self_test() {
   printf '\nall cases passed\n'
 }
 
+# @description Hook entry point: read the PreToolUse JSON on stdin and map the
+#   decision onto the hook exit codes; with --self-test, run the case table.
+# @arg $1 mode Optional `--self-test`.
+# @stderr Block reason (exit 2) or warning (exit 1).
+# @exitcode 0 allow, 1 could not evaluate, 2 block
 function main() {
   if [[ "${1:-}" == '--self-test' ]]; then
     if self_test; then

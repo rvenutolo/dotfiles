@@ -428,8 +428,8 @@ projects dirs right before it collects garbage. Both the
 repair first (topgrade's own Nix cleanup is NixOS-only). CI runs the identical config, so a
 commit that passes locally passes the lint job.
 
-`.pre-commit-config.yaml` currently configures twenty-one hooks. Grouped by
-what they are for, rather than by the repo they come from:
+The hooks in `.pre-commit-config.yaml`, grouped by what they are for rather
+than by the repo they come from:
 
 - **Shell** — `shellcheck` and `shfmt`, plus `render-lint-sh-tmpl`, which
   renders `*.sh.tmpl` through chezmoi first because `{{ }}` is not valid bash.
@@ -456,9 +456,8 @@ what they are for, rather than by the repo they come from:
   These are the repo's own tests, not third-party linters; a change to any of
   these scripts that breaks its suite fails the commit.
 
-Keep this list in step with the file. It has drifted before — it named seven
-hooks while the config had nineteen — and a hook nobody knows about is one
-nobody maintains.
+Keep this list in step with the file: a hook nobody knows about is one nobody
+maintains.
 
 The `typos` hook carries two settings that must not be removed:
 
@@ -511,7 +510,7 @@ Facts worth keeping straight before editing it:
   would pass trivially — coverage that looks real and is not. The job needs its
   own `git fetch` step; `actions/checkout` leaves no `refs/remotes/origin/*`.
 - The pre-commit hook `pin-digest-provenance-test` runs the **test suite**
-  (`.dev/check-pin-digest-provenance.test.sh`, 18 cases), not the gate.
+  (`.dev/check-pin-digest-provenance.test.sh`), not the gate.
 - **Keying is on `(pin identity, version)`, deliberately not on the file.** A
   workflow renamed in the same PR that repoints a pin must still be caught
   rather than read as an add plus a remove. There is a case for this.
