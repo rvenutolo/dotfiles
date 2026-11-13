@@ -28,9 +28,10 @@ dot_local/share/applications/nano.desktop
 {{- if not (lookPath "nvim") }}
 dot_local/share/applications/nvim.desktop
 {{- end }}
-{{- /* The work GHES MCP server is only registered on work machines. */}}
+{{- /* Work-only targets: the GHES MCP server and the work shell profile, which carries the GHES hostname. */}}
 {{- if not .is_work }}
 .config/claude/work/.claude.json
+.config/profile-local-work.sh
 {{- end }}
 
 {{- /*
