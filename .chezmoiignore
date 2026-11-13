@@ -28,10 +28,28 @@ dot_local/share/applications/nano.desktop
 {{- if not (lookPath "nvim") }}
 dot_local/share/applications/nvim.desktop
 {{- end }}
-{{- /* Work-only targets: the GHES MCP server and the work shell profile, which carries the GHES hostname. */}}
+{{- /* The work GHES MCP server is only registered on work machines. */}}
 {{- if not .is_work }}
 .config/claude/work/.claude.json
+{{- end }}
+
+{{- /*
+  Host-local shell files: apply only the set that symlink_dot_profile-local.tmpl
+  and dot_config/exact_bash/symlink_local.bash.tmpl point at, so one host
+  class's private settings never land on another. The branches mirror those
+  templates' if / else if / else order; change them together.
+*/}}
+{{- if not .is_personal }}
+.config/profile-local-personal.sh
+.config/bash/local-personal.bash
+{{- end }}
+{{- if or .is_personal (not .is_work) }}
 .config/profile-local-work.sh
+.config/bash/local-work.bash
+{{- end }}
+{{- if or .is_personal .is_work }}
+.config/profile-local-server.sh
+.config/bash/local-server.bash
 {{- end }}
 
 {{- /*
