@@ -26,6 +26,16 @@ trap 'printf "error: line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}"
 # `--self-test` runs the built-in case table against a throwaway repo.
 
 readonly WORKTREES_SUBDIR='.claude/worktrees'
+# Commands without this anywhere skip tokenizing entirely.
+readonly WORKTREE_ACTION='worktree[[:space:]\\]+(add|move)'
+# Tokenizer runs: characters with no special meaning in each quoting context.
+readonly UNQUOTED_RUN=$'^[^\'"\\\\ \t;&|$`<\n]+'
+readonly DOUBLE_QUOTED_RUN=$'^[^"\\\\$`]+'
+readonly SINGLE_QUOTED_RUN="^[^']+"
+readonly HEREDOC_WORD=$'^[^ \t\n;&|<>()]+'
+# Byte semantics: in a UTF-8 locale every substring and length operation
+# rescans the string from the start, which made long commands quadratic.
+export LC_ALL=C
 
 # @description Log a timestamped message to stderr.
 # @arg $1 level Severity label.
@@ -45,6 +55,9 @@ function log::warn() { log 'WARN' "$*"; }
 function guard_decision() {
   local -r command="$1"
   local -r cwd="$2"
+  if [[ ! "${command}" =~ ${WORKTREE_ACTION} ]]; then
+    return 0
+  fi
   tokenize "${command}"
   local -r count="${#TOKENS[@]}"
   local saw_cd=0
@@ -73,13 +86,17 @@ function guard_decision() {
 }
 
 # @description Split a command string into words and separators without
-#   expanding anything. Handles single/double quotes and backslashes; `;`, `&`,
-#   `|`, `&&`, `||` and newlines outside quotes are separators. Sets the globals
-#   TOKENS (text) and TOKEN_KINDS (word, dynamic, sep); a word is dynamic when
-#   it holds an unquoted or double-quoted `$` or backtick.
+#   expanding anything. Handles single/double quotes, backslashes and
+#   backslash-newline continuations; `;`, `&`, `|`, `&&`, `||` and newlines
+#   outside quotes are separators; heredoc bodies are skipped, since nothing in
+#   them runs as a command. Sets the globals TOKENS (text) and TOKEN_KINDS
+#   (word, dynamic, sep); a word is dynamic when it holds an unquoted or
+#   double-quoted `$` or backtick. Consumes runs of ordinary characters with
+#   one regex match each, so a long command costs a handful of matches rather
+#   than one substring per character.
 # @arg $1 text Command string.
 function tokenize() {
-  local -r text="$1"
+  local rest="$1"
   TOKENS=()
   TOKEN_KINDS=()
   local token=''
@@ -87,41 +104,70 @@ function tokenize() {
   local started=0
   local quote=''
   local char
-  local i
-  for ((i = 0; i < ${#text}; i++)); do
-    char="${text:i:1}"
+  local -a heredocs=()
+  while [[ -n "${rest}" ]]; do
     if [[ "${quote}" == "'" ]]; then
-      if [[ "${char}" == "'" ]]; then
-        quote=''
+      if [[ "${rest}" =~ ${SINGLE_QUOTED_RUN} ]]; then
+        token+="${BASH_REMATCH[0]}"
+        rest="${rest:${#BASH_REMATCH[0]}}"
       else
-        token+="${char}"
+        quote=''
+        rest="${rest:1}"
       fi
       continue
     fi
     if [[ "${quote}" == '"' ]]; then
+      if [[ "${rest}" =~ ${DOUBLE_QUOTED_RUN} ]]; then
+        token+="${BASH_REMATCH[0]}"
+        rest="${rest:${#BASH_REMATCH[0]}}"
+        continue
+      fi
+      char="${rest:0:1}"
       case "${char}" in
-        '"') quote='' ;;
-        "\\")
-          i=$((i + 1))
-          token+="${text:i:1}"
+        '"')
+          quote=''
+          rest="${rest:1}"
           ;;
-        '$' | '`')
+        "\\")
+          case "${rest:1:1}" in
+            '$' | '`' | '"' | "\\")
+              token+="${rest:1:1}"
+              rest="${rest:2}"
+              ;;
+            $'\n') rest="${rest:2}" ;;
+            *)
+              token+="\\"
+              rest="${rest:1}"
+              ;;
+          esac
+          ;;
+        *)
           kind='dynamic'
           token+="${char}"
+          rest="${rest:1}"
           ;;
-        *) token+="${char}" ;;
       esac
       continue
     fi
+    if [[ "${rest}" =~ ${UNQUOTED_RUN} ]]; then
+      token+="${BASH_REMATCH[0]}"
+      rest="${rest:${#BASH_REMATCH[0]}}"
+      started=1
+      continue
+    fi
+    char="${rest:0:1}"
+    rest="${rest:1}"
     case "${char}" in
       "'" | '"')
         quote="${char}"
         started=1
         ;;
       "\\")
-        i=$((i + 1))
-        token+="${text:i:1}"
-        started=1
+        if [[ "${rest:0:1}" != $'\n' ]]; then
+          token+="${rest:0:1}"
+          started=1
+        fi
+        rest="${rest:1}"
         ;;
       ' ' | $'\t')
         flush_token
@@ -130,11 +176,28 @@ function tokenize() {
         flush_token
         TOKENS+=("${char}")
         TOKEN_KINDS+=('sep')
+        if [[ "${char}" == $'\n' ]] && ((${#heredocs[@]} > 0)); then
+          skip_heredoc_bodies
+          heredocs=()
+        fi
         ;;
       '$' | '`')
         kind='dynamic'
         token+="${char}"
         started=1
+        ;;
+      '<')
+        if [[ "${rest:0:2}" == '<<' ]]; then
+          token+='<<<'
+          rest="${rest:2}"
+          started=1
+        elif [[ "${rest:0:1}" == '<' ]]; then
+          flush_token
+          read_heredoc_delimiter
+        else
+          token+='<'
+          started=1
+        fi
         ;;
       *)
         token+="${char}"
@@ -143,6 +206,52 @@ function tokenize() {
     esac
   done
   flush_token
+}
+
+# @description Parse a heredoc operator's delimiter from the front of
+#   tokenize's rest (just after the first `<`) and queue it on tokenize's
+#   heredocs array as "<dash>:<word>". Shares tokenize's locals through bash
+#   dynamic scoping.
+# @noargs
+function read_heredoc_delimiter() {
+  rest="${rest:1}"
+  local dash=0
+  if [[ "${rest:0:1}" == '-' ]]; then
+    dash=1
+    rest="${rest:1}"
+  fi
+  rest="${rest#"${rest%%[!$' \t']*}"}"
+  if [[ "${rest}" =~ ${HEREDOC_WORD} ]]; then
+    local -r raw="${BASH_REMATCH[0]}"
+    rest="${rest:${#raw}}"
+    local -r stripped="${raw//[\'\"]/}"
+    heredocs+=("${dash}:${stripped//\\/}")
+  fi
+}
+
+# @description Drop the queued heredoc bodies from the front of tokenize's
+#   rest, each up to and including its delimiter line. Shares tokenize's
+#   locals through bash dynamic scoping.
+# @noargs
+function skip_heredoc_bodies() {
+  local heredoc
+  local line
+  for heredoc in "${heredocs[@]}"; do
+    while [[ -n "${rest}" ]]; do
+      line="${rest%%$'\n'*}"
+      if [[ "${rest}" == *$'\n'* ]]; then
+        rest="${rest#*$'\n'}"
+      else
+        rest=''
+      fi
+      if [[ "${heredoc:0:1}" == '1' ]]; then
+        line="${line#"${line%%[!$'\t']*}"}"
+      fi
+      if [[ "${line}" == "${heredoc:2}" ]]; then
+        break
+      fi
+    done
+  done
 }
 
 # @description Append tokenize's pending word, if any, and reset it. Shares
@@ -191,6 +300,31 @@ function inside_worktree() {
     path="${path%/*}"
   done
   return 1
+}
+
+# @description Print the main worktree of the repo containing a directory.
+#   Outside a linked worktree that is the top level, which also holds for a
+#   submodule or a --separate-git-dir repo, where the common dir is not
+#   <root>/.git. From a linked worktree it is the first porcelain entry, which
+#   git always lists as the main worktree.
+# @arg $1 dir Directory inside the repo.
+# @stdout Main worktree path.
+# @exitcode 0 printed; 1 not in a (non-bare) git work tree
+function main_worktree_of() {
+  local -r dir="$1"
+  local git_dir
+  local common_dir
+  # -C: no long-form equivalent
+  git_dir="$(git -C "${dir}" rev-parse --path-format=absolute --git-dir 2> /dev/null)" || return 1
+  common_dir="$(git -C "${dir}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" || return 1
+  if [[ "${git_dir}" == "${common_dir}" ]]; then
+    git -C "${dir}" rev-parse --show-toplevel 2> /dev/null
+    return
+  fi
+  local listing
+  listing="$(git -C "${dir}" worktree list --porcelain 2> /dev/null)" || return 1
+  listing="${listing%%$'\n'*}"
+  printf '%s\n' "${listing#worktree }"
 }
 
 # @description Check one segment (globals SEG_WORDS, SEG_KINDS) of the command.
@@ -250,7 +384,7 @@ function check_segment() {
           end_of_options=1
           continue
           ;;
-        -b | -B | --orphan | --reason)
+        -b | -B | --reason)
           i=$((i + 1))
           continue
           ;;
@@ -274,15 +408,20 @@ function check_segment() {
   if [[ -n "${unresolvable}" ]]; then
     root_base="${cwd}"
   fi
-  local common
-  if ! common="$(git -C "${root_base}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)"; then # -C: no long-form equivalent
+  local main_worktree
+  if ! main_worktree="$(main_worktree_of "${root_base}")"; then
     printf 'not a git repository: %s\n' "${root_base}"
     return 1
   fi
+  # Checked explicitly: errexit is off under the caller's `|| rc=$?`, and an
+  # empty allowed dir would make every absolute target look allowed.
   local root
-  root="$(realpath -- "${common%/*}")"
   local allowed
-  allowed="$(realpath --canonicalize-missing -- "${root}/${WORKTREES_SUBDIR}")"
+  if ! root="$(realpath -- "${main_worktree}")" || [[ -z "${root}" ]] \
+    || ! allowed="$(realpath --canonicalize-missing -- "${root}/${WORKTREES_SUBDIR}")" || [[ -z "${allowed}" ]]; then
+    printf 'cannot resolve the main worktree of %s\n' "${root_base}"
+    return 1
+  fi
   local name="${target%/}"
   name="${name##*/}"
   local -r suggestion="${allowed}/${name:-NAME}"
@@ -402,6 +541,29 @@ function self_test() {
   expect allow "${r}" 'echo git worktree add ../a'
   expect allow "${r}" 'git worktree add'
   expect error "${tmp_root}/nonrepo" 'git worktree add ../a'
+  expect allow "${r}" $'git worktree add \\\n  -b feat/x \\\n  .claude/worktrees/x main'
+  expect block "${r}" $'git worktree add \\\n  ../x'
+  expect allow "${r}" 'git worktree add --orphan -b foo .claude/worktrees/foo'
+  expect block "${r}" 'git worktree add --orphan ../x'
+  expect allow "${r}" $'cat > notes.md <<\'EOF\'\ngit worktree add ../x\nEOF'
+  expect allow "${r}" $'cat <<-EOF > notes.md\n\tgit worktree add ../x\n\tEOF\ngit status'
+  expect block "${r}" $'git commit --file=- <<\'EOF\'\nfix: it\'s fine\nEOF\ngit worktree add ../x'
+  expect allow "${r}" 'git worktree add .claude/worktrees/a <<< here'
+  local -r sep="${tmp_root}/sep"
+  git init --quiet --separate-git-dir "${tmp_root}/sep.gitdir" "${sep}"
+  git -C "${sep}" -c user.name=t -c user.email=t@example.invalid -c commit.gpgsign=false \
+    commit --quiet --allow-empty --message=init
+  expect allow "${sep}" 'git worktree add .claude/worktrees/a'
+  expect block "${sep}" 'git worktree add ../a'
+  check 'separate git dir: suggestion is inside the repo' \
+    "$([[ "${last_out}" == *"${sep}/${WORKTREES_SUBDIR}/a"* ]] && echo true)"
+  local filler
+  filler="$(head --bytes=60000 /dev/zero | tr '\0' 'a')"
+  local -r started="$(date +%s)"
+  expect allow "${r}" "git commit --message=\"worktree ${filler}\""
+  expect block "${r}" "git commit --message=\"${filler}\" && git worktree add ../x"
+  local -r elapsed="$(($(date +%s) - started))"
+  check "long commands are checked in under 5 s (${elapsed} s)" "$( ((elapsed < 5)) && echo true)"
 
   local -r self="${BASH_SOURCE[0]}"
   local rc=0
