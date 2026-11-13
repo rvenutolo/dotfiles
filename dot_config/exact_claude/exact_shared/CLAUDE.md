@@ -82,7 +82,7 @@
 
 - Keep responses focused, brief, and concise. Keep disclaimers and caveats short, and spend most of the response on the main answer.
 - When asked to explain something, give a high-level summary unless an in-depth explanation is specifically requested.
-- At the end of a response, add a brief summary of what you did
+- End with a brief summary only when the response covered several steps or files; skip it for short answers.
 
 ### Attention Banners
 
@@ -124,7 +124,7 @@
 
 ## IntelliJ IDEA
 
-- Prefer to use the IntelliJ MCP server when available for code navigation, symbol lookup, and IDE operations
+- When the IntelliJ MCP server is connected (IDEA is running), prefer it for code navigation, symbol lookup, and IDE operations. When it is not, use codegraph and the built-in LSP tool; never ask the user to start IDEA.
 - Do not suggest changes that conflict with checked-in `.idea` settings or `.editorconfig`
 - Respect project-level code style and inspection configurations
 
