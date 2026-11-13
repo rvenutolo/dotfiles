@@ -180,3 +180,9 @@ repos:
         language: system
         files: ^\.chezmoiscripts/run_after_60-repair-pre-commit-hooks\.sh$
         pass_filenames: false
+      - id: worktree-guard-self-test
+        name: worktree guard self-test
+        entry: bash dot_local/bin/executable_claude-worktree-guard --self-test
+        language: system
+        files: ^dot_local/bin/executable_claude-worktree-guard$
+        pass_filenames: false
