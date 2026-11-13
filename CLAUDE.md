@@ -428,7 +428,7 @@ projects dirs right before it collects garbage. Both the
 repair first (topgrade's own Nix cleanup is NixOS-only). CI runs the identical config, so a
 commit that passes locally passes the lint job.
 
-`.pre-commit-config.yaml` currently configures twenty hooks. Grouped by
+`.pre-commit-config.yaml` currently configures twenty-one hooks. Grouped by
 what they are for, rather than by the repo they come from:
 
 - **Shell** — `shellcheck` and `shfmt`, plus `render-lint-sh-tmpl`, which
@@ -446,10 +446,13 @@ what they are for, rather than by the repo they come from:
 - **CI plumbing** — `actionlint` and `renovate-config-validator` (see below;
   nothing else validates either file).
 - **Local test suites** — `pin-digest-provenance-test` runs
-  `.dev/check-pin-digest-provenance.test.sh`, and `xdg-defaults-self-test`
-  and `pre-commit-hooks-self-test` run the `--self-test` tables built into
-  `.chezmoiscripts/run_after_50-set-xdg-defaults.sh` and
-  `.chezmoiscripts/run_after_60-repair-pre-commit-hooks.sh`.
+  `.dev/check-pin-digest-provenance.test.sh`, and `xdg-defaults-self-test`,
+  `pre-commit-hooks-self-test` and `worktree-guard-self-test` run the
+  `--self-test` tables built into
+  `.chezmoiscripts/run_after_50-set-xdg-defaults.sh`,
+  `.chezmoiscripts/run_after_60-repair-pre-commit-hooks.sh` and
+  `dot_local/bin/executable_claude-worktree-guard` (the Claude Code
+  `PreToolUse` hook that keeps worktrees under `.claude/worktrees/`).
   These are the repo's own tests, not third-party linters; a change to any of
   these scripts that breaks its suite fails the commit.
 

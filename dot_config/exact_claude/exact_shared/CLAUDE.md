@@ -106,6 +106,12 @@
   - Append `!` after the type for breaking changes: `feat!: drop Java 11 support`
   - Optional body (after a blank line): explain *why*, not *what*
 
+## Git Worktrees
+
+- Every worktree lives at `<main-repo-root>/.claude/worktrees/<name>`, never beside the repo or anywhere else. That directory is gitignored globally, so nothing extra is needed per repo.
+- Prefer the native `EnterWorktree` tool; it already uses that location. When running `git worktree add` by hand, give that path as a literal absolute path.
+- A `PreToolUse` hook (`claude-worktree-guard`) blocks `git worktree add` / `move` to any other location; its message names the path to use.
+
 ## GitHub
 
 - The user's personal GitHub account (`rvenutolo`) is on the **Pro** plan. Treat Pro-tier features as available on their personal repos — public and private — and use them without first asking whether the plan allows it:
