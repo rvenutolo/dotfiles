@@ -21,9 +21,10 @@ readonly CONFIG_FILE='{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/chezmo
 readonly DEST_DIR='{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/claude'
 readonly PULL_TIMEOUT_SECONDS=20
 readonly SSH_CONNECT_TIMEOUT_SECONDS=5
-# Variables that redirect git to another repository. an inherited value (a git hook
-# exports them) would aim every git call below at the wrong repo. The command prefix starts with env itself because the
-# no-env-template-func hook rejects a quoted argument after the word env.
+# A git hook exports variables such as GIT_DIR that redirect git to another
+# repository; inherited here, they would aim every git call below at the wrong
+# repo, so they are unset. The command prefix starts with the env word itself
+# because the no-env-template-func hook rejects a quoted argument after it.
 readonly -a CLEAN_GIT=(
   env --unset=GIT_DIR --unset=GIT_WORK_TREE --unset=GIT_INDEX_FILE
   --unset=GIT_OBJECT_DIRECTORY --unset=GIT_COMMON_DIR --unset=GIT_PREFIX git
@@ -361,6 +362,23 @@ STUB
   check 'apply fails: non-zero exit' "$([[ "${rc}" -ne 0 ]] && echo true)"
   check 'apply fails: init and apply both ran' "$(init_then_apply_logged "${dir}")"
 
+  # argument validation (exit happens in a command substitution's subshell)
+  rc=0
+  output="$(validate_args 2>&1)" || rc=$?
+  check 'no arguments: accepted' "$([[ "${rc}" -eq 0 && -z "${output}" ]] && echo true)"
+  rc=0
+  output="$(validate_args --self-test 2>&1)" || rc=$?
+  check '--self-test alone: accepted' "$([[ "${rc}" -eq 0 && -z "${output}" ]] && echo true)"
+  local arg_case
+  for arg_case in '--selftest' '--help' ''; do
+    rc=0
+    output="$(validate_args "${arg_case}" 2>&1)" || rc=$?
+    check "argument '${arg_case}': exit 2 with usage" "$([[ "${rc}" -eq 2 && "${output}" == usage:* ]] && echo true)"
+  done
+  rc=0
+  output="$(validate_args --self-test extra 2>&1)" || rc=$?
+  check '--self-test with an extra argument: exit 2 with usage' "$([[ "${rc}" -eq 2 && "${output}" == usage:* ]] && echo true)"
+
   if ((failures > 0)); then
     printf '\n%d case(s) failed\n' "${failures}"
     return 1
@@ -368,7 +386,27 @@ STUB
   printf '\nall cases passed\n'
 }
 
+# @description Reject any argument other than a lone --self-test, so a mistyped
+# flag cannot fall through to the live apply.
+# @arg $@ args Command-line arguments of the script.
+# @stderr One-line usage message when an argument is not accepted.
+# @exitcode 0 for no arguments or exactly --self-test, exits 2 otherwise.
+function validate_args() {
+  if (($# == 0)); then
+    return 0
+  fi
+  if (($# == 1)) && [[ "$1" == '--self-test' ]]; then
+    return 0
+  fi
+  printf 'usage: run_after_70-apply-claude-config.sh [--self-test]\n' >&2
+  exit 2
+}
+
+# @description Apply the claude-config instance, or run the self-test.
+# @arg $@ args Nothing, or --self-test.
+# @exitcode 0 on success, 2 for an unexpected argument, non-zero when init or apply fails.
 function main() {
+  validate_args "$@"
   if [[ "${1:-}" == '--self-test' ]]; then
     local rc=0
     # `|| rc=$?` keeps a failing suite from firing the ERR trap on top of its own report.
