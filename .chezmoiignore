@@ -28,9 +28,20 @@ dot_local/share/applications/nano.desktop
 {{- if not (lookPath "nvim") }}
 dot_local/share/applications/nvim.desktop
 {{- end }}
-{{- /* The work GHES MCP server is only registered on work machines. */}}
-{{- if not .is_work }}
-.config/claude/work/.claude.json
+
+{{- /*
+  The second chezmoi instance owns ~/.config/claude on personal and work hosts.
+  Both lines are required: ignoring the directory alone does not stop a
+  .chezmoiremove entry from deleting something below it.
+*/}}
+{{- if or .is_personal .is_work }}
+.config/claude
+.config/claude/**
+{{- end }}
+{{- /* Server hosts have no second instance to apply or wrap. */}}
+{{- if not (or .is_personal .is_work) }}
+.chezmoiscripts/70-apply-claude-config.sh
+.local/bin/chezmoi-claude
 {{- end }}
 
 {{- /*
@@ -59,7 +70,6 @@ dot_local/share/applications/nvim.desktop
   still validate every other template.
 */}}
 {{- if and (hasKey . "is_ci") .is_ci }}
-.config/claude/work/.claude.json
 .config/topgrade/topgrade.toml
 .etc/docker-daemon.json
 .etc/network-manager-aws-vpn-dns-fix

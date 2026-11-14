@@ -192,9 +192,3 @@ repos:
         language: system
         files: ^(\.dev/chezmoi-claude\.test\.sh|dot_local/bin/executable_chezmoi-claude)$
         pass_filenames: false
-      - id: worktree-guard-self-test
-        name: worktree guard self-test
-        entry: bash dot_local/bin/executable_claude-worktree-guard --self-test
-        language: system
-        files: ^dot_local/bin/executable_claude-worktree-guard$
-        pass_filenames: false

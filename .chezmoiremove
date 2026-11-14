@@ -1,5 +1,30 @@
 .config/systemd/user/nix-setcap.path
 .config/systemd/user/nix-setcap.service
 Projects/Work/.envrc
-.config/claude/personal/hooks
-.config/claude/work/hooks
+
+{{- /*
+  Server hosts run no Claude Code and have no second chezmoi instance, so the
+  Claude config files on them are removed. On personal and work hosts the
+  second instance owns ~/.config/claude, and these entries would delete its
+  live config without a prompt, so this condition is the safeguard. The render
+  job in .github/workflows/ci.yaml asserts it per host with
+  .dev/check-claude-remove-gating.sh. Inside personal/ and work/ only the
+  config entries are listed; anything else there is left alone.
+*/}}
+{{- if not (or .is_personal .is_work) }}
+.config/claude/shared
+.config/claude/personal/CLAUDE.md
+.config/claude/personal/claude-hud.sh
+.config/claude/personal/settings.json
+.config/claude/personal/skills
+.config/claude/personal/.claude.json
+.config/claude/personal/plugins
+.config/claude/work/CLAUDE.md
+.config/claude/work/claude-hud.sh
+.config/claude/work/settings.json
+.config/claude/work/skills
+.config/claude/work/.claude.json
+.config/claude/work/plugins
+.local/bin/claude-worktree-guard
+.local/bin/ssh-signing-key-reminder
+{{- end }}

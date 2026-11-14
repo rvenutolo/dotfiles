@@ -12,20 +12,6 @@ type = 'file'
 url = 'https://raw.githubusercontent.com/cykerway/complete-alias/7f2555c2fe7a1f248ed2d4301e46c8eebcbbc4e2/complete_alias'
 refreshPeriod = '0'
 
-# renovate: datasource=github-digest depName=nidhinjs/prompt-master branch=main
-['{{ .paths.xdg_config_home }}/claude/shared/skills/prompt-master']
-type = 'archive'
-url = 'https://github.com/nidhinjs/prompt-master/archive/49b3a72469b1e7287d66387004ccfcca90e5968a.zip'
-exact = true
-stripComponents = 1
-refreshPeriod = '0'
-
-# Disabled - this eats tokens
-#['{{ .paths.xdg_config_home }}/claude/shared/skills/task-observer']
-#type = 'git-repo'
-#url = 'git@github.com:rebelytics/one-skill-to-rule-them-all.git'
-#refreshPeriod = '1h'
-
 # renovate: datasource=github-digest depName=nordtheme/dircolors branch=develop
 ['{{ .paths.xdg_config_home }}/dircolors']
 type = 'file'
