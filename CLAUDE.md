@@ -435,6 +435,13 @@ rm -rf ~/.config/chezmoi ~/.local/share/chezmoi
 
 age is the encryption backend. The recipient (public key) is pinned in `.chezmoidata.yaml` (`age.public_key`) and read by `.chezmoi.toml.tmpl` at init; the identity (private key) lives at `~/.keys/age.key` on each host. Encrypted files use the `encrypted_` prefix and the `.age` suffix, except the `dot_config/exact_git/encrypted_*.private.tmpl` files (see `docs/age-rotation.md`). Do not commit plaintext copies of `encrypted_*` files.
 
+`.work-github-host.age` at the repo root is a template input, not a target:
+`dot_config/encrypted_private_profile-local-work.sh.tmpl.age` includes and
+decrypts it. That reference sits inside ciphertext, so no search finds it and
+the CI render (which excludes encrypted targets) cannot catch its absence.
+Before removing a root `.age` input, decrypt the encrypted templates and check
+them for `include` calls.
+
 `private_dot_ssh/` holds SSH key material; entries are managed with `private_` (mode `0600`/`0700`) and, where applicable, `encrypted_` via age. Never add plaintext private keys here — encrypt first.
 
 The get-keys bootstrap script verifies fetched ciphertexts against SHA-256
