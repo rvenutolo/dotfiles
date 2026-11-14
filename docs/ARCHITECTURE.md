@@ -69,14 +69,22 @@ flowchart LR
     subgraph tgt["Target state"]
         t1["$HOME dotfiles"]
         t2["~/.etc (staging for /etc)"]
+        t3["~/.config/claude (personal and work hosts)"]
     end
     subgraph ext["External/cache state"]
         e1["~/.cache/chezmoi (externals cache)"]
+    end
+    subgraph cc["Second instance (personal and work hosts)"]
+        c1["claude-config clone (private repo)"]
+        c2["~/.config/chezmoi-claude (config + state)"]
     end
 
     s1 -- "chezmoi apply" --> t1
     s1 -- "chezmoi apply" --> t2
     e1 -- "pinned externals" --> t1
+    s1 -- "run_after_70 script" --> c2
+    c1 -- "chezmoi apply (second instance)" --> t3
+    c2 -- "config + state" --> t3
 ```
 
 - **Source state** is this repo. Filenames encode target metadata
@@ -88,3 +96,9 @@ flowchart LR
 - **External state**: third-party files/archives declared in
   `.chezmoiexternal.toml.tmpl`, pinned to commit SHAs and cached under
   `~/.cache/chezmoi/`. A SHA bump changes the URL, which busts the cache.
+- **Second instance**: `~/.config/claude` is owned by a separate chezmoi
+  instance whose source is the private `claude-config` clone, whose config and
+  state live in `~/.config/chezmoi-claude`, and which is driven by
+  `.chezmoiscripts/run_after_70-apply-claude-config.sh.tmpl` during this
+  repo's apply. This repo ignores that target on personal and work hosts; see
+  [CLAUDE.md](../CLAUDE.md#claude-config).
