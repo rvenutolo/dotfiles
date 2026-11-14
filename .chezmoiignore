@@ -30,19 +30,12 @@ dot_local/share/applications/nvim.desktop
 {{- end }}
 
 {{- /*
-  The second chezmoi instance owns ~/.config/claude on personal and work hosts.
-  Both lines are required: ignoring the directory alone does not stop a
-  .chezmoiremove entry from deleting something below it.
+  A second chezmoi instance owns ~/.config/claude on every host. Both lines are
+  required: ignoring the directory alone does not stop a .chezmoiremove entry
+  from deleting something below it.
 */}}
-{{- if or .is_personal .is_work }}
 .config/claude
 .config/claude/**
-{{- end }}
-{{- /* Server hosts have no second instance to apply or wrap. */}}
-{{- if not (or .is_personal .is_work) }}
-.chezmoiscripts/70-apply-claude-config.sh
-.local/bin/chezmoi-claude
-{{- end }}
 
 {{- /*
   Host-local shell files: apply only the set that symlink_dot_profile-local.tmpl
