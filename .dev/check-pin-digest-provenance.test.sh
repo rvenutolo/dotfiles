@@ -380,6 +380,14 @@ function case_git_ref_missing_dies() {
 }
 
 function main() {
+  # Git exports GIT_DIR, GIT_INDEX_FILE and friends to hooks, and this suite
+  # runs as a pre-commit hook. Inherited, they make every `git -C <scratch>`
+  # below act on the real repository instead: `git init` re-initialises it as
+  # bare and the fixture commits land in it. Unset all of them first.
+  local git_env_var
+  for git_env_var in $(git rev-parse --local-env-vars); do
+    unset "${git_env_var}"
+  done
   [[ -x "${CHECKER}" ]] || {
     printf 'checker not executable: %s\n' "${CHECKER}" >&2
     exit 1
