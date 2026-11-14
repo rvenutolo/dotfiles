@@ -1,0 +1,307 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'echo "error: line ${LINENO} (exit $?): ${BASH_COMMAND}" >&2' ERR
+
+# Apply the private claude-config repo to the Claude config directory with a
+# second chezmoi instance that has its own source, config and destination.
+#
+# Runs on every apply (run_ prefix, not run_onchange_): the private clone changes
+# independently of this repo, so no content hash of this script would notice.
+#
+# The clone is fast-forwarded first, but only when that cannot lose or entangle
+# work: on main, with a clean tree. Anything else, and any network failure, logs a
+# WARN and carries on with the clone as it is. The update never merges, rebases,
+# stashes or resets, and never prompts, so an apply cannot hang or rewrite local
+# commits. A failed `chezmoi init` or `chezmoi apply` fails this script.
+
+readonly CLONE_DIR='{{ .chezmoi.homeDir }}/{{ .paths.personal_projects_dir }}/claude-config'
+readonly CONFIG_FILE='{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/chezmoi-claude/chezmoi.toml'
+readonly DEST_DIR='{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/claude'
+readonly PULL_TIMEOUT_SECONDS=20
+readonly SSH_CONNECT_TIMEOUT_SECONDS=5
+
+# @description Log a timestamped message to stderr.
+# @arg $1 level Severity label (INFO, WARN).
+# @arg $2 message Text to log.
+function log() {
+  printf '[%s] %-5s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$1" "$2" >&2
+}
+function log::info() { log 'INFO' "$*"; }
+function log::warn() { log 'WARN' "$*"; }
+
+# @description Fast-forward a clone when that is safe.
+# @arg $1 clone_dir Path to the git clone.
+# @exitcode 0 always.
+function update_clone() {
+  local -r clone_dir="$1"
+  local branch
+  # -C: no long-form equivalent
+  if ! branch="$(git -C "${clone_dir}" symbolic-ref --short HEAD 2> /dev/null)"; then
+    log::warn "claude-config: ${clone_dir} has a detached HEAD; not updating"
+    return 0
+  fi
+  if [[ "${branch}" != 'main' ]]; then
+    log::warn "claude-config: ${clone_dir} is on branch ${branch}, not main; not updating"
+    return 0
+  fi
+  local changes
+  if ! changes="$(git -C "${clone_dir}" status --porcelain 2>&1)"; then
+    log::warn "claude-config: cannot read git status of ${clone_dir}: ${changes//$'\n'/ }; not updating"
+    return 0
+  fi
+  if [[ -n "${changes}" ]]; then
+    log::warn "claude-config: ${clone_dir} has uncommitted changes; not updating"
+    return 0
+  fi
+  # No prompts and bounded waits: an unreachable remote must not hang an apply.
+  local pull_output
+  if ! pull_output="$(
+    GIT_TERMINAL_PROMPT=0 \
+      GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=${SSH_CONNECT_TIMEOUT_SECONDS}" \
+      timeout "${PULL_TIMEOUT_SECONDS}" git -C "${clone_dir}" pull --ff-only 2>&1
+  )"; then
+    log::warn "claude-config: fast-forward pull failed in ${clone_dir}: ${pull_output//$'\n'/ }"
+  fi
+  return 0
+}
+
+# @description Update the clone, then init and apply the second chezmoi instance.
+# @arg $1 clone_dir Source directory of the second instance.
+# @arg $2 config_file Config file of the second instance.
+# @arg $3 dest_dir Destination directory of the second instance.
+# @exitcode 0 on success or when the clone is absent, non-zero if init or apply fails.
+function apply_claude_config() {
+  local -r clone_dir="$1"
+  local -r config_file="$2"
+  local -r dest_dir="$3"
+  if [[ ! -d "${clone_dir}" ]]; then
+    log::warn "claude-config: ${clone_dir} is missing; skipping. Create it with: gh repo clone rvenutolo/claude-config ${clone_dir}"
+    return 0
+  fi
+  update_clone "${clone_dir}"
+  if ! chezmoi init --config "${config_file}" --config-path "${config_file}" \
+    --source "${clone_dir}" --destination "${dest_dir}"; then
+    log::warn 'claude-config: chezmoi init failed; not applying'
+    return 1
+  fi
+  if ! chezmoi apply --config "${config_file}" --source "${clone_dir}" --destination "${dest_dir}"; then
+    log::warn 'claude-config: chezmoi apply failed'
+    return 1
+  fi
+}
+
+# @description Record one self-test result.
+# @arg $1 desc Case description.
+# @arg $2 ok "true" if the case passed.
+function check() {
+  if [[ "$2" == 'true' ]]; then
+    printf 'ok   %s\n' "$1"
+  else
+    printf 'FAIL %s\n' "$1"
+    failures=$((failures + 1))
+  fi
+}
+
+# @description Build a bare remote, a seed clone that pushes to it, and a clone
+# under test, all with one commit on main.
+# @arg $1 dir Case directory to create.
+function make_fixture() {
+  local -r dir="$1"
+  mkdir --parents -- "${dir}"
+  git init --quiet --bare --initial-branch=main "${dir}/remote.git"
+  git clone --quiet "${dir}/remote.git" "${dir}/seed" 2> /dev/null
+  printf 'one\n' > "${dir}/seed/file.txt"
+  git -C "${dir}/seed" add file.txt # -C: no long-form equivalent
+  git -C "${dir}/seed" commit --quiet --message 'one'
+  git -C "${dir}/seed" push --quiet origin main 2> /dev/null
+  git clone --quiet "${dir}/remote.git" "${dir}/clone" 2> /dev/null
+}
+
+# @description Commit a new file in a repo.
+# @arg $1 repo Repo path.
+# @arg $2 name File name, also the commit message.
+function commit_file() {
+  local -r repo="$1"
+  local -r name="$2"
+  printf '%s\n' "${name}" > "${repo}/${name}"
+  git -C "${repo}" add -- "${name}"
+  git -C "${repo}" commit --quiet --message "${name}"
+}
+
+# @description Print the commit a ref resolves to.
+# @arg $1 repo Repo path.
+# @arg $2 ref Ref name.
+function sha_of() {
+  git -C "$1" rev-parse "$2"
+}
+
+# @description Run apply_claude_config on a case directory, capturing the exit
+# status and stderr in the globals rc and output, with a fresh stub log.
+# @arg $1 dir Case directory holding a clone.
+function run_apply() {
+  : > "${STUB_CHEZMOI_LOG}"
+  rc=0
+  output="$(apply_claude_config "$1/clone" "${CFG}" "${DEST}" 2>&1)" || rc=$?
+}
+
+# @description Print true when the stub log holds init then apply, both naming
+# the clone as source and the destination.
+# @arg $1 dir Case directory holding a clone.
+function init_then_apply_logged() {
+  local -r expected="init --config ${CFG} --config-path ${CFG} --source $1/clone --destination ${DEST}
+apply --config ${CFG} --source $1/clone --destination ${DEST}"
+  if [[ "$(< "${STUB_CHEZMOI_LOG}")" == "${expected}" ]]; then
+    echo true
+  fi
+}
+
+# @description Run the built-in test suite in a temp dir. No real clone, config
+# or chezmoi state is touched: chezmoi is a stub and every repo is throwaway.
+# @exitcode 0 if every case passes, 1 otherwise.
+function self_test() {
+  failures=0
+  local root
+  root="$(mktemp --directory)"
+  mkdir --parents -- "${root}/bin"
+  # The stub must shadow the real chezmoi; the change lives only in this process.
+  PATH="${root}/bin:${PATH}"
+  export STUB_CHEZMOI_LOG="${root}/chezmoi.log"
+  export STUB_CHEZMOI_INIT_EXIT=0 STUB_CHEZMOI_APPLY_EXIT=0
+  # A commit hook runs with GIT_INDEX_FILE and friends pointing at the committing
+  # repo, which would redirect every throwaway repo's git calls into it.
+  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR GIT_PREFIX
+  # No dependence on the user's git config (signing, identity, hooks).
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+  export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.invalid
+  export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.invalid
+  cat > "${root}/bin/chezmoi" << 'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${STUB_CHEZMOI_LOG}"
+case "$1" in
+  init) exit "${STUB_CHEZMOI_INIT_EXIT}" ;;
+  apply) exit "${STUB_CHEZMOI_APPLY_EXIT}" ;;
+esac
+STUB
+  chmod 0755 "${root}/bin/chezmoi"
+  CFG="${root}/cfg/chezmoi.toml"
+  DEST="${root}/dest"
+  local dir before rc output
+
+  # clone dir absent
+  : > "${STUB_CHEZMOI_LOG}"
+  rc=0
+  output="$(apply_claude_config "${root}/absent" "${CFG}" "${DEST}" 2>&1)" || rc=$?
+  check 'absent clone: exits 0' "$([[ "${rc}" -eq 0 ]] && echo true)"
+  check 'absent clone: WARN names path and gh repo clone hint' \
+    "$([[ "${output}" == *WARN*"${root}/absent"*"gh repo clone rvenutolo/claude-config ${root}/absent"* ]] && echo true)"
+  check 'absent clone: chezmoi not run' "$([[ ! -s "${STUB_CHEZMOI_LOG}" ]] && echo true)"
+
+  # clean main, remote one commit ahead
+  dir="${root}/ff"
+  make_fixture "${dir}"
+  commit_file "${dir}/seed" 'two'
+  git -C "${dir}/seed" push --quiet origin main 2> /dev/null
+  run_apply "${dir}"
+  check 'clean main behind: exits 0' "$([[ "${rc}" -eq 0 ]] && echo true)"
+  check 'clean main behind: fast-forwarded to remote HEAD' \
+    "$([[ "$(sha_of "${dir}/clone" HEAD)" == "$(sha_of "${dir}/remote.git" main)" ]] && echo true)"
+  check 'clean main behind: no WARN' "$([[ "${output}" != *WARN* ]] && echo true)"
+  check 'clean main behind: init then apply with source and destination' "$(init_then_apply_logged "${dir}")"
+  check 'init passes --config and --config-path' \
+    "$(grep --quiet --fixed-strings -- "init --config ${CFG} --config-path ${CFG} " "${STUB_CHEZMOI_LOG}" && echo true)"
+
+  # dirty tree
+  dir="${root}/dirty"
+  make_fixture "${dir}"
+  commit_file "${dir}/seed" 'two'
+  git -C "${dir}/seed" push --quiet origin main 2> /dev/null
+  printf 'edited\n' > "${dir}/clone/file.txt"
+  printf 'new\n' > "${dir}/clone/untracked.txt"
+  before="$(sha_of "${dir}/clone" HEAD)"
+  run_apply "${dir}"
+  check 'dirty tree: WARN' "$([[ "${output}" == *WARN*uncommitted* ]] && echo true)"
+  check 'dirty tree: HEAD unchanged' "$([[ "$(sha_of "${dir}/clone" HEAD)" == "${before}" ]] && echo true)"
+  check 'dirty tree: local edits kept' \
+    "$([[ "$(< "${dir}/clone/file.txt")" == 'edited' && -f "${dir}/clone/untracked.txt" ]] && echo true)"
+  check 'dirty tree: init then apply' "$(init_then_apply_logged "${dir}")"
+
+  # on a branch other than main
+  dir="${root}/topic"
+  make_fixture "${dir}"
+  git -C "${dir}/clone" checkout --quiet -b topic
+  commit_file "${dir}/seed" 'two'
+  git -C "${dir}/seed" push --quiet origin main 2> /dev/null
+  before="$(sha_of "${dir}/clone" HEAD)"
+  run_apply "${dir}"
+  check 'topic branch: WARN' "$([[ "${output}" == *WARN*topic* ]] && echo true)"
+  check 'topic branch: HEAD unchanged' "$([[ "$(sha_of "${dir}/clone" HEAD)" == "${before}" ]] && echo true)"
+  check 'topic branch: init then apply' "$(init_then_apply_logged "${dir}")"
+
+  # detached HEAD
+  dir="${root}/detached"
+  make_fixture "${dir}"
+  git -C "${dir}/clone" checkout --quiet --detach
+  commit_file "${dir}/seed" 'two'
+  git -C "${dir}/seed" push --quiet origin main 2> /dev/null
+  before="$(sha_of "${dir}/clone" HEAD)"
+  run_apply "${dir}"
+  check 'detached HEAD: WARN' "$([[ "${output}" == *WARN*detached* ]] && echo true)"
+  check 'detached HEAD: HEAD unchanged' "$([[ "$(sha_of "${dir}/clone" HEAD)" == "${before}" ]] && echo true)"
+  check 'detached HEAD: init then apply' "$(init_then_apply_logged "${dir}")"
+
+  # diverged
+  dir="${root}/diverged"
+  make_fixture "${dir}"
+  commit_file "${dir}/clone" 'local'
+  commit_file "${dir}/seed" 'remote'
+  git -C "${dir}/seed" push --quiet origin main 2> /dev/null
+  before="$(sha_of "${dir}/clone" HEAD)"
+  run_apply "${dir}"
+  check 'diverged: WARN' "$([[ "${output}" == *WARN* ]] && echo true)"
+  check 'diverged: HEAD unchanged' "$([[ "$(sha_of "${dir}/clone" HEAD)" == "${before}" ]] && echo true)"
+  check 'diverged: no merge commit' \
+    "$([[ "$(git -C "${dir}/clone" rev-list --merges --count HEAD)" == '0' ]] && echo true)"
+  check 'diverged: init then apply' "$(init_then_apply_logged "${dir}")"
+
+  # remote URL points at a missing path
+  dir="${root}/noremote"
+  make_fixture "${dir}"
+  git -C "${dir}/clone" remote set-url origin "${root}/no-such-remote.git"
+  before="$(sha_of "${dir}/clone" HEAD)"
+  output="$(update_clone "${dir}/clone" 2>&1)" && rc=0 || rc=$?
+  check 'missing remote: update_clone exits 0' "$([[ "${rc}" -eq 0 ]] && echo true)"
+  check 'missing remote: update_clone WARNs' "$([[ "${output}" == *WARN* ]] && echo true)"
+  run_apply "${dir}"
+  check 'missing remote: HEAD unchanged' "$([[ "$(sha_of "${dir}/clone" HEAD)" == "${before}" ]] && echo true)"
+  check 'missing remote: init then apply' "$(init_then_apply_logged "${dir}")"
+
+  # failing chezmoi
+  dir="${root}/failures"
+  make_fixture "${dir}"
+  STUB_CHEZMOI_INIT_EXIT=1 run_apply "${dir}"
+  check 'init fails: non-zero exit' "$([[ "${rc}" -ne 0 ]] && echo true)"
+  check 'init fails: init logged, apply never run' \
+    "$([[ "$(< "${STUB_CHEZMOI_LOG}")" == init\ * && "$(< "${STUB_CHEZMOI_LOG}")" != *apply* ]] && echo true)"
+  STUB_CHEZMOI_APPLY_EXIT=1 run_apply "${dir}"
+  check 'apply fails: non-zero exit' "$([[ "${rc}" -ne 0 ]] && echo true)"
+  check 'apply fails: init and apply both ran' "$(init_then_apply_logged "${dir}")"
+
+  rm --recursive --force -- "${root:?}"
+  if ((failures > 0)); then
+    printf '\n%d case(s) failed\n' "${failures}"
+    return 1
+  fi
+  printf '\nall cases passed\n'
+}
+
+function main() {
+  if [[ "${1:-}" == '--self-test' ]]; then
+    self_test
+    exit $?
+  fi
+  apply_claude_config "${CLONE_DIR}" "${CONFIG_FILE}" "${DEST_DIR}"
+}
+
+main "$@"

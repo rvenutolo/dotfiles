@@ -180,6 +180,12 @@ repos:
         language: system
         files: ^\.chezmoiscripts/run_after_60-repair-pre-commit-hooks\.sh$
         pass_filenames: false
+      - id: claude-config-apply-self-test
+        name: claude-config apply self-test
+        entry: bash -c 'chezmoi execute-template --source "$(git rev-parse --show-toplevel)" < .chezmoiscripts/run_after_70-apply-claude-config.sh.tmpl | bash -s -- --self-test'
+        language: system
+        files: ^\.chezmoiscripts/run_after_70-apply-claude-config\.sh\.tmpl$
+        pass_filenames: false
       - id: worktree-guard-self-test
         name: worktree guard self-test
         entry: bash dot_local/bin/executable_claude-worktree-guard --self-test
