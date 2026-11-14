@@ -111,7 +111,7 @@ cleanup = true
 # the always-run editor script would otherwise report as pending forever.
 "Chezmoi drift" = "chezmoi status --exclude=scripts"
 {{- if or .is_personal .is_work }}
-# The dotfiles instance above no longer sees ~/.config/claude, which a second
+# The drift command above does not cover ~/.config/claude, which a second
 # chezmoi instance manages; check it separately. Reports drift and never fails
 # for it. Skips with a note while the instance is not initialised (no config
 # file yet), which is not drift and must not turn the run red; the wrapper
