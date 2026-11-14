@@ -90,7 +90,8 @@ is done. Do all repo work in a worktree.
    and re-encrypt `home/.work-github-host.age` the way step 2 does. The files
    in that repo are not found by step 2, which runs in this repo. If either is
    skipped, the second instance's `chezmoi apply` fails on decrypt, so the
-   `run_after_70` script fails the dotfiles apply on personal and work hosts.
+   `run_after_70` script fails the dotfiles apply on every host that has the
+   `claude-config` clone.
 4. Run Procedure A steps 1–3 against `~/.keys/age.key.new` to publish the
    new passphrase-encrypted copy and checksum.
 5. Merge both PRs, then roll out per host, one at a time:
@@ -112,7 +113,7 @@ age --decrypt --identity ~/.keys/age.key.new "${f}" >/dev/null
 chezmoi's configured identity (`~/.keys/age.key`) still holds the OLD key
 until step 5's swap, so it would fail on every re-encrypted file. Run the
 `chezmoi diff` check only after step 5, as a post-swap sanity check.
-On personal and work hosts, also run `chezmoi-claude verify` after step 5; it
+On hosts with the second instance, also run `chezmoi-claude verify` after step 5; it
 checks `~/.config/claude`, which `chezmoi verify` does not cover.
 **Rollback:** `git revert` the rotation commit(s); every host still holds
 the old identity until step 5, so reverting restores a working state. Do

@@ -69,12 +69,12 @@ flowchart LR
     subgraph tgt["Target state"]
         t1["$HOME dotfiles"]
         t2["~/.etc (staging for /etc)"]
-        t3["~/.config/claude (personal and work hosts)"]
+        t3["~/.config/claude"]
     end
     subgraph ext["External/cache state"]
         e1["~/.cache/chezmoi (externals cache)"]
     end
-    subgraph cc["Second instance (personal and work hosts)"]
+    subgraph cc["Second instance"]
         c1["claude-config clone (private repo)"]
         c2["~/.config/chezmoi-claude (config + state)"]
     end
@@ -100,5 +100,5 @@ flowchart LR
   instance whose source is the private `claude-config` clone, whose config and
   state live in `~/.config/chezmoi-claude`, and which is driven by
   `.chezmoiscripts/run_after_70-apply-claude-config.sh.tmpl` during this
-  repo's apply. This repo ignores that target on personal and work hosts; see
+  repo's apply. This repo ignores that target on every host; see
   [CLAUDE.md](../CLAUDE.md#claude-config).
