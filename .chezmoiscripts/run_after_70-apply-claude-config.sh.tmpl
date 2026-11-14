@@ -191,6 +191,10 @@ function self_test() {
   # Keep git from discovering a repo above the scratch directory.
   export GIT_CEILING_DIRECTORIES="${root}"
   mkdir --parents -- "${root}/bin"
+  # Resolved before PATH changes so the timeout stub can hand over to the real one.
+  STUB_REAL_TIMEOUT="$(command -v timeout)"
+  export STUB_REAL_TIMEOUT
+  export STUB_TIMEOUT_LOG="${root}/timeout.log"
   # The stub must shadow the real chezmoi; the change lives only in this process.
   PATH="${root}/bin:${PATH}"
   export STUB_CHEZMOI_LOG="${root}/chezmoi.log"
@@ -211,6 +215,19 @@ case "$1" in
 esac
 STUB
   chmod 0755 "${root}/bin/chezmoi"
+  # Records what the pull's hang protections hand to timeout, then runs the real
+  # timeout so the pull still happens.
+  cat > "${root}/bin/timeout" << 'STUB'
+#!/usr/bin/env bash
+{
+  printf 'duration=%s\n' "$1"
+  printf 'command=%s\n' "$*"
+  printf 'prompt=%s\n' "${GIT_TERMINAL_PROMPT:-unset}"
+  printf 'ssh=%s\n' "${GIT_SSH_COMMAND:-unset}"
+} >> "${STUB_TIMEOUT_LOG}"
+exec "${STUB_REAL_TIMEOUT}" "$@"
+STUB
+  chmod 0755 "${root}/bin/timeout"
   CFG="${root}/cfg/chezmoi.toml"
   DEST="${root}/dest"
   local dir before rc output
@@ -229,6 +246,7 @@ STUB
   make_fixture "${dir}"
   commit_file "${dir}/seed" 'two'
   git -C "${dir}/seed" push --quiet origin main 2> /dev/null
+  : > "${STUB_TIMEOUT_LOG}"
   run_apply "${dir}"
   check 'clean main behind: exits 0' "$([[ "${rc}" -eq 0 ]] && echo true)"
   check 'clean main behind: fast-forwarded to remote HEAD' \
@@ -237,6 +255,16 @@ STUB
   check 'clean main behind: init then apply with source and destination' "$(init_then_apply_logged "${dir}")"
   check 'init passes --config and --config-path' \
     "$(grep --quiet --fixed-strings -- "init --config ${CFG} --config-path ${CFG} " "${STUB_CHEZMOI_LOG}" && echo true)"
+  check 'pull runs under timeout with the configured duration' \
+    "$(grep --quiet --line-regexp --fixed-strings -- "duration=${PULL_TIMEOUT_SECONDS}" "${STUB_TIMEOUT_LOG}" && echo true)"
+  check 'pull is the git pull --ff-only call under timeout' \
+    "$(grep --quiet --line-regexp -- "command=${PULL_TIMEOUT_SECONDS} .* git -C ${dir}/clone pull --ff-only" "${STUB_TIMEOUT_LOG}" && echo true)"
+  check 'pull disables terminal prompts' \
+    "$(grep --quiet --line-regexp --fixed-strings -- 'prompt=0' "${STUB_TIMEOUT_LOG}" && echo true)"
+  check 'pull ssh runs in batch mode' \
+    "$(grep --quiet --line-regexp -- 'ssh=.*BatchMode=yes.*' "${STUB_TIMEOUT_LOG}" && echo true)"
+  check 'pull ssh connect timeout is configured' \
+    "$(grep --quiet --extended-regexp -- "^ssh=.*ConnectTimeout=${SSH_CONNECT_TIMEOUT_SECONDS}( .*)?$" "${STUB_TIMEOUT_LOG}" && echo true)"
 
   # dirty tree
   dir="${root}/dirty"
@@ -298,7 +326,7 @@ STUB
   before="$(sha_of "${dir}/clone" HEAD)"
   output="$(update_clone "${dir}/clone" 2>&1)" && rc=0 || rc=$?
   check 'missing remote: update_clone exits 0' "$([[ "${rc}" -eq 0 ]] && echo true)"
-  check 'missing remote: update_clone WARNs' "$([[ "${output}" == *WARN* ]] && echo true)"
+  check 'missing remote: update_clone WARNs the failed pull' "$([[ "${output}" == *WARN*'fast-forward pull failed'* ]] && echo true)"
   run_apply "${dir}"
   check 'missing remote: HEAD unchanged' "$([[ "$(sha_of "${dir}/clone" HEAD)" == "${before}" ]] && echo true)"
   check 'missing remote: init then apply' "$(init_then_apply_logged "${dir}")"
