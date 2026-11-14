@@ -110,6 +110,11 @@ cleanup = true
 # exits 0, so this cannot mark the topgrade run FAILED. --exclude=scripts:
 # the always-run editor script would otherwise report as pending forever.
 "Chezmoi drift" = "chezmoi status --exclude=scripts"
+{{- if or .is_personal .is_work }}
+# The dotfiles instance above no longer sees ~/.config/claude, which a second
+# chezmoi instance manages; check it separately.
+"Claude config drift" = "chezmoi-claude status"
+{{- end }}
 
 # Custom commands
 [commands]

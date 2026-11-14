@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# Run chezmoi against the second instance that manages ~/.config/claude, e.g.
+# `chezmoi-claude diff`, `chezmoi-claude edit <target>`, `chezmoi-claude verify`.
+#
+# Refuses to run when the instance's config file is absent: chezmoi does not
+# fail on a missing --config file, it silently falls back to the default
+# dotfiles source and $HOME, so the command would act on the wrong repo.
+
+set -Eeuo pipefail
+IFS=$'\n\t'
+trap 'printf "error: line %s (exit %s): %s\n" "${LINENO}" "$?" "${BASH_COMMAND}" >&2' ERR
+
+readonly CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/chezmoi-claude/chezmoi.toml"
+
+if [[ ! -f "${CONFIG}" ]]; then
+  printf 'chezmoi-claude: config file not found: %s\n' "${CONFIG}" >&2
+  printf 'Run chezmoi apply in the dotfiles repo to create it.\n' >&2
+  exit 1
+fi
+
+exec chezmoi --config "${CONFIG}" "$@"
