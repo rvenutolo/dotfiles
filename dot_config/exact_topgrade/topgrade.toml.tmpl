@@ -112,8 +112,12 @@ cleanup = true
 "Chezmoi drift" = "chezmoi status --exclude=scripts"
 {{- if or .is_personal .is_work }}
 # The dotfiles instance above no longer sees ~/.config/claude, which a second
-# chezmoi instance manages; check it separately.
-"Claude config drift" = "chezmoi-claude status"
+# chezmoi instance manages; check it separately. Reports drift and never fails
+# for it. Skips with a note while the instance is not initialised (no config
+# file yet), which is not drift and must not turn the run red; the wrapper
+# itself still refuses in that state. A TOML literal string keeps the inner
+# double quotes unescaped.
+"Claude config drift" = 'if test -f "{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/chezmoi-claude/chezmoi.toml"; then chezmoi-claude status; else echo "Claude config drift: skipped, instance not initialised"; fi'
 {{- end }}
 
 # Custom commands
