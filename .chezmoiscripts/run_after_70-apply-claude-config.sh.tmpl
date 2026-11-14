@@ -203,6 +203,10 @@ function self_test() {
   # A commit hook runs with GIT_INDEX_FILE and friends pointing at the committing
   # repo, which would redirect every throwaway repo's git calls into it.
   unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR GIT_PREFIX
+  # The hang-protection cases assert on these two as the pull sees them. A value
+  # inherited from the caller would satisfy those assertions even if
+  # update_clone stopped setting it.
+  unset GIT_TERMINAL_PROMPT GIT_SSH_COMMAND
   # No dependence on the user's git config (signing, identity, hooks).
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
   export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.invalid
