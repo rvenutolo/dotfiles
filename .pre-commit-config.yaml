@@ -74,7 +74,7 @@ repos:
         # is absent — exit 0, no warning — so a green run would not prove that
         # coverage exists. The CI lint job asserts shellcheck's presence.
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 4ee883e252e77c6a287bb68c28740ac71b75d71c  # frozen: 44.222.0
+    rev: d33b819324a7f19e757c1030d167212d203a61de  # frozen: 44.222.1
     hooks:
       - id: renovate-config-validator
         # Validates .github/renovate.json5. Without this, a typo in a manager
