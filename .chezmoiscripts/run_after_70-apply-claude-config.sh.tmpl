@@ -235,7 +235,7 @@ STUB
   git -C "${dir}/seed" push --quiet origin main 2> /dev/null
   before="$(sha_of "${dir}/clone" HEAD)"
   run_apply "${dir}"
-  check 'topic branch: WARN' "$([[ "${output}" == *WARN*topic* ]] && echo true)"
+  check 'topic branch: WARN' "$([[ "${output}" == *WARN*'is on branch topic, not main'* ]] && echo true)"
   check 'topic branch: HEAD unchanged' "$([[ "$(sha_of "${dir}/clone" HEAD)" == "${before}" ]] && echo true)"
   check 'topic branch: init then apply' "$(init_then_apply_logged "${dir}")"
 
@@ -247,7 +247,7 @@ STUB
   git -C "${dir}/seed" push --quiet origin main 2> /dev/null
   before="$(sha_of "${dir}/clone" HEAD)"
   run_apply "${dir}"
-  check 'detached HEAD: WARN' "$([[ "${output}" == *WARN*detached* ]] && echo true)"
+  check 'detached HEAD: WARN' "$([[ "${output}" == *WARN*'has a detached HEAD'* ]] && echo true)"
   check 'detached HEAD: HEAD unchanged' "$([[ "$(sha_of "${dir}/clone" HEAD)" == "${before}" ]] && echo true)"
   check 'detached HEAD: init then apply' "$(init_then_apply_logged "${dir}")"
 
@@ -259,7 +259,7 @@ STUB
   git -C "${dir}/seed" push --quiet origin main 2> /dev/null
   before="$(sha_of "${dir}/clone" HEAD)"
   run_apply "${dir}"
-  check 'diverged: WARN' "$([[ "${output}" == *WARN* ]] && echo true)"
+  check 'diverged: WARN' "$([[ "${output}" == *WARN*'fast-forward pull failed'* ]] && echo true)"
   check 'diverged: HEAD unchanged' "$([[ "$(sha_of "${dir}/clone" HEAD)" == "${before}" ]] && echo true)"
   check 'diverged: no merge commit' \
     "$([[ "$(git -C "${dir}/clone" rev-list --merges --count HEAD)" == '0' ]] && echo true)"
