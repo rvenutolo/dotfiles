@@ -12,6 +12,15 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # One chezmoi pin for every job that installs it. The shared renovate-config
+  # preset reads this annotation and bumps the version and the sha256 together,
+  # so the download stays verified. The version must stay at or above
+  # .chezmoiversion.
+  # renovate: datasource=github-release-attachments depName=twpayne/chezmoi
+  CHEZMOI_VERSION: v2.74.1
+  CHEZMOI_SHA256: 467107499504984dab4cf0cc2b6a3d41c1df00a974c37c1050f63c5438c319ce
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -19,7 +28,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install chezmoi
         run: |
-          sh -c "$(curl --disable --fail --silent --location --show-error get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          mkdir --parents "$HOME/.local/bin"
+          curl --disable --fail --silent --location --show-error --output /tmp/chezmoi \
+            "https://github.com/twpayne/chezmoi/releases/download/${CHEZMOI_VERSION}/chezmoi-linux-amd64"
+          echo "${CHEZMOI_SHA256}  /tmp/chezmoi" | sha256sum --check --strict
+          install --mode=0755 /tmp/chezmoi "$HOME/.local/bin/chezmoi"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Init chezmoi config (runner hostname -> is_server)
         run: |
@@ -36,15 +49,11 @@ jobs:
         run: shellcheck --version
       - name: Install shfmt (needed by the render-lint-sh-tmpl hook)
         env:
-          # renovate: datasource=github-releases depName=mvdan/sh
+          # Renovate bumps the version and the sha256 of
+          # shfmt_${SHFMT_VERSION}_linux_amd64 together, so the download stays
+          # verified. The sha256 line must stay directly under the version line.
+          # renovate: datasource=github-release-attachments depName=mvdan/sh
           SHFMT_VERSION: v3.13.1
-          # sha256 of shfmt_${SHFMT_VERSION}_linux_amd64. Renovate can bump the
-          # version above but cannot update this digest, so a bump fails this
-          # step until a human regenerates it. That is deliberate: a loud
-          # failure beats an unverified download. Regenerate with
-          #   curl --disable --fail --silent --location \
-          #     "https://github.com/mvdan/sh/releases/download/<ver>/shfmt_<ver>_linux_amd64" \
-          #     | sha256sum
           SHFMT_SHA256: fb096c5d1ac6beabbdbaa2874d025badb03ee07929f0c9ff67563ce8c75398b1
         # A released binary rather than `go install`, which compiled shfmt from
         # source on every run (~12s) to obtain a tool upstream already ships.
@@ -58,7 +67,10 @@ jobs:
         with:
           python-version: '3.15'
       - name: Install pre-commit
-        run: python -m pip install --disable-pip-version-check pre-commit
+        env:
+          # renovate: datasource=pypi depName=pre-commit
+          PRE_COMMIT_VERSION: 4.7.0
+        run: python -m pip install --disable-pip-version-check "pre-commit==${PRE_COMMIT_VERSION}"
       - name: Restore pre-commit hook environments
         # Restore and save are split because a cache belongs to the ref that
         # saved it: one saved by a pull request serves only that PR, yet still
@@ -134,7 +146,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install chezmoi
         run: |
-          sh -c "$(curl --disable --fail --silent --location --show-error get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          mkdir --parents "$HOME/.local/bin"
+          curl --disable --fail --silent --location --show-error --output /tmp/chezmoi \
+            "https://github.com/twpayne/chezmoi/releases/download/${CHEZMOI_VERSION}/chezmoi-linux-amd64"
+          echo "${CHEZMOI_SHA256}  /tmp/chezmoi" | sha256sum --check --strict
+          install --mode=0755 /tmp/chezmoi "$HOME/.local/bin/chezmoi"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Become ${{ matrix.host }}
         run: sudo hostnamectl set-hostname '${{ matrix.host }}'
