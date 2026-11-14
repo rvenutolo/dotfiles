@@ -18,6 +18,7 @@ procedure ends with verification and rollback.
 | Age recipient (public key) | `.chezmoidata.yaml` → `age.public_key` | Single source; `.chezmoi.toml.tmpl` reads it at init |
 | Ciphertext checksums | `.chezmoidata.yaml` → `checksums:` | `crypt_age_key`, `crypt_id_ed25519`, `crypt_id_ed25519_pub`; get-keys aborts on mismatch |
 | Encrypted files | `encrypted_*` sources + root `.work-*.age` template inputs; list them with `git grep --files-with-matches 'BEGIN AGE ENCRYPTED FILE'` | All ASCII-armored age files, same recipient; the `dot_config/exact_git/encrypted_*.private.tmpl` files carry no `.age` suffix |
+| Second-instance dependents | `claude-config` repo (private): the literal `recipient` in `home/.chezmoi.toml.tmpl` and `home/.work-github-host.age` | The second chezmoi instance that applies `~/.config/claude` decrypts with the same `~/.keys/age.key`; it does not read `.chezmoidata.yaml` |
 | SSH keypair | `~/.keys/id_ed25519{,.pub}` on every host; encrypted copies in crypt | `authorized_keys` renders live from the GitHub account's keys (`gitHubKeys "rvenutolo"`) |
 
 Every encrypted file in this repo is ASCII-armored and shares the single
@@ -84,9 +85,15 @@ is done. Do all repo work in a worktree.
    ```
 
 3. Update `age.public_key` in `.chezmoidata.yaml` to `${new_recipient}`.
+   Make the same change in the `claude-config` repo (its own PR): replace
+   the literal `recipient` in `home/.chezmoi.toml.tmpl` with `${new_recipient}`
+   and re-encrypt `home/.work-github-host.age` the way step 2 does. The files
+   in that repo are not found by step 2, which runs in this repo. If either is
+   skipped, the second instance's `chezmoi apply` fails on decrypt, so the
+   `run_after_70` script fails the dotfiles apply on personal and work hosts.
 4. Run Procedure A steps 1–3 against `~/.keys/age.key.new` to publish the
    new passphrase-encrypted copy and checksum.
-5. Merge the PR, then roll out per host, one at a time:
+5. Merge both PRs, then roll out per host, one at a time:
 
    ```shell
    mv ~/.keys/age.key.new ~/.keys/age.key   # or scp from the rotation host
@@ -105,6 +112,8 @@ age --decrypt --identity ~/.keys/age.key.new "${f}" >/dev/null
 chezmoi's configured identity (`~/.keys/age.key`) still holds the OLD key
 until step 5's swap, so it would fail on every re-encrypted file. Run the
 `chezmoi diff` check only after step 5, as a post-swap sanity check.
+On personal and work hosts, also run `chezmoi-claude verify` after step 5; it
+checks `~/.config/claude`, which `chezmoi verify` does not cover.
 **Rollback:** `git revert` the rotation commit(s); every host still holds
 the old identity until step 5, so reverting restores a working state. Do
 not delete old identity copies until all hosts verify clean.

@@ -125,11 +125,25 @@ jobs:
         run: .dev/check-pin-digest-provenance.sh
 
   render:
+    # The name is set explicitly because the protect-main ruleset requires each
+    # `render (<host>)` check by that exact name.
+    name: render (${{ matrix.host }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        host: [redstar, bluestar, silverstar, io]
+        # claude_removal: whether .chezmoiremove may list the Claude config.
+        # Only servers remove it; on personal and work hosts the second chezmoi
+        # instance owns ~/.config/claude.
+        include:
+          - host: redstar
+            claude_removal: absent
+          - host: bluestar
+            claude_removal: absent
+          - host: silverstar
+            claude_removal: absent
+          - host: io
+            claude_removal: present
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install chezmoi
@@ -143,6 +157,10 @@ jobs:
           mkdir --parents "$(dirname "$HOME/.local/share/chezmoi")"
           ln --symbolic "$GITHUB_WORKSPACE" "$HOME/.local/share/chezmoi"
           chezmoi init
+      - name: Check the Claude removal list is gated to servers
+        # A gating mistake in .chezmoiremove would delete live Claude config
+        # without a prompt, and the dry-run render below cannot see it.
+        run: .dev/check-claude-remove-gating.sh '${{ matrix.claude_removal }}'
       - name: Render every managed target (dry run)
         env:
           # The gitHubKeys template func (allowed_signers.tmpl,

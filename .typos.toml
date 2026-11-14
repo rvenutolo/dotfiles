@@ -18,9 +18,5 @@ extend-exclude = ["*.age"]
 viw = "viw"
 # LESS_TERMCAP_ue — the termcap capability name for "end underline", not a word.
 ue = "ue"
-# TestNG, the Java test framework, in a WebFetch permission domain.
-testng = "testng"
-# Vert.x, the JVM toolkit, likewise in a permission entry.
-vertx = "vertx"
 # Siduction is a real Debian derivative, listed in neofetch's distro table.
 Siduction = "Siduction"

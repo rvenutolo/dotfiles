@@ -110,6 +110,15 @@ cleanup = true
 # exits 0, so this cannot mark the topgrade run FAILED. --exclude=scripts:
 # the always-run editor script would otherwise report as pending forever.
 "Chezmoi drift" = "chezmoi status --exclude=scripts"
+{{- if or .is_personal .is_work }}
+# The drift command above does not cover ~/.config/claude, which a second
+# chezmoi instance manages; check it separately. Reports drift and never fails
+# for it. Skips with a note while the instance is not initialised (no config
+# file yet), which is not drift and must not turn the run red; the wrapper
+# itself still refuses in that state. A TOML literal string keeps the inner
+# double quotes unescaped.
+"Claude config drift" = 'if test -f "{{ .chezmoi.homeDir }}/{{ .paths.xdg_config_home }}/chezmoi-claude/chezmoi.toml"; then chezmoi-claude status; else echo "Claude config drift: skipped, instance not initialised"; fi'
+{{- end }}
 
 # Custom commands
 [commands]
@@ -127,7 +136,8 @@ cleanup = true
 # Runs after the update above: fails the step when a profile's installed plugins
 # or marketplaces have drifted from what settings.json declares. Installing a
 # plugin ad-hoc reddens this until enabledPlugins is updated to match -- that
-# pressure is the point. See shared/uninstalled-plugins.md
+# pressure is the point. The list of deliberately uninstalled plugins lives
+# with the Claude config.
 "Claude Code Plugin Drift" = "claude-plugins-check-drift"
 
 
