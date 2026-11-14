@@ -53,7 +53,7 @@ function report() {
 
 # @description Run the wrapper with a scratch environment, capturing stdout,
 # stderr and exit status into OUT, ERR and STATUS.
-# @arg $1 xdg value for XDG_CONFIG_HOME, or empty to leave it unset
+# @arg $1 xdg value for XDG_CONFIG_HOME; '-' leaves it unset, empty sets it empty
 # @arg $2 home value for HOME
 # @arg $@ arguments for the wrapper
 function run_wrapper() {
@@ -61,7 +61,7 @@ function run_wrapper() {
   local -r home="$2"
   shift 2
   local -a env_args=("HOME=${home}" "PATH=${TMP_ROOT}/bin:${PATH}")
-  if [[ -n "${xdg}" ]]; then
+  if [[ "${xdg}" != '-' ]]; then
     env_args+=("XDG_CONFIG_HOME=${xdg}")
   fi
   STATUS=0
@@ -79,19 +79,38 @@ function make_config() {
   : > "${xdg}/chezmoi-claude/chezmoi.toml"
 }
 
-function main() {
-  TMP_ROOT="$(mktemp --directory)"
-  trap cleanup EXIT
-  mkdir --parents -- "${TMP_ROOT}/bin"
-  # The stub exits with the status named in STUB_EXIT (default 0).
-  cat > "${TMP_ROOT}/bin/chezmoi" << 'STUB'
+# @description Install the stub chezmoi. `echo` prints PAYLOAD_RAN and the
+# arguments, exiting with STUB_EXIT (default 0); `count` prints the argument count.
+# @arg $1 mode echo or count
+function write_stub() {
+  local -r mode="$1"
+  case "${mode}" in
+    echo)
+      cat > "${TMP_ROOT}/bin/chezmoi" << 'STUB'
 #!/usr/bin/env bash
 printf 'PAYLOAD_RAN'
 printf ' %s' "$@"
 printf '\n'
 exit "${STUB_EXIT:-0}"
 STUB
+      ;;
+    count)
+      cat > "${TMP_ROOT}/bin/chezmoi" << 'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$#"
+STUB
+      ;;
+  esac
   chmod +x "${TMP_ROOT}/bin/chezmoi"
+}
+
+# @description Run every case, print a summary, and exit non-zero on any failure.
+# @noargs
+function main() {
+  TMP_ROOT="$(mktemp --directory)"
+  trap cleanup EXIT
+  mkdir --parents -- "${TMP_ROOT}/bin"
+  write_stub echo
 
   local xdg="${TMP_ROOT}/absent/xdg"
   local config
@@ -121,11 +140,9 @@ STUB
   if [[ "${OUT}" == "${MARKER} --config ${config} edit a b --flag" ]]; then
     # The stub joins with spaces; check the argument count separately so
     # "a b" is proven to be one argument.
-    cat > "${TMP_ROOT}/bin/chezmoi" << 'STUB'
-#!/usr/bin/env bash
-printf '%s\n' "$#"
-STUB
+    write_stub count
     run_wrapper "${xdg}" "${TMP_ROOT}/home" edit 'a b' --flag
+    write_stub echo
     if [[ "${OUT}" == '5' ]]; then
       report 'arguments with spaces pass through unchanged' 0 ''
     else
@@ -134,13 +151,14 @@ STUB
   else
     report 'arguments with spaces pass through unchanged' 1 "out=${OUT}"
   fi
-  cat > "${TMP_ROOT}/bin/chezmoi" << 'STUB'
-#!/usr/bin/env bash
-printf 'PAYLOAD_RAN'
-printf ' %s' "$@"
-printf '\n'
-exit "${STUB_EXIT:-0}"
-STUB
+
+  # 3b. no arguments: only --config <file>
+  run_wrapper "${xdg}" "${TMP_ROOT}/home"
+  if ((STATUS == 0)) && [[ "${OUT}" == "${MARKER} --config ${config}" ]]; then
+    report 'zero arguments pass only --config <file>' 0 ''
+  else
+    report 'zero arguments pass only --config <file>' 1 "status=${STATUS} out=${OUT}"
+  fi
 
   # 4. non-zero status propagates
   STUB_EXIT=7 run_wrapper "${xdg}" "${TMP_ROOT}/home" verify
@@ -153,11 +171,19 @@ STUB
   # 5. XDG_CONFIG_HOME unset: falls back to $HOME/.config
   local -r home="${TMP_ROOT}/fallback-home"
   make_config "${home}/.config"
-  run_wrapper '' "${home}" diff
+  run_wrapper '-' "${home}" diff
   if ((STATUS == 0)) && [[ "${OUT}" == "${MARKER} --config ${home}/.config/chezmoi-claude/chezmoi.toml diff" ]]; then
     report 'unset XDG_CONFIG_HOME falls back to HOME/.config' 0 ''
   else
     report 'unset XDG_CONFIG_HOME falls back to HOME/.config' 1 "status=${STATUS} out=${OUT} err=${ERR}"
+  fi
+
+  # 6. XDG_CONFIG_HOME set but empty: also falls back to $HOME/.config
+  run_wrapper '' "${home}" diff
+  if ((STATUS == 0)) && [[ "${OUT}" == "${MARKER} --config ${home}/.config/chezmoi-claude/chezmoi.toml diff" ]]; then
+    report 'empty XDG_CONFIG_HOME falls back to HOME/.config' 0 ''
+  else
+    report 'empty XDG_CONFIG_HOME falls back to HOME/.config' 1 "status=${STATUS} out=${OUT} err=${ERR}"
   fi
 
   printf '%d passed, %d failed\n' "${PASSED}" "${FAILED}"
