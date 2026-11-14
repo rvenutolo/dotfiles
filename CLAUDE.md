@@ -303,28 +303,32 @@ What this repo contains for it:
   this repo changing. It is a template only to read paths from chezmoidata; host
   gating is in `.chezmoiignore`, so it renders on any host and CI can lint and
   self-test it.
-  1. If the clone directory is missing it logs a `WARN` with the `gh repo clone`
+  1. It rejects any argument other than none or `--self-test` with a usage line
+     and exit 2, so a mistyped flag cannot reach the live apply. `--self-test`
+     runs its hermetic suite.
+  2. If the clone directory is missing it logs a `WARN` with the `gh repo clone`
      command and exits 0; the existing `~/.config/claude` is left as it is.
-  2. If the clone is on `main` with a clean tree it runs `git pull --ff-only`,
-     with prompts disabled, SSH in batch mode and a hard timeout. A dirty tree,
-     another branch, a detached HEAD, a diverged history or a failed pull each
-     log a `WARN` and carry on with the clone as it is. It never merges,
-     rebases, stashes or resets.
-  3. It runs `chezmoi init` for the second instance on every apply, so a changed
+  3. If the clone is on `main` with a clean tree it runs `git pull --ff-only`,
+     with prompts disabled, SSH in batch mode and a hard timeout. A directory
+     that is not a git repository, a dirty tree, another branch, a detached
+     HEAD, a diverged history or a failed pull each log a `WARN` and carry on
+     with the clone as it is. It never merges, rebases, stashes or resets.
+  4. It runs `chezmoi init` for the second instance on every apply, so a changed
      config template is picked up without a manual init, then `chezmoi apply`.
      Both pass explicit `--source` and `--destination`: `chezmoi --config <file>`
      with a missing file does not fail, it falls back to this repo's source and
      `${HOME}`, so a broken config must never be able to aim the apply there.
-  4. A failed `init` or `apply` exits non-zero and fails the outer apply. Apply
+  5. A failed `init` or `apply` exits non-zero and fails the outer apply. Apply
      is never run after a failed init.
 - **`dot_local/bin/executable_chezmoi-claude`** execs `chezmoi` with the second
   instance's config file, for `chezmoi-claude diff`, `status`, `verify` and
   `edit`. It refuses with an error when that config file is absent, for the same
   fallback reason. Its suite is `.dev/chezmoi-claude.test.sh`.
 - **`.chezmoiremove`** has a block, rendered only on hosts that are neither
-  personal nor work, that deletes Claude config files that servers may still hold, plus the
-  hook scripts `~/.local/bin/claude-worktree-guard` and
-  `~/.local/bin/ssh-signing-key-reminder`.
+  personal nor work. It deletes the Claude config files and the two hook
+  scripts `~/.local/bin/claude-worktree-guard` and
+  `~/.local/bin/ssh-signing-key-reminder` that a server may still hold. Any new
+  Claude removal entry goes inside that block.
   A `.chezmoiremove` deletion never prompts, so the template condition is the only
   thing keeping those entries off personal and work hosts, where they would
   delete live config. A dry-run render cannot see a gating mistake, so the CI
@@ -332,7 +336,9 @@ What this repo contains for it:
   entries are absent on `redstar`, `bluestar` and `silverstar` and present on
   `io`. Those two scripts are not removed on personal and work hosts.
 - **`dot_config/exact_topgrade/topgrade.toml.tmpl`** runs `chezmoi-claude status`
-  as a separate drift step on personal and work hosts.
+  as a separate "Claude config drift" step on personal and work hosts. While the
+  second instance is not initialised the step skips with a note, whereas the
+  `chezmoi-claude` wrapper itself refuses.
 
 Things that follow from there being two instances:
 
