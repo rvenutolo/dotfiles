@@ -554,8 +554,10 @@ every pre-commit `rev:` (`<sha>  # frozen: <version>`) and every annotated tool
 pin's `_SHA256` against the PR's base ref and fails any SHA that moved while
 its version label did not — a repointed released tag or a re-uploaded release
 asset, which no legitimate release produces. On the PR side it also exits 2 for
-a tool pin shaped so Renovate would skip it: a `# renovate:` comment with no
-`_VERSION` line after it, or a `_SHA256` line not directly under one. The base
+a tool pin shaped so Renovate would skip it: anything outside the preset's
+exact grammar (single spaces in the comment, only `versioning=` after
+`depName`, lowercase hex, no CRLF), or a `_SHA256` line not directly under its
+`_VERSION` line. The base
 side is not shape-checked, so a PR that reshapes a pin can land. It exists because
 `minimumReleaseAge` is blind to exactly that shape (see the Renovate note
 above); with every update type automerging, this is the only automated check
