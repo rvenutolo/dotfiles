@@ -556,12 +556,13 @@ its version label did not — a repointed released tag or a re-uploaded release
 asset, which no legitimate release produces. On the PR side it also exits 2 for
 a tool pin shaped so Renovate would skip it: anything outside the preset's
 exact grammar (single spaces in the comment, only `versioning=` after
-`depName`, lowercase hex, no CRLF), or a `_SHA256` line not directly under its
-`_VERSION` line. The base
-side is not shape-checked, so a PR that reshapes a pin can land. It exists because
-`minimumReleaseAge` is blind to exactly that shape (see the Renovate note
-above); with every update type automerging, this is the only automated check
-standing between a repointed tag and `main`.
+`depName`, lowercase hex, no CRLF), a `_SHA256` line not directly under its
+`_VERSION` line, or a comment after a `_VERSION` value with a `_SHA256` under
+it, which Renovate reads as a version-only pin. A comment after a `_SHA256`
+value is fine. The base side is not shape-checked, so a PR that reshapes a pin
+can land. It exists because `minimumReleaseAge` is blind to exactly that
+shape (see the Renovate note above); with every update type automerging, this
+is the only automated check standing between a repointed tag and `main`.
 
 Facts worth keeping straight before editing it:
 
