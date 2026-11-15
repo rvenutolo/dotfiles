@@ -402,6 +402,54 @@ function case_tool_sha_case_insensitive() {
   assert_case 'tool sha256 letter case is not a repoint' 0 '' "${PAIR_BASE}" "${PAIR_HEAD}"
 }
 
+# @description Head-side tool pins in a shape the shared preset's regex does
+# not match must die: Renovate would silently never update them. Each case
+# below is a shape the preset rejects.
+# @arg $1 case name
+# @arg $2 env block lines for the head side
+function assert_tool_shape_dies() {
+  local -r name="$1"
+  local -r env_lines="$2"
+  new_pair "${name}"
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' '  FOO: bar'
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "${env_lines}"
+  assert_case "${name} dies loud" 2 '.github/workflows/ci.yaml' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description A CRLF line ending defeats the preset's `\n`-anchored regex.
+function case_tool_crlf_dies() {
+  assert_tool_shape_dies 'tool-crlf' \
+    "$(printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh\r\n  SHFMT_VERSION: v3.13.1\r\n  SHFMT_SHA256: %s\r' "${SHA256_A}")"
+}
+
+# @description The preset captures only lowercase hex, so an uppercase sha256
+# is never updated.
+function case_tool_uppercase_sha_dies() {
+  assert_tool_shape_dies 'tool-uppercase-sha' "$(shfmt_pin v3.13.1 "${SHA256_A^^}")"
+}
+
+# @description The preset allows only an optional `versioning=` after depName.
+function case_tool_extra_token_dies() {
+  assert_tool_shape_dies 'tool-extra-token' \
+    "$(printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh extractVersion=^v(.*)$\n  SHFMT_VERSION: v3.13.1\n  SHFMT_SHA256: %s' "${SHA256_A}")"
+}
+
+# @description The preset separates the comment's fields with single spaces.
+function case_tool_tab_separator_dies() {
+  assert_tool_shape_dies 'tool-tab-separator' \
+    "$(printf '  # renovate:\tdatasource=github-release-attachments depName=mvdan/sh\n  SHFMT_VERSION: v3.13.1\n  SHFMT_SHA256: %s' "${SHA256_A}")"
+}
+
+# @description `versioning=` is part of the preset's grammar and must pass.
+function case_tool_versioning_accepted() {
+  new_pair 'tool-versioning'
+  local pin
+  pin="$(printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh versioning=semver\n  SHFMT_VERSION: v3.13.1\n  SHFMT_SHA256: %s' "${SHA256_A}")"
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' "${pin}"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "${pin}"
+  assert_case 'tool pin with versioning= passes' 0 '1 pin(s)' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
 # @description Build a scratch git repo whose HEAD commit holds the given
 # workflow pin and pre-commit pin, and echo its path. The worktree is left
 # matching HEAD; a caller mutates it to form the head side.
@@ -536,6 +584,11 @@ function main() {
   case_tool_base_shape_ignored
   case_tool_unannotated_version_ignored
   case_tool_sha_case_insensitive
+  case_tool_crlf_dies
+  case_tool_uppercase_sha_dies
+  case_tool_extra_token_dies
+  case_tool_tab_separator_dies
+  case_tool_versioning_accepted
   case_git_ref_clean
   case_git_ref_repoint
   case_git_ref_missing_dies

@@ -263,11 +263,13 @@ function extract_pre_commit_pins() {
 # to repoint and emits nothing.
 #
 # The shared Renovate preset's regex manager reads exactly this shape and
-# skips anything else, so on the head side a renovate comment with no version
-# line after it, or a sha256 line not directly under an annotated version,
-# dies: Renovate would never update that pin. The base side is skipped instead
-# of checked, because the change that reshapes a pin is compared against a base
-# that still has the old shape.
+# skips anything else, so on the head side a renovate comment, version line or
+# sha256 line outside that grammar dies: Renovate would never update that pin.
+# The grammar is the preset's, not a looser one: single spaces between the
+# comment's fields, nothing after depName but an optional `versioning=`,
+# lowercase hex, and no carriage return (the preset's regex anchors on `\n`).
+# The base side is skipped instead of checked, because the change that
+# reshapes a pin is compared against a base that still has the old shape.
 # @arg $1 file path, for diagnostics
 # @arg $2 side being read: `head` or `base`
 # @stdout one `identity|version|sha256` tuple per pin with a sha256
@@ -275,6 +277,11 @@ function extract_tool_pins() {
   local -r file="$1"
   local -r side="$2"
   local line identity='' version=''
+  # Kept in variables because a regex literal holding a quote or `#` cannot be
+  # written inline in `[[ =~ ]]`.
+  local -r comment_re='^[[:space:]]*# renovate: datasource=([a-z0-9-]+) depName=([^[:space:]]+)( versioning=[^[:space:]]+)?[ 	]*$'
+  local -r version_re='^[ 	]*[A-Z0-9_]+_VERSION:[ 	]*["'\'']?([^"'\''[:space:]]+)["'\'']?[ 	]*$'
+  local -r sha_re='^[ 	]*[A-Z0-9_]+_SHA256:[ 	]*["'\'']?([0-9a-f]{64})["'\'']?[ 	]*$'
   # 0: no pin open; 1: renovate comment seen, version line expected next;
   # 2: version line seen, an optional sha256 line may follow.
   local -i state=0
@@ -283,27 +290,31 @@ function extract_tool_pins() {
     line_num=$((line_num + 1))
     if ((state == 1)); then
       state=0
-      if [[ "${line}" =~ ^[[:space:]]*[A-Z0-9_]+_VERSION:[[:space:]]*[\"\']?([^\"\'[:space:]]+)[\"\']?[[:space:]]*$ ]]; then
+      if [[ "${line}" =~ ${version_re} ]]; then
         version="${BASH_REMATCH[1]}"
         state=2
         continue
       fi
       [[ "${side}" == 'head' ]] \
-        && die_op "renovate comment not followed by a _VERSION line at ${file}:$((line_num - 1))"
+        && die_op "renovate comment not followed by a _VERSION line in the preset's shape at ${file}:$((line_num - 1))"
     fi
-    if [[ "${line}" =~ ^[[:space:]]*[A-Z0-9_]+_SHA256:[[:space:]]*[\"\']?([0-9a-fA-F]{64})[\"\']?[[:space:]]*$ ]] && ((state == 2)); then
-      printf '%s|%s|%s\n' "${identity}" "${version}" "${BASH_REMATCH[1],,}"
+    if ((state == 2)) && [[ "${line}" =~ ${sha_re} ]]; then
+      printf '%s|%s|%s\n' "${identity}" "${version}" "${BASH_REMATCH[1]}"
       state=0
       continue
     fi
     state=0
-    if [[ "${line}" =~ ^[[:space:]]*#[[:space:]]renovate:[[:space:]]datasource=([a-z0-9-]+)[[:space:]]depName=([^[:space:]]+) ]]; then
+    if [[ "${line}" =~ ${comment_re} ]]; then
       identity="${BASH_REMATCH[1]}:${BASH_REMATCH[2]}"
       state=1
       continue
     fi
-    if [[ "${line}" =~ ^[[:space:]]*[A-Z0-9_]+_SHA256: && "${side}" == 'head' ]]; then
-      die_op "_SHA256 line not directly after an annotated _VERSION line at ${file}:${line_num}: ${line}"
+    [[ "${side}" == 'head' ]] || continue
+    if [[ "${line}" =~ ^[[:space:]]*#[[:space:]]*renovate: ]]; then
+      die_op "renovate comment not in the preset's shape at ${file}:${line_num}: ${line}"
+    fi
+    if [[ "${line}" =~ ^[[:space:]]*[A-Z0-9_]+_SHA256: ]]; then
+      die_op "_SHA256 line not in the preset's shape or not directly after an annotated _VERSION line at ${file}:${line_num}: ${line}"
     fi
   done
   if ((state == 1)) && [[ "${side}" == 'head' ]]; then
