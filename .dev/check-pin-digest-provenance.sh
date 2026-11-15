@@ -7,14 +7,20 @@
 # base ref. A SHA that changed while its version label did not is a repointed
 # released tag — the digest-repoint supply-chain class — and fails.
 #
+# It also diffs every annotated tool pin in .github/workflows/ (a
+# `# renovate:` comment, a `<NAME>_VERSION:` line and a `<NAME>_SHA256:` line,
+# the shape the shared renovate-config preset updates). A sha256 that changed
+# under the same version is a release asset re-uploaded with different
+# content: the same class, for a downloaded binary instead of a tag.
+#
 # Why this exists as a separate gate: `minimumReleaseAge` does not catch it.
 # Renovate ages a `digest` update against the release timestamp of the matched
 # version, and that version was released months ago, so a repointed tag clears
 # the quarantine instantly. Renovate's own docs say so outright: "Datasources
 # whose timestamps reflect when the matched version was first released (such as
 # github-tags for digest-pinned GitHub Actions) cannot detect re-published
-# content." With .github/renovate.json5 set to automerge everything, this
-# PR-time diff is the only automated gate standing on that path.
+# content." With renovate.json5 set to automerge everything, this PR-time diff
+# is the only automated gate standing on that path.
 #
 # Pre-commit revs are covered for a stronger reason than the actions are: a
 # hook executes on the developer's machine at commit time with access to
@@ -250,16 +256,78 @@ function extract_pre_commit_pins() {
   done
 }
 
+# @description Emit `identity|version|sha256` tuples for the annotated tool pins
+# in one workflow's content on stdin: a `# renovate: datasource=X depName=Y`
+# comment, a `<NAME>_VERSION:` line directly after it, and a `<NAME>_SHA256:`
+# line directly after that. Identity is `X:Y`. A pin with no sha256 has nothing
+# to repoint and emits nothing.
+#
+# The shared Renovate preset's regex manager reads exactly this shape and
+# skips anything else, so on the head side a renovate comment with no version
+# line after it, or a sha256 line not directly under an annotated version,
+# dies: Renovate would never update that pin. The base side is skipped instead
+# of checked, because the change that reshapes a pin is compared against a base
+# that still has the old shape.
+# @arg $1 file path, for diagnostics
+# @arg $2 side being read: `head` or `base`
+# @stdout one `identity|version|sha256` tuple per pin with a sha256
+function extract_tool_pins() {
+  local -r file="$1"
+  local -r side="$2"
+  local line identity='' version=''
+  # 0: no pin open; 1: renovate comment seen, version line expected next;
+  # 2: version line seen, an optional sha256 line may follow.
+  local -i state=0
+  local -i line_num=0
+  while IFS= read -r line; do
+    line_num=$((line_num + 1))
+    if ((state == 1)); then
+      state=0
+      if [[ "${line}" =~ ^[[:space:]]*[A-Z0-9_]+_VERSION:[[:space:]]*[\"\']?([^\"\'[:space:]]+)[\"\']?[[:space:]]*$ ]]; then
+        version="${BASH_REMATCH[1]}"
+        state=2
+        continue
+      fi
+      [[ "${side}" == 'head' ]] \
+        && die_op "renovate comment not followed by a _VERSION line at ${file}:$((line_num - 1))"
+    fi
+    if [[ "${line}" =~ ^[[:space:]]*[A-Z0-9_]+_SHA256:[[:space:]]*[\"\']?([0-9a-fA-F]{64})[\"\']?[[:space:]]*$ ]] && ((state == 2)); then
+      printf '%s|%s|%s\n' "${identity}" "${version}" "${BASH_REMATCH[1],,}"
+      state=0
+      continue
+    fi
+    state=0
+    if [[ "${line}" =~ ^[[:space:]]*#[[:space:]]renovate:[[:space:]]datasource=([a-z0-9-]+)[[:space:]]depName=([^[:space:]]+) ]]; then
+      identity="${BASH_REMATCH[1]}:${BASH_REMATCH[2]}"
+      state=1
+      continue
+    fi
+    if [[ "${line}" =~ ^[[:space:]]*[A-Z0-9_]+_SHA256: && "${side}" == 'head' ]]; then
+      die_op "_SHA256 line not directly after an annotated _VERSION line at ${file}:${line_num}: ${line}"
+    fi
+  done
+  if ((state == 1)) && [[ "${side}" == 'head' ]]; then
+    die_op "renovate comment not followed by a _VERSION line at ${file}:${line_num}"
+  fi
+  return 0
+}
+
 # @description Emit `identity|version|sha` tuples for one file's content on
-# stdin, dispatching on which kind of file it is.
+# stdin, dispatching on which kind of file it is. A workflow carries both
+# action pins and tool pins, so it is read twice from the same content.
 # @arg $1 file path relative to the repo root
+# @arg $2 side being read: `head` or `base`
 # @stdout one `identity|version|sha` tuple per pin
 function extract_pins() {
   local -r file="$1"
+  local -r side="$2"
+  local content
   if [[ "${file}" == "${PRE_COMMIT_FILE}" ]]; then
     extract_pre_commit_pins "${file}"
   else
-    extract_action_pins "${file}"
+    content="$(cat)"
+    extract_action_pins "${file}" <<< "${content}"
+    extract_tool_pins "${file}" "${side}" <<< "${content}"
   fi
 }
 
@@ -285,7 +353,7 @@ function collect_tuples() {
     else
       content="$(base_content "${file}")"
     fi
-    extract_pins "${file}" <<< "${content}"
+    extract_pins "${file}" "${side}" <<< "${content}"
   done <<< "${file_list}"
 }
 

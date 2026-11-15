@@ -5,6 +5,7 @@ age.key.ENCRYPTED
 docs
 {{- /* Repo tooling, not target state. */}}
 justfile
+renovate.json5
 
 {{- /*
   App-written state living beside managed config in an exact_ directory. exact_

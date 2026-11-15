@@ -29,6 +29,8 @@ readonly CHECKER="${SCRIPT_DIR}/check-pin-digest-provenance.sh"
 readonly SHA_A='a1b1c1d1e1f11111111111111111111111111111'
 readonly SHA_B='a2b2c2d2e2f22222222222222222222222222222'
 readonly SHA_C='a3b3c3d3e3f33333333333333333333333333333'
+readonly SHA256_A='a1b1c1d1e1f1111111111111111111111111111111111111111111111111111a'
+readonly SHA256_B='a2b2c2d2e2f2222222222222222222222222222222222222222222222222222b'
 
 PAIR_BASE=''
 PAIR_HEAD=''
@@ -284,6 +286,122 @@ function case_entry_regex_not_a_pin() {
   assert_case "a hook's entry: regex is not a pin" 0 '0 pin(s)' "${base}" "${head}"
 }
 
+# @description Write a workflow file whose `env:` block is the given text,
+# verbatim. Tool pins live in env blocks, so the cases build them line by line.
+# @arg $1 tree root
+# @arg $2 workflow file name (e.g. ci.yaml)
+# @arg $3 env block lines, each already indented two spaces
+function write_workflow_env() {
+  local -r root="$1"
+  local -r name="$2"
+  local -r env_lines="$3"
+  mkdir --parents -- "${root}/.github/workflows"
+  {
+    printf 'name: T\non:\n  push:\nenv:\n%s\njobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n' "${env_lines}"
+    printf '      - run: echo PAYLOAD_RAN\n'
+  } > "${root}/.github/workflows/${name}"
+}
+
+# @description Print an annotated tool pin: the renovate comment, the version
+# line and, when a sha256 is given, the sha256 line directly after it.
+# @arg $1 version
+# @arg $2 sha256, or empty for a version-only pin
+function shfmt_pin() {
+  local -r version="$1"
+  local -r sha="$2"
+  printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh\n'
+  printf '  SHFMT_VERSION: %s\n' "${version}"
+  if [[ -n "${sha}" ]]; then
+    printf '  SHFMT_SHA256: %s\n' "${sha}"
+  fi
+}
+
+# @description An unchanged tool pin passes and is counted.
+function case_tool_clean() {
+  new_pair 'tool-clean'
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' "$(shfmt_pin v3.13.1 "${SHA256_A}")"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "$(shfmt_pin v3.13.1 "${SHA256_A}")"
+  assert_case 'unchanged tool pin passes' 0 '1 pin(s) across 1 file(s)' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description The core tool case: a re-uploaded release asset changes the
+# sha256 under an unchanged version.
+function case_tool_repoint() {
+  new_pair 'tool-repoint'
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' "$(shfmt_pin v3.13.1 "${SHA256_A}")"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "$(shfmt_pin v3.13.1 "${SHA256_B}")"
+  assert_case 'tool sha256 moved under same version fails' 1 \
+    'pin repointed under unchanged version: github-release-attachments:mvdan/sh (v3.13.1)' \
+    "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description A real release moves both version and sha256. Must pass.
+function case_tool_bump() {
+  new_pair 'tool-bump'
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' "$(shfmt_pin v3.13.1 "${SHA256_A}")"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "$(shfmt_pin v3.14.1 "${SHA256_B}")"
+  assert_case 'tool version bump passes' 0 '' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description A version-only pin has no digest to repoint; a bump passes.
+function case_tool_version_only() {
+  new_pair 'tool-version-only'
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' \
+    "$(printf '  # renovate: datasource=pypi depName=pre-commit\n  PRE_COMMIT_VERSION: 4.6.0')"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' \
+    "$(printf '  # renovate: datasource=pypi depName=pre-commit\n  PRE_COMMIT_VERSION: 4.7.0')"
+  assert_case 'version-only tool pin bump passes' 0 '0 pin(s)' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description A sha256 separated from its version line is skipped by
+# Renovate's regex, so its bumps would be invisible: the head side dies.
+function case_tool_orphan_sha256_dies() {
+  new_pair 'tool-orphan'
+  local orphan
+  orphan="$(printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh\n  SHFMT_VERSION: v3.13.1\n  # note\n  SHFMT_SHA256: %s' "${SHA256_A}")"
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' "$(shfmt_pin v3.13.1 "${SHA256_A}")"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "${orphan}"
+  assert_case 'orphan sha256 dies loud' 2 '.github/workflows/ci.yaml' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description A renovate comment not followed by a version line is a pin the
+# preset regex skips: the head side dies.
+function case_tool_comment_without_version_dies() {
+  new_pair 'tool-comment-no-version'
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' '  FOO: bar'
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' \
+    "$(printf '  # renovate: datasource=pypi depName=pre-commit\n  FOO: bar')"
+  assert_case 'renovate comment without a version line dies loud' 2 '.github/workflows/ci.yaml' \
+    "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description Shape errors are enforced on the head side only: the PR that
+# reshapes a pin is compared against a base that still has the old shape.
+function case_tool_base_shape_ignored() {
+  new_pair 'tool-base-shape'
+  local orphan
+  orphan="$(printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh\n  SHFMT_VERSION: v3.13.1\n  # note\n  SHFMT_SHA256: %s' "${SHA256_A}")"
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' "${orphan}"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "$(shfmt_pin v3.13.1 "${SHA256_A}")"
+  assert_case 'old-shape base pin is not an error' 0 '' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description A `_VERSION` env var with no renovate comment is not a tool pin.
+function case_tool_unannotated_version_ignored() {
+  new_pair 'tool-unannotated'
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' '  FOO_VERSION: 1'
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' '  FOO_VERSION: 2'
+  assert_case 'unannotated _VERSION is ignored' 0 '0 pin(s)' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description sha256 letter case is not a repoint.
+function case_tool_sha_case_insensitive() {
+  new_pair 'tool-sha-case'
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' "$(shfmt_pin v3.13.1 "${SHA256_A^^}")"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "$(shfmt_pin v3.13.1 "${SHA256_A}")"
+  assert_case 'tool sha256 letter case is not a repoint' 0 '' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
 # @description Build a scratch git repo whose HEAD commit holds the given
 # workflow pin and pre-commit pin, and echo its path. The worktree is left
 # matching HEAD; a caller mutates it to form the head side.
@@ -380,6 +498,14 @@ function case_git_ref_missing_dies() {
 }
 
 function main() {
+  # Git exports GIT_DIR, GIT_INDEX_FILE and friends to hooks, and this suite
+  # runs as a pre-commit hook. Inherited, they make every `git -C <scratch>`
+  # below act on the real repository instead: `git init` re-initialises it as
+  # bare and the fixture commits land in it. Unset all of them first.
+  local git_env_var
+  for git_env_var in $(git rev-parse --local-env-vars); do
+    unset "${git_env_var}"
+  done
   [[ -x "${CHECKER}" ]] || {
     printf 'checker not executable: %s\n' "${CHECKER}" >&2
     exit 1
@@ -401,6 +527,15 @@ function main() {
   case_floating_major_reported
   case_sha_case_insensitive
   case_entry_regex_not_a_pin
+  case_tool_clean
+  case_tool_repoint
+  case_tool_bump
+  case_tool_version_only
+  case_tool_orphan_sha256_dies
+  case_tool_comment_without_version_dies
+  case_tool_base_shape_ignored
+  case_tool_unannotated_version_ignored
+  case_tool_sha_case_insensitive
   case_git_ref_clean
   case_git_ref_repoint
   case_git_ref_missing_dies
