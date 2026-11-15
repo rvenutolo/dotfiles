@@ -268,6 +268,10 @@ function extract_pre_commit_pins() {
 # The grammar is the preset's, not a looser one: single spaces between the
 # comment's fields, nothing after depName but an optional `versioning=`,
 # lowercase hex, and no carriage return (the preset's regex anchors on `\n`).
+# A trailing `# comment` is fine after a sha256 value, and after a version
+# value with no sha256 under it. After a version value with a sha256 under it,
+# it ends the preset's match before the sha256 line, so Renovate would bump the
+# version and leave the sha256 behind: that dies too.
 # The base side is skipped instead of checked, because the change that
 # reshapes a pin is compared against a base that still has the old shape.
 # @arg $1 file path, for diagnostics
@@ -276,12 +280,12 @@ function extract_pre_commit_pins() {
 function extract_tool_pins() {
   local -r file="$1"
   local -r side="$2"
-  local line identity='' version=''
+  local line identity='' version='' version_commented=''
   # Kept in variables because a regex literal holding a quote or `#` cannot be
   # written inline in `[[ =~ ]]`.
   local -r comment_re='^[[:space:]]*# renovate: datasource=([a-z0-9-]+) depName=([^[:space:]]+)( versioning=[^[:space:]]+)?[ 	]*$'
-  local -r version_re='^[ 	]*[A-Z0-9_]+_VERSION:[ 	]*["'\'']?([^"'\''[:space:]]+)["'\'']?[ 	]*$'
-  local -r sha_re='^[ 	]*[A-Z0-9_]+_SHA256:[ 	]*["'\'']?([0-9a-f]{64})["'\'']?[ 	]*$'
+  local -r version_re='^[ 	]*[A-Z0-9_]+_VERSION:[ 	]*["'\'']?([^"'\''[:space:]]+)["'\'']?[ 	]*(#.*)?$'
+  local -r sha_re='^[ 	]*[A-Z0-9_]+_SHA256:[ 	]*["'\'']?([0-9a-f]{64})["'\'']?[ 	]*(#.*)?$'
   # 0: no pin open; 1: renovate comment seen, version line expected next;
   # 2: version line seen, an optional sha256 line may follow.
   local -i state=0
@@ -292,6 +296,7 @@ function extract_tool_pins() {
       state=0
       if [[ "${line}" =~ ${version_re} ]]; then
         version="${BASH_REMATCH[1]}"
+        version_commented="${BASH_REMATCH[2]}"
         state=2
         continue
       fi
@@ -299,8 +304,13 @@ function extract_tool_pins() {
         && die_op "renovate comment not followed by a _VERSION line in the preset's shape at ${file}:$((line_num - 1))"
     fi
     if ((state == 2)) && [[ "${line}" =~ ${sha_re} ]]; then
-      printf '%s|%s|%s\n' "${identity}" "${version}" "${BASH_REMATCH[1]}"
       state=0
+      if [[ -n "${version_commented}" ]]; then
+        [[ "${side}" == 'head' ]] \
+          && die_op "comment after the _VERSION value hides the _SHA256 line below it from Renovate at ${file}:$((line_num - 1))"
+        continue
+      fi
+      printf '%s|%s|%s\n' "${identity}" "${version}" "${BASH_REMATCH[1]}"
       continue
     fi
     state=0

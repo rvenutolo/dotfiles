@@ -113,10 +113,9 @@ jobs:
     # the upstream tag was repointed to different code at the same version —
     # the exact substitution SHA pinning exists to catch; a tool pin's sha256
     # moving under the same version is the same for a release binary. The
-    # release age does
-    # NOT hold it: Renovate ages a digest update against the matched version's
-    # original release timestamp, which is months old, so it clears the
-    # quarantine immediately. This diff is what stands in its place.
+    # release age does NOT hold it: Renovate ages a digest update against the
+    # matched version's original release timestamp, which is months old, so it
+    # clears the release age immediately. This diff is what stands in its place.
     #
     # Its own job, not a step in lint, so it reports as a separately named
     # status rather than hiding inside a lint log. Skipped on push to main,

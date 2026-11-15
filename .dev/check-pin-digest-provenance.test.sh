@@ -440,6 +440,45 @@ function case_tool_tab_separator_dies() {
     "$(printf '  # renovate:\tdatasource=github-release-attachments depName=mvdan/sh\n  SHFMT_VERSION: v3.13.1\n  SHFMT_SHA256: %s' "${SHA256_A}")"
 }
 
+# @description The preset still captures the digest when a comment follows the
+# sha256 value, so the gate must accept it and compare it.
+function case_tool_sha_trailing_comment_accepted() {
+  new_pair 'tool-sha-comment'
+  local pin
+  pin="$(printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh\n  SHFMT_VERSION: v3.13.1\n  SHFMT_SHA256: %s  # linux amd64' "${SHA256_A}")"
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' "${pin}"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "${pin}"
+  assert_case 'comment after sha256 passes' 0 '1 pin(s)' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description A sha256 with a trailing comment is still compared: moving it
+# under the same version is a repoint.
+function case_tool_sha_trailing_comment_repoint() {
+  new_pair 'tool-sha-comment-repoint'
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' \
+    "$(printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh\n  SHFMT_VERSION: v3.13.1\n  SHFMT_SHA256: %s  # x' "${SHA256_A}")"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' \
+    "$(printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh\n  SHFMT_VERSION: v3.13.1\n  SHFMT_SHA256: %s  # x' "${SHA256_B}")"
+  assert_case 'commented sha256 repoint fails' 1 'pin repointed under unchanged version' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
+# @description A comment after the version value ends the preset's match
+# before the sha256 line, so Renovate would bump the version alone: dies.
+function case_tool_version_comment_with_sha_dies() {
+  assert_tool_shape_dies 'tool-version-comment-sha' \
+    "$(printf '  # renovate: datasource=github-release-attachments depName=mvdan/sh\n  SHFMT_VERSION: v3.13.1  # note\n  SHFMT_SHA256: %s' "${SHA256_A}")"
+}
+
+# @description With no sha256 below it, a commented version line is fine.
+function case_tool_version_comment_without_sha_accepted() {
+  new_pair 'tool-version-comment'
+  local pin
+  pin="$(printf '  # renovate: datasource=pypi depName=pre-commit\n  PRE_COMMIT_VERSION: 4.7.0  # note')"
+  write_workflow_env "${PAIR_BASE}" 'ci.yaml' "${pin}"
+  write_workflow_env "${PAIR_HEAD}" 'ci.yaml' "${pin}"
+  assert_case 'commented version-only pin passes' 0 '0 pin(s)' "${PAIR_BASE}" "${PAIR_HEAD}"
+}
+
 # @description `versioning=` is part of the preset's grammar and must pass.
 function case_tool_versioning_accepted() {
   new_pair 'tool-versioning'
@@ -589,6 +628,10 @@ function main() {
   case_tool_extra_token_dies
   case_tool_tab_separator_dies
   case_tool_versioning_accepted
+  case_tool_sha_trailing_comment_accepted
+  case_tool_sha_trailing_comment_repoint
+  case_tool_version_comment_with_sha_dies
+  case_tool_version_comment_without_sha_accepted
   case_git_ref_clean
   case_git_ref_repoint
   case_git_ref_missing_dies
