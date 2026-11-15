@@ -1,0 +1,42 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['github>rvenutolo/renovate-config#v1.3.0'],
+  // Settings local to this repository go below and override the preset. A
+  // packageRules entry here is applied after the preset's, so it wins; that is
+  // also where a different minimumReleaseAge belongs.
+  // Only these managers: everything else in this repo is chezmoi source state,
+  // not dependency manifests.
+  enabledManagers: ['github-actions', 'pre-commit', 'custom.regex'],
+  packageRules: [
+    // {
+    //   description: 'Why this repository needs a different rule',
+    //   matchPackageNames: ['some-package'],
+    //   minimumReleaseAge: '14 days',
+    // },
+    {
+      // Externals get no release age. They track a moving branch, so at any
+      // moment the datasource offers exactly one candidate: that branch's head
+      // commit. There is no older version to fall back to, so every new
+      // upstream commit restarts the clock, and an active upstream never ages
+      // a week. The file condition keeps the preset's CI tool pins, which also
+      // report as custom.regex, on the 7-day wait.
+      description: 'No release age for chezmoi externals tracking a branch',
+      matchManagers: ['custom.regex'],
+      matchFileNames: ['.chezmoiexternal.toml.tmpl'],
+      minimumReleaseAge: null,
+    },
+  ],
+  customManagers: [
+    {
+      // Matches the "# renovate:" hook comments in .chezmoiexternal.toml.tmpl
+      // (see CLAUDE.md, externals pinning policy). currentDigest is the
+      // 40-hex commit SHA embedded in the url line below each comment.
+      customType: 'regex',
+      managerFilePatterns: ['/^\\.chezmoiexternal\\.toml\\.tmpl$/'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<packageName>\\S+) branch=(?<currentValue>\\S+)[\\s\\S]*?url = [^\\n]*?(?<currentDigest>[0-9a-f]{40})',
+      ],
+      datasourceTemplate: '{{datasource}}',
+    },
+  ],
+}

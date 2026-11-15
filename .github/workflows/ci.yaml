@@ -1,4 +1,4 @@
-name: CI
+name: ci
 
 on:
   push:
@@ -108,10 +108,12 @@ jobs:
           key: ${{ steps.pre-commit-cache.outputs.cache-primary-key }}
 
   pin-provenance:
-    # The gate on Renovate's automerge path. `.github/renovate.json5` automerges
+    # The gate on Renovate's automerge path. The shared preset automerges
     # every update type, and a `digest` bump on an already-pinned action means
     # the upstream tag was repointed to different code at the same version —
-    # the exact substitution SHA pinning exists to catch. minimumReleaseAge does
+    # the exact substitution SHA pinning exists to catch; a tool pin's sha256
+    # moving under the same version is the same for a release binary. The
+    # release age does
     # NOT hold it: Renovate ages a digest update against the matched version's
     # original release timestamp, which is months old, so it clears the
     # quarantine immediately. This diff is what stands in its place.

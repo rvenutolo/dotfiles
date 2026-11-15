@@ -196,12 +196,9 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   bump changes the URL, which busts the cache and refetches on the next apply.
 
   Those comments say `datasource=github-digest`, **not `git-refs`** — keep it
-  that way when adding an entry. `git-refs` resolves the same branch head but
-  reports no release timestamp, and `minimumReleaseAgeBehaviour` fails closed
-  on a missing timestamp, so a `git-refs` entry could stop receiving PRs
-  rather than fail loudly. `github-digest` derives a timestamp from the commit
-  date. Note its `depName` is the bare `owner/repo`, not the repo URL `git-refs`
-  wanted.
+  that way when adding an entry. `github-digest` derives a release timestamp
+  from the commit date; `git-refs` reports none. Note its `depName` is the bare
+  `owner/repo`, not a repo URL.
 - `.github/workflows/ci.yaml` — the lint + render CI workflow. The same
   supply-chain policy applies: every `uses:` is pinned to a 40-hex commit SHA
   with the version in a trailing comment (`@<sha> # v7.0.1`), because a tag is
@@ -209,21 +206,28 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   manager reads that comment to propose SHA bumps; the `no-unpinned-actions`
   pre-commit hook stops a floating tag from creeping back.
 
-  **Everything Renovate opens automerges** — `automerge: true` sits at the top
-  level of `.github/renovate.json5` and covers all three managers and every
-  update type. A PR merges as soon as CI is green (`ignoreTests` is left
-  false, so Renovate will not merge a branch with failing checks). There is no
-  `schedule`, and `platformAutomerge` is on, so GitHub's native auto-merge
-  fires the moment the `protect-main` required checks pass. GitHub Actions and
-  pre-commit updates sit behind a 7-day `minimumReleaseAge` quarantine, and
-  under the default `internalChecksFilter: 'strict'` their PR is not opened
-  until it has passed — nothing sits open through the window.
+  **Renovate policy comes from the shared preset.** `renovate.json5` extends
+  `github>rvenutolo/renovate-config` at a release tag; what that does (weekend
+  window, one weekly batch for non-major updates, 7-day release age, automerge
+  of everything once CI is green, immediate security fixes) is documented in
+  that repo's `docs/preset.md`, and is not restated here. This repo adds only
+  what it needs:
 
-  This is a deliberate reversal of the earlier "external SHA bumps and
-  pre-commit revs are reviewed by hand" policy. One class needed a replacement
-  gate rather than just a decision: a `digest` bump on an already-pinned action
-  means the upstream tag was repointed to different code at the same version —
-  the mutable-tag substitution SHA pinning exists to catch.
+  - `enabledManagers`: `github-actions`, `pre-commit` and `custom.regex`.
+    Everything else in the tree is chezmoi source state, not a manifest.
+  - The regex manager for the externals' `# renovate:` comments.
+  - A 0-day release age for the externals only (below).
+
+  The preset also updates the annotated tool pins in `ci.yaml` (`chezmoi`,
+  `pre-commit`, `shfmt`): a `# renovate:` comment directly above a
+  `<NAME>_VERSION:` line, with an optional `<NAME>_SHA256:` line directly
+  under it. With the sha256 line, Renovate bumps both together.
+
+  One update class needs a gate rather than a policy: a `digest` bump on an
+  already-pinned action means the upstream tag was repointed to different code
+  at the same version — the mutable-tag substitution SHA pinning exists to
+  catch. A sha256 change on a tool pin under the same version is the same
+  thing for a release binary.
 
   **`minimumReleaseAge` does not hold that class.** Renovate ages a `digest`
   update against the release timestamp of the *matched version*, and that
@@ -231,28 +235,18 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   immediately. Renovate's docs say so outright: "Datasources whose timestamps
   reflect when the matched version was first released (such as `github-tags`
   for digest-pinned GitHub Actions) cannot detect re-published content." Do not
-  reason about this from the quarantine's existence — it is the one update
-  shape the quarantine is blind to. The gate that does hold it is
+  reason about this from the release age's existence — it is the one update
+  shape the release age is blind to. The gate that does hold it is
   `.dev/check-pin-digest-provenance.sh`, described under Scripts below.
 
-  `minimumReleaseAge` is at the **top level** and `minimumReleaseAgeBehaviour`
-  is left at its default `timestamp-required`, which fails closed. That is
-  only safe because every datasource in use reports a release timestamp.
-  Introducing a timestamp-less datasource would silently stop its updates
-  forever while remaining perfectly valid config.
-
-  **Externals are exempt from the quarantine** (`minimumReleaseAge: '0 days'`,
-  scoped to the `custom.regex` manager). They track a moving branch, so the
-  datasource offers exactly one candidate: the branch head. Each upstream
-  commit restarts the clock and there is no older version to fall back to, so
-  an active upstream never ages a week — `strict` would never open its PR and
-  `flexible` would leave it open indefinitely. Do not re-add a release age for
-  externals without solving that.
-
-  `renovate/stability-days` is not a required check, so native auto-merge
-  ignores it. That is safe only while no PR is opened with that check
-  pending — i.e. while nothing uses `internalChecksFilter: 'flexible'`
-  alongside a non-zero release age.
+  **Externals are exempt from the release age** (`minimumReleaseAge: null`,
+  matched on the `custom.regex` manager *and* the externals file). They track
+  a moving branch, so the datasource offers exactly one candidate: the branch
+  head. Each upstream commit restarts the clock and there is no older version
+  to fall back to, so an active upstream never ages a week. Do not re-add a
+  release age for externals without solving that. The file condition matters:
+  the preset's tool-pin manager also reports as `custom.regex`, and the CI tool
+  pins keep the 7-day wait.
 
   The lint job does **not** use `pre-commit/action`. It runs `pre-commit`
   directly behind an `actions/cache` step whose `restore-keys` supplies a
@@ -270,11 +264,13 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
   repository's 10 GB limit. Gate saves on the ref, never on the event: an
   event gate still saves from a `workflow_dispatch` on a feature branch.
 
-  `shfmt` is installed from the pinned upstream release binary and verified
-  against a `sha256` recorded in the workflow, not built with `go install`.
-  Renovate can bump `SHFMT_VERSION` but cannot recompute that digest, so a
-  version bump fails the step until the hash is regenerated by hand. That
-  failure is intentional — do not drop the checksum to silence it.
+  `chezmoi` and `shfmt` are installed from pinned upstream release binaries,
+  each verified against a `sha256` recorded in the workflow; nothing is piped
+  from an install script into a shell, and nothing is built with `go install`.
+  Renovate updates each version and its sha256 together. Keep the sha256 line
+  directly under its version line: separated, Renovate stops seeing it and the
+  provenance gate fails the PR. `CHEZMOI_VERSION` must stay at or above
+  `.chezmoiversion`.
 - `.chezmoiignore` — paths in source state that should NOT be applied (`README.md`, `TODO`, `age.key.ENCRYPTED`), and `.config/claude`, which a second chezmoi instance owns (see "Claude Config")
 - `.chezmoiremove` — a templated list of target paths chezmoi deletes on apply, without a prompt. It must never list anything under `.config/claude` (see "Claude Config")
 - `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch). `run_onchange_before_00-install-packages.sh.tmpl` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
@@ -553,11 +549,15 @@ requests hard enough to redden the run by itself.
 ### Pin digest provenance
 
 `.dev/check-pin-digest-provenance.sh` is the gate on Renovate's automerge path.
-It diffs every GitHub Actions pin (`uses: owner/repo@<sha> # <version>`) and
-every pre-commit `rev:` (`<sha>  # frozen: <version>`) against the PR's base ref
-and fails any SHA that moved while its version label did not — a repointed
-released tag, which no legitimate release produces. It exists because
-`minimumReleaseAge` is blind to exactly that shape (see the `automerge` note
+It diffs every GitHub Actions pin (`uses: owner/repo@<sha> # <version>`),
+every pre-commit `rev:` (`<sha>  # frozen: <version>`) and every annotated tool
+pin's `_SHA256` against the PR's base ref and fails any SHA that moved while
+its version label did not — a repointed released tag or a re-uploaded release
+asset, which no legitimate release produces. On the PR side it also exits 2 for
+a tool pin shaped so Renovate would skip it: a `# renovate:` comment with no
+`_VERSION` line after it, or a `_SHA256` line not directly under one. The base
+side is not shape-checked, so a PR that reshapes a pin can land. It exists because
+`minimumReleaseAge` is blind to exactly that shape (see the Renovate note
 above); with every update type automerging, this is the only automated check
 standing between a repointed tag and `main`.
 
@@ -599,16 +599,14 @@ Two hooks lint the CI plumbing itself:
   The embedded-script pass runs **only when `shellcheck` is on `PATH`** —
   actionlint skips it silently and still exits 0 otherwise, so the CI lint job
   asserts `shellcheck --version` before running pre-commit. Keep that step.
-- **renovate-config-validator** — validates `.github/renovate.json5`. Nothing
+- **renovate-config-validator** — validates `renovate.json5`. Nothing
   else does: a typo in a manager name or a broken `matchStrings` regex fails
   no build, it just makes Renovate stop proposing those updates while the
   pinned externals quietly go stale.
 
-`rev:` bumps automerge along with everything else (see the `automerge` note
-under `.github/workflows/ci.yaml` above) once the 7-day quarantine has passed
-and CI is green. `renovatebot/pre-commit-hooks` cuts a release for every
-Renovate release — several per week — and no longer needs the narrow
-per-repo automerge rule it once had.
+`rev:` bumps automerge along with everything else (see the Renovate note
+under `.github/workflows/ci.yaml` above) once the 7-day release age has passed
+and CI is green, in the preset's weekly batch.
 
 Every `rev:` in `.pre-commit-config.yaml` is a **40-hex commit SHA** with the
 version in a trailing `# frozen:` comment, under the same supply-chain policy
