@@ -165,3 +165,10 @@ checksums:
 
 weather:
   wttr_city: Atlanta
+
+# docker0 bridge address. Rendered into the `bip` of ~/.etc/docker-daemon.json
+# and, on work hosts, into its `dns` entry and the systemd-resolved drop-in
+# that listens on this address, so containers resolve through the host.
+docker:
+  bridge_address: 169.254.4.1
+  bridge_prefix_length: 22
