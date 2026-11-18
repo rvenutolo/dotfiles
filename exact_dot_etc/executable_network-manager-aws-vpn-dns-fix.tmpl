@@ -1,20 +1,35 @@
 #!/usr/bin/env bash
 # /etc/NetworkManager/dispatcher.d/99-vpn-dns-fix
 #
-# When the AWS VPN tun0 interface comes up, add ~amazonaws.com as a routing
-# domain so CNAME chases from internal work domains to *.amazonaws.com stay on
-# the VPN-pushed resolver instead of falling through to the default-route
-# resolver, which on some networks (AT&T residential gateways) strips A records
-# pointing into RFC 1918 space.
+# Split DNS for the AWS VPN. The AWS client pushes `~.` onto tun0, which sends
+# every lookup to the work resolver. When tun0 comes up, replace `~.` with the
+# work routing domains and drop tun0 as a default DNS route, so only work names
+# reach the work resolver and everything else uses the active network's DNS.
+#
+# The list includes `~elb.amazonaws.com`: internal work names CNAME to internal
+# ELB names, and those chases must stay on the VPN resolver because some
+# networks' resolvers (AT&T residential gateways) strip A records pointing into
+# RFC 1918 space.
 
 set -Eeuo pipefail
 IFS=$'\n\t'
 trap 'echo "error: line ${LINENO} (exit $?): ${BASH_COMMAND}" >&2' ERR
 
-readonly WANT='~amazonaws.com'
-# A domain the AWS client always pushes; used as the race-guard sentinel. Kept in
-# an age-encrypted file rather than inline, since this repo is public.
-readonly SENTINEL='{{ include ".work-vpn-sentinel-domain.age" | decrypt | trim }}'
+# Work routing domains, one per line. Kept in an age-encrypted file rather than
+# inline, since this repo is public.
+readonly -a WORK_DOMAINS=(
+{{- range (include ".work-vpn-dns-domains.age" | decrypt | splitList "\n") }}
+{{- if trim . }}
+  {{ trim . | squote }}
+{{- end }}
+{{- end }}
+)
+# The AWS client's catch-all routing domain; its arrival marks the client's push
+# as complete, and it is what this script removes.
+readonly CATCH_ALL='~.'
+# Broader than the `~elb.amazonaws.com` in WORK_DOMAINS: it would send all AWS
+# lookups, public ones included, to the work resolver, so it is dropped if present.
+readonly LEGACY_DOMAIN='~amazonaws.com'
 # Up to ~5s of polling at 0.1s intervals.
 readonly MAX_ATTEMPTS=50
 
@@ -34,6 +49,21 @@ function read_domains() {
     | grep --invert-match '^$' || true
 }
 
+# @description Succeed when the first argument equals any of the remaining ones.
+# @arg $1 needle
+# @arg $@ haystack
+function contains() {
+  local -r needle="$1"
+  shift
+  local item
+  for item in "$@"; do
+    if [[ "${item}" == "${needle}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # @description NetworkManager dispatcher entry point.
 # @arg $1 interface name NetworkManager brings up/down
 # @arg $2 action the dispatcher event (e.g. up, vpn-up)
@@ -46,8 +76,7 @@ function main() {
   fi
 
   case "${action}" in
-    up | vpn-up)
-      ;;
+    up | vpn-up) ;;
     *)
       exit 0
       ;;
@@ -58,37 +87,51 @@ function main() {
     exit 1
   fi
 
-  # Race guard: the AWS --up script sets tun0 domains asynchronously. Wait until
-  # the sentinel appears before we touch the list, so a read-modify-write can
-  # never lose the AWS-pushed domains.
   local -a domains=()
-  local attempt=1
   local domain
-  while ((attempt <= MAX_ATTEMPTS)); do
-    mapfile -t domains < <(read_domains)
-    for domain in "${domains[@]}"; do
-      if [[ "${domain}" == "${SENTINEL}" ]]; then
-        break 2
+
+  # Idempotent: already rewritten (no catch-all, every work domain present).
+  mapfile -t domains < <(read_domains)
+  if ! contains "${CATCH_ALL}" "${domains[@]}"; then
+    local missing=0
+    for domain in "${WORK_DOMAINS[@]}"; do
+      if ! contains "${domain}" "${domains[@]}"; then
+        missing=1
       fi
     done
-    sleep 0.1
-    attempt=$((attempt + 1))
-  done
-
-  # Idempotent: already applied.
-  for domain in "${domains[@]}"; do
-    if [[ "${domain}" == "${WANT}" ]]; then
+    if ((missing == 0)); then
       exit 0
     fi
-  done
-
-  # Fail-safe: never write if we didn't see real domains — better to leave the
-  # AWS-pushed list intact than to clobber it.
-  if [[ "${#domains[@]}" -eq 0 ]]; then
-    exit 0
   fi
 
-  resolvectl domain tun0 "${domains[@]}" "${WANT}"
+  # Race guard: the AWS --up script sets tun0 domains asynchronously. Wait for
+  # its catch-all so the read-modify-write below can never lose pushed domains.
+  local attempt=1
+  while ! contains "${CATCH_ALL}" "${domains[@]}"; do
+    if ((attempt >= MAX_ATTEMPTS)); then
+      # Fail-safe: never write a list built from a push we did not see.
+      echo "tun0 never received ${CATCH_ALL}; leaving its DNS domains unchanged" >&2
+      exit 0
+    fi
+    sleep 0.1
+    attempt=$((attempt + 1))
+    mapfile -t domains < <(read_domains)
+  done
+
+  # Keep what the client pushed (search domains), minus the catch-all, the
+  # legacy domain and anything re-added below; then append the work list.
+  local -a new_domains=()
+  for domain in "${domains[@]}"; do
+    if [[ "${domain}" == "${CATCH_ALL}" || "${domain}" == "${LEGACY_DOMAIN}" ]] \
+      || contains "${domain}" "${WORK_DOMAINS[@]}"; then
+      continue
+    fi
+    new_domains+=("${domain}")
+  done
+  new_domains+=("${WORK_DOMAINS[@]}")
+
+  resolvectl domain tun0 "${new_domains[@]}"
+  resolvectl default-route tun0 false
   resolvectl flush-caches
 }
 
