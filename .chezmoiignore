@@ -52,6 +52,14 @@ dot_local/share/applications/nvim.desktop
 .config/profile-local-work.sh
 .config/bash/local-work.bash
 {{- end }}
+
+{{- /*
+  The resolved drop-in pairs with the work-only `dns` entry in
+  docker-daemon.json.tmpl; other hosts get neither.
+*/}}
+{{- if not .is_work }}
+.etc/systemd-resolved-docker-stub.conf
+{{- end }}
 {{- if or .is_personal .is_work }}
 .config/profile-local-server.sh
 .config/bash/local-server.bash
@@ -65,6 +73,5 @@ dot_local/share/applications/nvim.desktop
 */}}
 {{- if and (hasKey . "is_ci") .is_ci }}
 .config/topgrade/topgrade.toml
-.etc/docker-daemon.json
 .etc/network-manager-aws-vpn-dns-fix
 {{- end }}

@@ -1,11 +1,13 @@
 {
-  "bip": "169.254.4.1/22",
+  "bip": "{{ .docker.bridge_address }}/{{ .docker.bridge_prefix_length }}",
   "fixed-cidr": "169.254.6.0/23",
   "default-address-pools": [
     {"base": "169.254.12.0/22", "size": 24},
     {"base": "169.254.16.0/20", "size": 24},
     {"base": "169.254.32.0/19", "size": 24},
     {"base": "169.254.64.0/18", "size": 24}
-  ],
-  "dns": ["{{ include ".work-dns-resolver.age" | decrypt | trim }}", "8.8.8.8"]
+  ]
+{{- if .is_work }},
+  "dns": ["{{ .docker.bridge_address }}"]
+{{- end }}
 }

@@ -1,0 +1,6 @@
+# Installed as /etc/systemd/resolved.conf.d/docker-stub.conf by the scripts
+# repo's copy-docker-daemon-file. Makes systemd-resolved answer on the docker0
+# address, which docker-daemon.json gives containers as their only nameserver;
+# both are rendered from .docker.bridge_address and must stay equal.
+[Resolve]
+DNSStubListenerExtra={{ .docker.bridge_address }}

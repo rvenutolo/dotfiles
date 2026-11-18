@@ -276,6 +276,14 @@ Full reference: https://www.chezmoi.io/reference/templates/variables/
 - `.chezmoiscripts/` — host-bootstrap scripts (package install, key fetch). `run_onchange_before_00-install-packages.sh.tmpl` is the entry point that installs `age curl git jq openssh-client` via `apt` / `dnf` / `pacman`
 - `exact_dot_etc/` — config files applied to `~/.etc/` that may be wired into `/etc`. Chezmoi does NOT do the /etc wiring: files are selectively symlinked or copied into `/etc` by set-up scripts in the personal scripts repo (`${PERSONAL_PROJECTS_DIR}/scripts`, e.g. `scripts/set_up/pacman/copy-pacman-conf-file`). `find-etc-symlinks` reports which files are currently linked where
 
+  `docker-daemon.json` and `systemd-resolved-docker-stub.conf` are a pair. On work
+  hosts the daemon's only `dns` entry is the docker0 address (`.docker.bridge_address`),
+  and the drop-in makes systemd-resolved listen there, so containers resolve exactly
+  as the host does (split DNS over the VPN included). Other hosts get no `dns` key
+  and no drop-in. `scripts/set_up/docker/copy-docker-daemon-file` installs both and
+  checks the listener answers before it installs `daemon.json`: a `dns` entry
+  without the listener leaves containers with no DNS at all.
+
 ## Claude Config
 
 All Claude Code configuration lives in the private `claude-config` repo, not
