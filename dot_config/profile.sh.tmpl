@@ -24,6 +24,15 @@ export XDG_DATA_DIRS="${XDG_DATA_HOME}/flatpak/exports/share:${XDG_DATA_DIRS}"
 export XDG_DATA_DIRS="${HOME}/.nix-profile/share:${XDG_DATA_DIRS}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id --user)}"
 
+# Disk-backed temp dir: /tmp is tmpfs, so large temp files there consume RAM.
+# Emptied at boot by user-tmpfiles.d/tmpdir.conf. Created here as well because
+# a fresh host can open a shell before that tmpfiles rule has ever run.
+export TMPDIR="${XDG_CACHE_HOME}/tmp"
+if [ ! -d "${TMPDIR}" ]; then
+  mkdir --parents "${XDG_CACHE_HOME}"
+  mkdir --mode=0700 "${TMPDIR}"
+fi
+
 # PATH manipulation helpers (sourced once XDG_CONFIG_HOME is set; unset
 # at the bottom of this file).
 if [ -r "${XDG_CONFIG_HOME}/path-helpers.sh" ]; then
